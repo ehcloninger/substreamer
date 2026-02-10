@@ -1,6 +1,5 @@
-import Constants from 'expo-constants';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
@@ -10,11 +9,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { TrackRow } from '../components/TrackRow';
+import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import {
   ensureCoverArtAuth,
@@ -26,33 +25,7 @@ import {
 
 const HERO_PADDING = 24;
 const HERO_COVER_SIZE = 600;
-/** Approximate height of the nav header bar (below status bar). */
 const HEADER_BAR_HEIGHT = 44;
-
-/** Result shape from react-native-image-colors (Android/Web: vibrant swatches; iOS: primary). */
-type ExtractedColors = {
-  vibrant?: string;
-  lightVibrant?: string;
-  darkVibrant?: string;
-  dominant?: string;
-  primary?: string;
-  background?: string;
-  secondary?: string;
-  detail?: string;
-};
-
-/** Prefer primary (iOS) then darkVibrant (Android/Web); else null for theme background. */
-function getProminentColor(result: ExtractedColors): string | null {
-  if (result.primary && typeof result.primary === 'string') return result.primary;
-  if (result.darkVibrant && typeof result.darkVibrant === 'string') return result.darkVibrant;
-  return null;
-}
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
 
 function groupTracksByDisc(songs: Child[]): Map<number, Child[]> {
   const sorted = [...songs].sort((a, b) => {
@@ -70,44 +43,6 @@ function groupTracksByDisc(songs: Child[]): Map<number, Child[]> {
   return map;
 }
 
-function TrackRow({
-  track,
-  colors,
-}: {
-  track: Child;
-  colors: ReturnType<typeof useTheme>['colors'];
-}) {
-  const duration = track.duration != null ? formatDuration(track.duration) : '—';
-  const starred = Boolean(track.starred);
-  const rating = track.userRating;
-  const trackLabel = track.track != null ? `${track.track}. ` : '';
-  return (
-    <View style={[styles.trackRow, { borderBottomColor: colors.border }]}>
-      <View style={styles.trackLeft}>
-        <Text style={[styles.trackNum, { color: colors.textSecondary }]}>
-          {trackLabel}
-        </Text>
-        <Text style={[styles.trackTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-          {track.title}
-        </Text>
-      </View>
-      <View style={styles.trackRight}>
-        {starred && (
-          <Ionicons name="star" size={14} color={colors.primary} />
-        )}
-        {rating != null && rating > 0 && (
-          <Text style={[styles.trackRating, { color: colors.textSecondary }]}>
-            {rating}/5
-          </Text>
-        )}
-        <Text style={[styles.trackDuration, { color: colors.textSecondary }]}>
-          {duration}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 export function AlbumDetailScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -115,8 +50,11 @@ export function AlbumDetailScreen() {
   const [album, setAlbum] = useState<AlbumWithSongsID3 | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [coverBackgroundColor, setCoverBackgroundColor] = useState<string | null>(null);
-  const gradientOpacity = useRef(new Animated.Value(0)).current;
+
+  const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
+    album?.coverArt,
+    colors.background,
+  );
 
   useEffect(() => {
     if (!id) {
@@ -148,59 +86,6 @@ export function AlbumDetailScreen() {
     };
   }, [id]);
 
-  // Extract prominent color from cover art. Skip in Expo Go (native module required).
-  useEffect(() => {
-    if (!album?.coverArt) {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    if (Constants.appOwnership === 'expo') {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    // Use a small thumbnail for faster color extraction
-    const uri = getCoverArtUrl(album.coverArt, 50);
-    if (!uri) {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { getColors } = await import('react-native-image-colors');
-        const result = await getColors(uri, {
-          fallback: colors.background,
-          quality: 'low',
-        });
-        if (cancelled) return;
-        const prominent = getProminentColor(result as ExtractedColors);
-        setCoverBackgroundColor(prominent ?? null);
-      } catch {
-        if (!cancelled) setCoverBackgroundColor(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [album?.coverArt, colors.background]);
-
-  useEffect(() => {
-    if (coverBackgroundColor) {
-      gradientOpacity.setValue(0);
-      Animated.timing(gradientOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(gradientOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [coverBackgroundColor]);
-
   const discs = useMemo(() => {
     if (!album?.song?.length) return new Map<number, Child[]>();
     return groupTracksByDisc(album.song);
@@ -229,7 +114,6 @@ export function AlbumDetailScreen() {
   }
 
   const coverUri = getCoverArtUrl(album.coverArt ?? '', HERO_COVER_SIZE) ?? undefined;
-
   const gradientEnd = colors.background;
 
   const gradientFillStyle = [
@@ -290,7 +174,12 @@ export function AlbumDetailScreen() {
                 </Text>
               )}
               {tracks.map((track) => (
-                <TrackRow key={track.id} track={track} colors={colors} />
+                <TrackRow
+                  key={track.id}
+                  track={track}
+                  trackNumber={track.track != null ? `${track.track}. ` : undefined}
+                  colors={colors}
+                />
               ))}
             </View>
           ))}
@@ -362,41 +251,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
-  },
-  trackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  trackLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 0,
-  },
-  trackNum: {
-    fontSize: 15,
-  },
-  trackTitle: {
-    fontSize: 16,
-    flex: 1,
-    marginLeft: 2,
-    minWidth: 0,
-  },
-  trackRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginLeft: 12,
-  },
-  trackRating: {
-    fontSize: 12,
-  },
-  trackDuration: {
-    fontSize: 15,
   },
   emptyTracks: {
     fontSize: 16,

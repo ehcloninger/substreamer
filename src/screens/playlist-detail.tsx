@@ -1,6 +1,5 @@
-import Constants from 'expo-constants';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
@@ -12,103 +11,22 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { TrackRow } from '../components/TrackRow';
+import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import {
   ensureCoverArtAuth,
   getPlaylist,
   getCoverArtUrl,
   type PlaylistWithSongs,
-  type Child,
 } from '../services/subsonicService';
+import { formatCompactDuration } from '../utils/formatters';
 
 const HERO_PADDING = 24;
 const HERO_COVER_SIZE = 600;
-/** Approximate height of the nav header bar (below status bar). */
 const HEADER_BAR_HEIGHT = 44;
-
-/** Result shape from react-native-image-colors (Android/Web: vibrant swatches; iOS: primary). */
-type ExtractedColors = {
-  vibrant?: string;
-  lightVibrant?: string;
-  darkVibrant?: string;
-  dominant?: string;
-  primary?: string;
-  background?: string;
-  secondary?: string;
-  detail?: string;
-};
-
-/** Prefer primary (iOS) then darkVibrant (Android/Web); else null for theme background. */
-function getProminentColor(result: ExtractedColors): string | null {
-  if (result.primary && typeof result.primary === 'string') return result.primary;
-  if (result.darkVibrant && typeof result.darkVibrant === 'string') return result.darkVibrant;
-  return null;
-}
-
-/** Format seconds as m:ss for individual tracks. */
-function formatTrackDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-/** Format seconds as compact duration like "46m" or "1h30m". */
-function formatTotalDuration(seconds: number): string {
-  const totalMinutes = Math.round(seconds / 60);
-  if (totalMinutes < 60) return `${totalMinutes}m`;
-  const hours = Math.floor(totalMinutes / 60);
-  const mins = totalMinutes % 60;
-  return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
-}
-
-function TrackRow({
-  track,
-  index,
-  colors,
-}: {
-  track: Child;
-  index: number;
-  colors: ReturnType<typeof useTheme>['colors'];
-}) {
-  const duration = track.duration != null ? formatTrackDuration(track.duration) : '—';
-  const starred = Boolean(track.starred);
-  const rating = track.userRating;
-  return (
-    <View style={[styles.trackRow, { borderBottomColor: colors.border }]}>
-      <View style={styles.trackLeft}>
-        <Text style={[styles.trackNum, { color: colors.textSecondary }]}>
-          {index + 1}.{' '}
-        </Text>
-        <View style={styles.trackInfo}>
-          <Text style={[styles.trackTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-            {track.title}
-          </Text>
-          {track.artist && (
-            <Text style={[styles.trackArtist, { color: colors.textSecondary }]} numberOfLines={1}>
-              {track.artist}
-            </Text>
-          )}
-        </View>
-      </View>
-      <View style={styles.trackRight}>
-        {starred && (
-          <Ionicons name="star" size={14} color={colors.primary} />
-        )}
-        {rating != null && rating > 0 && (
-          <Text style={[styles.trackRating, { color: colors.textSecondary }]}>
-            {rating}/5
-          </Text>
-        )}
-        <Text style={[styles.trackDuration, { color: colors.textSecondary }]}>
-          {duration}
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 export function PlaylistDetailScreen() {
   const { colors } = useTheme();
@@ -117,8 +35,11 @@ export function PlaylistDetailScreen() {
   const [playlist, setPlaylist] = useState<PlaylistWithSongs | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [coverBackgroundColor, setCoverBackgroundColor] = useState<string | null>(null);
-  const gradientOpacity = useRef(new Animated.Value(0)).current;
+
+  const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
+    playlist?.coverArt,
+    colors.background,
+  );
 
   useEffect(() => {
     if (!id) {
@@ -149,58 +70,6 @@ export function PlaylistDetailScreen() {
       cancelled = true;
     };
   }, [id]);
-
-  // Extract prominent color from cover art. Skip in Expo Go (native module required).
-  useEffect(() => {
-    if (!playlist?.coverArt) {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    if (Constants.appOwnership === 'expo') {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    const uri = getCoverArtUrl(playlist.coverArt, 50);
-    if (!uri) {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { getColors } = await import('react-native-image-colors');
-        const result = await getColors(uri, {
-          fallback: colors.background,
-          quality: 'low',
-        });
-        if (cancelled) return;
-        const prominent = getProminentColor(result as ExtractedColors);
-        setCoverBackgroundColor(prominent ?? null);
-      } catch {
-        if (!cancelled) setCoverBackgroundColor(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [playlist?.coverArt, colors.background]);
-
-  useEffect(() => {
-    if (coverBackgroundColor) {
-      gradientOpacity.setValue(0);
-      Animated.timing(gradientOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(gradientOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [coverBackgroundColor]);
 
   const gradientStart = coverBackgroundColor ?? colors.background;
 
@@ -283,7 +152,7 @@ export function PlaylistDetailScreen() {
             <View style={styles.metaSpacer} />
             <Ionicons name="time-outline" size={14} color={colors.primary} />
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-              {formatTotalDuration(playlist.duration)}
+              {formatCompactDuration(playlist.duration)}
             </Text>
           </View>
         </View>
@@ -295,7 +164,13 @@ export function PlaylistDetailScreen() {
         ) : (
           <View style={styles.trackList}>
             {tracks.map((track, index) => (
-              <TrackRow key={track.id} track={track} index={index} colors={colors} />
+              <TrackRow
+                key={track.id}
+                track={track}
+                trackNumber={`${index + 1}. `}
+                showArtist
+                colors={colors}
+              />
             ))}
           </View>
         )}
@@ -372,47 +247,6 @@ const styles = StyleSheet.create({
   trackList: {
     paddingHorizontal: 16,
     paddingTop: 16,
-  },
-  trackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  trackLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 0,
-  },
-  trackNum: {
-    fontSize: 15,
-    minWidth: 28,
-  },
-  trackInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  trackTitle: {
-    fontSize: 16,
-  },
-  trackArtist: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  trackRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginLeft: 12,
-  },
-  trackRating: {
-    fontSize: 12,
-  },
-  trackDuration: {
-    fontSize: 15,
   },
   emptyTracks: {
     fontSize: 16,

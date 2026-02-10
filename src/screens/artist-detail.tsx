@@ -1,6 +1,5 @@
-import Constants from 'expo-constants';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
@@ -16,6 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumRow } from '../components/AlbumRow';
+import { SectionTitle } from '../components/SectionTitle';
+import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import {
   ensureCoverArtAuth,
@@ -32,6 +33,7 @@ import {
   getArtistBiography,
   searchArtistMBID,
 } from '../services/musicbrainzService';
+import { stripHtml } from '../utils/formatters';
 
 const HERO_PADDING = 24;
 const HERO_IMAGE_SIZE = 180;
@@ -39,40 +41,6 @@ const HERO_COVER_SIZE = 600;
 const HEADER_BAR_HEIGHT = 44;
 const SIMILAR_THUMB_SIZE = 72;
 const SONG_THUMB_SIZE = 72;
-
-/* ------------------------------------------------------------------ */
-/*  Color extraction helpers (shared pattern with album/playlist)     */
-/* ------------------------------------------------------------------ */
-
-type ExtractedColors = {
-  vibrant?: string;
-  lightVibrant?: string;
-  darkVibrant?: string;
-  dominant?: string;
-  primary?: string;
-  background?: string;
-  secondary?: string;
-  detail?: string;
-};
-
-function getProminentColor(result: ExtractedColors): string | null {
-  if (result.primary && typeof result.primary === 'string') return result.primary;
-  if (result.darkVibrant && typeof result.darkVibrant === 'string') return result.darkVibrant;
-  return null;
-}
-
-/** Strip HTML tags from a string (Last.fm bios often include links). */
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, '').trim();
-}
-
-/* ------------------------------------------------------------------ */
-/*  Section title component                                           */
-/* ------------------------------------------------------------------ */
-
-function SectionTitle({ title, color }: { title: string; color: string }) {
-  return <Text style={[styles.sectionTitle, { color }]}>{title}</Text>;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Similar artist thumbnail                                          */
@@ -166,8 +134,11 @@ export function ArtistDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bioExpanded, setBioExpanded] = useState(false);
-  const [coverBackgroundColor, setCoverBackgroundColor] = useState<string | null>(null);
-  const gradientOpacity = useRef(new Animated.Value(0)).current;
+
+  const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
+    artist?.coverArt,
+    colors.background,
+  );
 
   /* ---- Data fetching ---- */
   useEffect(() => {
@@ -228,60 +199,6 @@ export function ArtistDetailScreen() {
       cancelled = true;
     };
   }, [id]);
-
-  /* ---- Color extraction ---- */
-  useEffect(() => {
-    const coverArt = artist?.coverArt;
-    if (!coverArt) {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    if (Constants.appOwnership === 'expo') {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    const uri = getCoverArtUrl(coverArt, 50);
-    if (!uri) {
-      setCoverBackgroundColor(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { getColors } = await import('react-native-image-colors');
-        const result = await getColors(uri, {
-          fallback: colors.background,
-          quality: 'low',
-        });
-        if (cancelled) return;
-        const prominent = getProminentColor(result as ExtractedColors);
-        setCoverBackgroundColor(prominent ?? null);
-      } catch {
-        if (!cancelled) setCoverBackgroundColor(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [artist?.coverArt, colors.background]);
-
-  /* ---- Gradient animation ---- */
-  useEffect(() => {
-    if (coverBackgroundColor) {
-      gradientOpacity.setValue(0);
-      Animated.timing(gradientOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(gradientOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [coverBackgroundColor]);
 
   /* ---- Derived values ---- */
   const gradientStart = coverBackgroundColor ?? colors.background;
@@ -492,14 +409,6 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 16,
     marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-    marginLeft: 4,
   },
 
   /* Biography */

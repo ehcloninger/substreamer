@@ -5,17 +5,9 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../hooks/useTheme';
 import { getCoverArtUrl, type AlbumID3 } from '../services/subsonicService';
+import { formatCompactDuration } from '../utils/formatters';
 
 const COVER_SIZE = 300;
-
-/** Format a duration in seconds to a compact string like "46m" or "1h30m". */
-function formatDuration(seconds: number): string {
-  const totalMinutes = Math.round(seconds / 60);
-  if (totalMinutes < 60) return `${totalMinutes}m`;
-  const hours = Math.floor(totalMinutes / 60);
-  const mins = totalMinutes % 60;
-  return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
-}
 
 /** Total row height (padding 12*2 + image 56 = 80). Exported for getItemLayout. */
 export const ROW_HEIGHT = 80;
@@ -67,7 +59,7 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
           <View style={styles.metaSpacer} />
           <Ionicons name="time-outline" size={14} color={colors.primary} />
           <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-            {formatDuration(album.duration)}
+            {formatCompactDuration(album.duration)}
           </Text>
         </View>
       </View>
