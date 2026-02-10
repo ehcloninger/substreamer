@@ -1,61 +1,23 @@
-import { useRouter } from 'expo-router';
-import { memo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
-  Image,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
 import { useTheme } from '../hooks/useTheme';
-import { getCoverArtUrl, type AlbumID3 } from '../services/subsonicService';
+import type { AlbumID3 } from '../services/subsonicService';
+import { AlbumCard } from './AlbumCard';
+import { AlbumRow, ROW_HEIGHT } from './AlbumRow';
 
-const COVER_SIZE = 300;
-const ROW_HEIGHT = 80; // padding (12*2) + image (56) = 80
+export type AlbumLayout = 'list' | 'grid';
 
-/* ------------------------------------------------------------------ */
-/*  AlbumRow                                                          */
-/* ------------------------------------------------------------------ */
-
-const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
-  const { colors } = useTheme();
-  const router = useRouter();
-  const uri = getCoverArtUrl(album.coverArt ?? '', COVER_SIZE) ?? undefined;
-
-  const onPress = useCallback(() => {
-    router.push(`/album/${album.id}`);
-  }, [album.id, router]);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: colors.card },
-        pressed && styles.rowPressed,
-      ]}
-    >
-      <Image source={{ uri }} style={styles.rowCover} resizeMode="cover" />
-      <View style={styles.rowText}>
-        <Text
-          style={[styles.rowAlbumName, { color: colors.textPrimary }]}
-          numberOfLines={1}
-        >
-          {album.name}
-        </Text>
-        <Text
-          style={[styles.rowArtistName, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {album.artist ?? 'Unknown Artist'}
-        </Text>
-      </View>
-    </Pressable>
-  );
-});
+const GRID_COLUMNS = 2;
+const GRID_GAP = 10;
+const LIST_PADDING = 16;
 
 /* ------------------------------------------------------------------ */
 /*  AlbumListView                                                     */
@@ -64,6 +26,8 @@ const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
 export interface AlbumListViewProps {
   /** The list of albums to display */
   albums: AlbumID3[];
+  /** Display layout: row list or grid of cards */
+  layout?: AlbumLayout;
   /** Whether data is currently loading */
   loading?: boolean;
   /** Error message to display, if any */
@@ -76,6 +40,7 @@ export interface AlbumListViewProps {
 
 export function AlbumListView({
   albums,
+  layout = 'list',
   loading = false,
   error = null,
   onRefresh,
@@ -83,9 +48,24 @@ export function AlbumListView({
 }: AlbumListViewProps) {
   const { colors } = useTheme();
 
-  const renderItem = useCallback(
+  const screenWidth = Dimensions.get('window').width;
+  const cardWidth = useMemo(
+    () =>
+      (screenWidth - LIST_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) /
+      GRID_COLUMNS,
+    [screenWidth]
+  );
+
+  const renderListItem = useCallback(
     ({ item }: { item: AlbumID3 }) => <AlbumRow album={item} />,
     []
+  );
+
+  const renderGridItem = useCallback(
+    ({ item }: { item: AlbumID3 }) => (
+      <AlbumCard album={item} width={cardWidth} />
+    ),
+    [cardWidth]
   );
 
   const keyExtractor = useCallback((item: AlbumID3) => item.id, []);
@@ -96,6 +76,11 @@ export function AlbumListView({
       offset: ROW_HEIGHT * index,
       index,
     }),
+    []
+  );
+
+  const columnWrapperStyle = useMemo(
+    () => ({ gap: GRID_GAP }),
     []
   );
 
@@ -117,16 +102,21 @@ export function AlbumListView({
     );
   }
 
+  const isGrid = layout === 'grid';
+
   return (
     <FlatList
+      key={layout}
       data={albums}
-      renderItem={renderItem}
+      renderItem={isGrid ? renderGridItem : renderListItem}
       keyExtractor={keyExtractor}
-      getItemLayout={getItemLayout}
+      {...(isGrid
+        ? { numColumns: GRID_COLUMNS, columnWrapperStyle }
+        : { getItemLayout })}
       contentContainerStyle={styles.listContent}
       windowSize={11}
-      maxToRenderPerBatch={20}
-      initialNumToRender={15}
+      maxToRenderPerBatch={isGrid ? 12 : 20}
+      initialNumToRender={isGrid ? 10 : 15}
       removeClippedSubviews
       onRefresh={onRefresh}
       refreshing={refreshing}
@@ -150,36 +140,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContent: {
-    padding: 16,
+    padding: LIST_PADDING,
     paddingBottom: 32,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  rowPressed: {
-    opacity: 0.85,
-  },
-  rowCover: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  rowText: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  rowAlbumName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  rowArtistName: {
-    fontSize: 14,
-    marginTop: 2,
   },
   errorText: {
     fontSize: 16,

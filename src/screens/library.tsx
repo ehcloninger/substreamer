@@ -1,7 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AlbumListView } from '../components/AlbumListView';
+import { AlbumListView, type AlbumLayout } from '../components/AlbumListView';
 import { useTheme } from '../hooks/useTheme';
 import { albumLibraryStore } from '../store/albumLibraryStore';
 
@@ -63,7 +65,7 @@ function SegmentControl({
 /*  Albums tab content                                                */
 /* ------------------------------------------------------------------ */
 
-function AlbumsTab() {
+function AlbumsTab({ layout }: { layout: AlbumLayout }) {
   const albums = albumLibraryStore((s) => s.albums);
   const loading = albumLibraryStore((s) => s.loading);
   const error = albumLibraryStore((s) => s.error);
@@ -83,6 +85,7 @@ function AlbumsTab() {
   return (
     <AlbumListView
       albums={albums}
+      layout={layout}
       loading={loading}
       error={error}
       onRefresh={handleRefresh}
@@ -112,13 +115,45 @@ function PlaceholderTab({ label }: { label: string }) {
 
 export function LibraryScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation();
   const [activeSegment, setActiveSegment] = useState<Segment>('albums');
+  const [albumLayout, setAlbumLayout] = useState<AlbumLayout>('list');
+
+  const toggleLayout = useCallback(() => {
+    setAlbumLayout((prev) => (prev === 'list' ? 'grid' : 'list'));
+  }, []);
+
+  // Set a header-right toggle button when the albums segment is active
+  useEffect(() => {
+    if (activeSegment === 'albums') {
+      navigation.setOptions({
+        headerRight: () => (
+          <Pressable
+            onPress={toggleLayout}
+            style={({ pressed }) => [
+              styles.headerButton,
+              pressed && styles.headerButtonPressed,
+            ]}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={albumLayout === 'list' ? 'grid-outline' : 'list-outline'}
+              size={22}
+              color={colors.textPrimary}
+            />
+          </Pressable>
+        ),
+      });
+    } else {
+      navigation.setOptions({ headerRight: undefined });
+    }
+  }, [activeSegment, albumLayout, toggleLayout, navigation, colors.textPrimary]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SegmentControl selected={activeSegment} onSelect={setActiveSegment} />
       <View style={styles.content}>
-        {activeSegment === 'albums' && <AlbumsTab />}
+        {activeSegment === 'albums' && <AlbumsTab layout={albumLayout} />}
         {activeSegment === 'artists' && <PlaceholderTab label="Artists" />}
         {activeSegment === 'playlists' && <PlaceholderTab label="Playlists" />}
       </View>
@@ -172,5 +207,12 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 16,
+  },
+  headerButton: {
+    padding: 4,
+    marginRight: 8,
+  },
+  headerButtonPressed: {
+    opacity: 0.6,
   },
 });

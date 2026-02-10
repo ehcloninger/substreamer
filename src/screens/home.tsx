@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import {
   FlatList,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,8 +10,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { AlbumCard } from '../components/AlbumCard';
 import { useTheme } from '../hooks/useTheme';
-import { getCoverArtUrl, type AlbumID3 } from '../services/subsonicService';
+import type { AlbumID3 } from '../services/subsonicService';
 import {
   albumListsStore,
   type AlbumListType,
@@ -20,40 +20,6 @@ import {
 
 const CARD_WIDTH = 150;
 const CARD_GAP = 12;
-const COVER_SIZE = 300;
-
-function AlbumCard({
-  album,
-  colors,
-}: {
-  album: AlbumID3;
-  colors: ReturnType<typeof useTheme>['colors'];
-}) {
-  const router = useRouter();
-  const uri = getCoverArtUrl(album.coverArt ?? '', COVER_SIZE) ?? undefined;
-  return (
-    <Pressable
-      onPress={() => router.push(`/album/${album.id}`)}
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: colors.card },
-        pressed && styles.cardPressed,
-      ]}
-    >
-      <Image
-        source={{ uri }}
-        style={styles.cover}
-        resizeMode="cover"
-      />
-      <Text style={[styles.albumName, { color: colors.textPrimary }]} numberOfLines={1}>
-        {album.name}
-      </Text>
-      <Text style={[styles.artistName, { color: colors.textSecondary }]} numberOfLines={1}>
-        {album.artist ?? 'Unknown Artist'}
-      </Text>
-    </Pressable>
-  );
-}
 
 const SECTION_CONFIG: Record<
   AlbumListType,
@@ -93,8 +59,10 @@ function AlbumSection({
   const router = useRouter();
   const config = SECTION_CONFIG[listType];
   const renderItem = useCallback(
-    ({ item }: { item: AlbumID3 }) => <AlbumCard album={item} colors={colors} />,
-    [colors]
+    ({ item }: { item: AlbumID3 }) => (
+      <AlbumCard album={item} width={CARD_WIDTH} />
+    ),
+    []
   );
   const keyExtractor = useCallback((item: AlbumID3) => item.id, []);
   const onRefresh = useCallback(() => {
@@ -238,28 +206,5 @@ const styles = StyleSheet.create({
   },
   horizontalList: {
     paddingRight: 16,
-  },
-  card: {
-    width: CARD_WIDTH,
-    borderRadius: 12,
-    padding: 8,
-  },
-  cardPressed: {
-    opacity: 0.85,
-  },
-  cover: {
-    width: CARD_WIDTH - 16,
-    height: CARD_WIDTH - 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  albumName: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  artistName: {
-    fontSize: 13,
-    marginTop: 2,
   },
 });
