@@ -32,6 +32,7 @@ import {
   type ArtistWithAlbumsID3,
   type Child,
 } from '../services/subsonicService';
+import { refreshCachedImage } from '../services/imageCacheService';
 import {
   getArtistBiography,
   searchArtistMBID,
@@ -195,6 +196,9 @@ export function ArtistDetailScreen() {
       if (!artistData) {
         setError('Artist not found');
         return;
+      }
+      if (isRefresh && artistData.coverArt) {
+        refreshCachedImage(artistData.coverArt).catch(() => {});
       }
 
       // Fetch top songs after we have the artist name

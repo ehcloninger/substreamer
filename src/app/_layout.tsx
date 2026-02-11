@@ -6,7 +6,7 @@ import { StyleSheet } from 'react-native';
 
 import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
 import { useTheme } from '../hooks/useTheme';
-import { initImageCache } from '../services/imageCacheService';
+import { getImageCacheStats, initImageCache } from '../services/imageCacheService';
 import { albumListsStore } from '../store/albumListsStore';
 import { imageCacheStore } from '../store/imageCacheStore';
 import { authStore, clearPersistedData } from '../store/authStore';
@@ -22,7 +22,7 @@ SplashScreen.preventAutoHideAsync();
 initImageCache();
 
 // Reconcile persisted cache stats with the actual filesystem.
-imageCacheStore.getState().recalculate();
+imageCacheStore.getState().recalculate(getImageCacheStats());
 
 export default function RootLayout() {
   const [splashVisible, setSplashVisible] = useState(true);
@@ -122,6 +122,10 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: 'transparent' },
             contentStyle: { backgroundColor: 'transparent' },
           }}
+        />
+        <Stack.Screen
+          name="cache-browser"
+          options={{ title: 'Image Cache', headerBackTitle: 'Back' }}
         />
       </Stack>
 

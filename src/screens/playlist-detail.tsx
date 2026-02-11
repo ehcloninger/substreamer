@@ -18,6 +18,7 @@ import { CachedImage } from '../components/CachedImage';
 import { TrackRow } from '../components/TrackRow';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
+import { refreshCachedImage } from '../services/imageCacheService';
 import {
   ensureCoverArtAuth,
   getPlaylist,
@@ -61,6 +62,9 @@ export function PlaylistDetailScreen() {
       const data = await getPlaylist(id);
       setPlaylist(data);
       if (!data) setError('Playlist not found');
+      if (isRefresh && data?.coverArt) {
+        refreshCachedImage(data.coverArt).catch(() => {});
+      }
       await minDelay;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load playlist');

@@ -258,6 +258,48 @@ export function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Storage</Text>
+        <View style={[styles.card, dynamicStyles.card]}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Cached images</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
+              {imageCount} {imageCount === 1 ? 'image' : 'images'}
+            </Text>
+          </View>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Disk usage</Text>
+            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
+              {formatBytes(totalBytes)}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/cache-browser')}
+            style={({ pressed }) => [
+              styles.browseCacheButton,
+              { borderTopColor: colors.border },
+              pressed && styles.themeRowPressed,
+            ]}
+          >
+            <View style={styles.browseCacheLeft}>
+              <Ionicons name="images-outline" size={18} color={colors.primary} />
+              <Text style={[styles.browseCacheText, { color: colors.primary }]}>Browse Cache</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            onPress={handleClearCache}
+            style={({ pressed }) => [
+              styles.clearCacheButton,
+              pressed && styles.themeRowPressed,
+            ]}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.red} />
+            <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Image Cache</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Appearance</Text>
         <View style={styles.themeCard}>
           {THEME_OPTIONS.map((opt) => {
@@ -448,34 +490,6 @@ export function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Storage use</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Cached images</Text>
-            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
-              {imageCount} {imageCount === 1 ? 'image' : 'images'}
-            </Text>
-          </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Disk usage</Text>
-            <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
-              {formatBytes(totalBytes)}
-            </Text>
-          </View>
-          <Pressable
-            onPress={handleClearCache}
-            style={({ pressed }) => [
-              styles.clearCacheButton,
-              pressed && styles.themeRowPressed,
-            ]}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.red} />
-            <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Image Cache</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.section}>
         <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Account</Text>
         <Pressable
           style={({ pressed }) => [
@@ -643,6 +657,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+  },
+  browseCacheButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  browseCacheLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  browseCacheText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   clearCacheButton: {
     flexDirection: 'row',

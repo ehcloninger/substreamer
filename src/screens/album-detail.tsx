@@ -19,6 +19,7 @@ import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { TrackRow } from '../components/TrackRow';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
+import { refreshCachedImage } from '../services/imageCacheService';
 import {
   ensureCoverArtAuth,
   getAlbum,
@@ -103,6 +104,9 @@ export function AlbumDetailScreen() {
       const data = await getAlbum(id);
       setAlbum(data);
       if (!data) setError('Album not found');
+      if (isRefresh && data?.coverArt) {
+        refreshCachedImage(data.coverArt).catch(() => {});
+      }
       await minDelay;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load album');

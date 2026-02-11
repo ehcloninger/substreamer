@@ -168,6 +168,101 @@ export function getImageCacheStats(): ImageCacheStats {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Cache browsing                                                     */
+/* ------------------------------------------------------------------ */
+
+/** A single cached file variant. */
+export interface CachedFileEntry {
+  size: number;
+  fileName: string;
+  uri: string;
+}
+
+/** A cached image with all its size variants. */
+export interface CachedImageEntry {
+  coverArtId: string;
+  files: CachedFileEntry[];
+}
+
+/** Regex to parse cached filenames: {coverArtId}_{size}.{ext} */
+const FILE_NAME_RE = /^(.+)_(50|150|300|600)\.(jpg|png|webp)$/;
+
+/**
+ * List all cached images grouped by coverArtId.
+ * Each entry includes the individual file variants found on disk.
+ */
+export function listCachedImages(): CachedImageEntry[] {
+  const dir = ensureCacheDir();
+  let items: (File | Directory)[];
+  try {
+    items = dir.list();
+  } catch {
+    return [];
+  }
+
+  const groups = new Map<string, CachedFileEntry[]>();
+
+  for (const item of items) {
+    if (!(item instanceof File)) continue;
+    // item.name is just the filename portion (e.g. "al-abc_300.jpg")
+    const name = item.uri.split('/').pop() ?? '';
+    const match = FILE_NAME_RE.exec(name);
+    if (!match) continue;
+
+    const coverArtId = match[1];
+    const size = Number(match[2]);
+
+    if (!groups.has(coverArtId)) groups.set(coverArtId, []);
+    groups.get(coverArtId)!.push({ size, fileName: name, uri: item.uri });
+  }
+
+  const entries: CachedImageEntry[] = [];
+  for (const [coverArtId, files] of groups) {
+    files.sort((a, b) => a.size - b.size);
+    entries.push({ coverArtId, files });
+  }
+  entries.sort((a, b) => a.coverArtId.localeCompare(b.coverArtId));
+  return entries;
+}
+
+/**
+ * Delete all cached variants for a single coverArtId.
+ * Updates the imageCacheStore stats accordingly.
+ */
+export function deleteCachedImage(coverArtId: string): void {
+  if (!coverArtId) return;
+  const dir = ensureCacheDir();
+  let deletedCount = 0;
+  let deletedBytes = 0;
+
+  for (const size of IMAGE_SIZES) {
+    for (const ext of EXTENSIONS) {
+      const file = new File(dir, `${coverArtId}_${size}${ext}`);
+      if (file.exists) {
+        deletedBytes += file.size ?? 0;
+        file.delete();
+        deletedCount++;
+      }
+    }
+  }
+
+  if (deletedCount > 0) {
+    imageCacheStore.getState().removeFiles(deletedCount, deletedBytes);
+  }
+}
+
+/**
+ * Re-download all size variants for a single coverArtId.
+ * Deletes existing files first, then downloads fresh copies.
+ */
+export async function refreshCachedImage(coverArtId: string): Promise<void> {
+  deleteCachedImage(coverArtId);
+  // Clear the in-flight guard so cacheAllSizes will proceed.
+  downloading.delete(coverArtId);
+  await cacheAllSizes(coverArtId);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Cache clearing                                                     */
 /* ------------------------------------------------------------------ */
 
