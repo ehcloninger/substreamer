@@ -55,6 +55,13 @@ export const albumLibraryStore = create<AlbumLibraryState>()(
             albums = await getAllAlbumsAlphabetical();
           }
 
+          // Ensure albums are sorted alphabetically by artist name
+          albums.sort((a, b) =>
+            (a.artist ?? '').localeCompare(b.artist ?? '', undefined, {
+              sensitivity: 'base',
+            })
+          );
+
           set({
             albums,
             loading: false,

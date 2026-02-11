@@ -32,6 +32,7 @@ export function ArtistListScreen({ layout = 'list' }: { layout?: ArtistLayout })
         error={error}
         onRefresh={handleRefresh}
         refreshing={loading && artists.length > 0}
+        showAlphabetScroller={layout === 'list'}
       />
     </View>
   );

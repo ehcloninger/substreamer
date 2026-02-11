@@ -32,6 +32,7 @@ export function PlaylistListScreen({ layout = 'list' }: { layout?: PlaylistLayou
         error={error}
         onRefresh={handleRefresh}
         refreshing={loading && playlists.length > 0}
+        showAlphabetScroller={layout === 'list'}
       />
     </View>
   );

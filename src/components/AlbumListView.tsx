@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -13,12 +13,22 @@ import { useTheme } from '../hooks/useTheme';
 import type { AlbumID3 } from '../services/subsonicService';
 import { AlbumCard } from './AlbumCard';
 import { AlbumRow, ROW_HEIGHT } from './AlbumRow';
+import { AlphabetScroller } from './AlphabetScroller';
 
 export type AlbumLayout = 'list' | 'grid';
 
 const GRID_COLUMNS = 2;
 const GRID_GAP = 10;
 const LIST_PADDING = 16;
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                           */
+/* ------------------------------------------------------------------ */
+
+function getFirstLetter(name: string): string {
+  const ch = name.charAt(0).toUpperCase();
+  return /[A-Z]/.test(ch) ? ch : '#';
+}
 
 /* ------------------------------------------------------------------ */
 /*  AlbumListView                                                     */
@@ -41,6 +51,8 @@ export interface AlbumListViewProps {
   emptyMessage?: string;
   /** Optional Ionicons icon name for empty state */
   emptyIcon?: string;
+  /** Show the A-Z alphabet scroller on the right (list mode only) */
+  showAlphabetScroller?: boolean;
 }
 
 export function AlbumListView({
@@ -52,8 +64,10 @@ export function AlbumListView({
   refreshing = false,
   emptyMessage = 'No albums',
   emptyIcon,
+  showAlphabetScroller = false,
 }: AlbumListViewProps) {
   const { colors } = useTheme();
+  const flatListRef = useRef<FlatList<AlbumID3>>(null);
 
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = useMemo(
@@ -110,6 +124,29 @@ export function AlbumListView({
     [emptyIcon, emptyMessage, colors.textSecondary]
   );
 
+  /* ---- Alphabet scroller support ---- */
+  const isList = layout === 'list';
+  const scrollerVisible = showAlphabetScroller && isList && albums.length > 0;
+
+  const activeLetters = useMemo(() => {
+    if (!scrollerVisible) return new Set<string>();
+    return new Set(albums.map((a) => getFirstLetter(a.artist ?? a.name)));
+  }, [albums, scrollerVisible]);
+
+  const handleLetterChange = useCallback(
+    (letter: string) => {
+      const idx = albums.findIndex((a) => {
+        const first = getFirstLetter(a.artist ?? a.name);
+        if (letter === '#') return first === '#';
+        return first === letter;
+      });
+      if (idx >= 0) {
+        flatListRef.current?.scrollToIndex({ index: idx, animated: false });
+      }
+    },
+    [albums]
+  );
+
   if (loading && albums.length === 0) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -131,26 +168,36 @@ export function AlbumListView({
   const isGrid = layout === 'grid';
 
   return (
-    <FlatList
-      key={layout}
-      data={albums}
-      renderItem={isGrid ? renderGridItem : renderListItem}
-      keyExtractor={keyExtractor}
-      {...(isGrid
-        ? { numColumns: GRID_COLUMNS, columnWrapperStyle }
-        : { getItemLayout })}
-      contentContainerStyle={[
-        styles.listContent,
-        albums.length === 0 && styles.emptyListContent,
-      ]}
-      windowSize={11}
-      maxToRenderPerBatch={isGrid ? 12 : 20}
-      initialNumToRender={isGrid ? 10 : 15}
-      removeClippedSubviews
-      onRefresh={onRefresh}
-      refreshing={refreshing}
-      ListEmptyComponent={EmptyComponent}
-    />
+    <View style={styles.wrapper}>
+      <FlatList
+        ref={flatListRef}
+        key={layout}
+        data={albums}
+        renderItem={isGrid ? renderGridItem : renderListItem}
+        keyExtractor={keyExtractor}
+        {...(isGrid
+          ? { numColumns: GRID_COLUMNS, columnWrapperStyle }
+          : { getItemLayout })}
+        contentContainerStyle={[
+          styles.listContent,
+          scrollerVisible && styles.listContentWithScroller,
+          albums.length === 0 && styles.emptyListContent,
+        ]}
+        windowSize={11}
+        maxToRenderPerBatch={isGrid ? 12 : 20}
+        initialNumToRender={isGrid ? 10 : 15}
+        removeClippedSubviews
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        ListEmptyComponent={EmptyComponent}
+      />
+      {scrollerVisible && (
+        <AlphabetScroller
+          activeLetters={activeLetters}
+          onLetterChange={handleLetterChange}
+        />
+      )}
+    </View>
   );
 }
 
@@ -159,6 +206,9 @@ export function AlbumListView({
 /* ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -167,6 +217,9 @@ const styles = StyleSheet.create({
   listContent: {
     padding: LIST_PADDING,
     paddingBottom: 32,
+  },
+  listContentWithScroller: {
+    paddingRight: LIST_PADDING + 20,
   },
   emptyListContent: {
     flexGrow: 1,

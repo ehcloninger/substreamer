@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -13,12 +13,22 @@ import { useTheme } from '../hooks/useTheme';
 import type { ArtistID3 } from '../services/subsonicService';
 import { ArtistCard } from './ArtistCard';
 import { ArtistRow, ROW_HEIGHT } from './ArtistRow';
+import { AlphabetScroller } from './AlphabetScroller';
 
 export type ArtistLayout = 'list' | 'grid';
 
 const GRID_COLUMNS = 2;
 const GRID_GAP = 10;
 const LIST_PADDING = 16;
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                           */
+/* ------------------------------------------------------------------ */
+
+function getFirstLetter(name: string): string {
+  const ch = name.charAt(0).toUpperCase();
+  return /[A-Z]/.test(ch) ? ch : '#';
+}
 
 /* ------------------------------------------------------------------ */
 /*  ArtistListView                                                    */
@@ -41,6 +51,8 @@ export interface ArtistListViewProps {
   emptyMessage?: string;
   /** Optional Ionicons icon name for empty state */
   emptyIcon?: string;
+  /** Show the A-Z alphabet scroller on the right (list mode only) */
+  showAlphabetScroller?: boolean;
 }
 
 export function ArtistListView({
@@ -52,8 +64,10 @@ export function ArtistListView({
   refreshing = false,
   emptyMessage = 'No artists',
   emptyIcon,
+  showAlphabetScroller = false,
 }: ArtistListViewProps) {
   const { colors } = useTheme();
+  const flatListRef = useRef<FlatList<ArtistID3>>(null);
 
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = useMemo(
@@ -107,6 +121,29 @@ export function ArtistListView({
     [emptyIcon, emptyMessage, colors.textSecondary]
   );
 
+  /* ---- Alphabet scroller support ---- */
+  const isList = layout === 'list';
+  const scrollerVisible = showAlphabetScroller && isList && artists.length > 0;
+
+  const activeLetters = useMemo(() => {
+    if (!scrollerVisible) return new Set<string>();
+    return new Set(artists.map((a) => getFirstLetter(a.name)));
+  }, [artists, scrollerVisible]);
+
+  const handleLetterChange = useCallback(
+    (letter: string) => {
+      const idx = artists.findIndex((a) => {
+        const first = getFirstLetter(a.name);
+        if (letter === '#') return first === '#';
+        return first === letter;
+      });
+      if (idx >= 0) {
+        flatListRef.current?.scrollToIndex({ index: idx, animated: false });
+      }
+    },
+    [artists]
+  );
+
   if (loading && artists.length === 0) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -128,26 +165,36 @@ export function ArtistListView({
   const isGrid = layout === 'grid';
 
   return (
-    <FlatList
-      key={layout}
-      data={artists}
-      renderItem={isGrid ? renderGridItem : renderListItem}
-      keyExtractor={keyExtractor}
-      {...(isGrid
-        ? { numColumns: GRID_COLUMNS, columnWrapperStyle }
-        : { getItemLayout })}
-      contentContainerStyle={[
-        styles.listContent,
-        artists.length === 0 && styles.emptyListContent,
-      ]}
-      windowSize={11}
-      maxToRenderPerBatch={isGrid ? 12 : 20}
-      initialNumToRender={isGrid ? 10 : 15}
-      removeClippedSubviews
-      onRefresh={onRefresh}
-      refreshing={refreshing}
-      ListEmptyComponent={EmptyComponent}
-    />
+    <View style={styles.wrapper}>
+      <FlatList
+        ref={flatListRef}
+        key={layout}
+        data={artists}
+        renderItem={isGrid ? renderGridItem : renderListItem}
+        keyExtractor={keyExtractor}
+        {...(isGrid
+          ? { numColumns: GRID_COLUMNS, columnWrapperStyle }
+          : { getItemLayout })}
+        contentContainerStyle={[
+          styles.listContent,
+          scrollerVisible && styles.listContentWithScroller,
+          artists.length === 0 && styles.emptyListContent,
+        ]}
+        windowSize={11}
+        maxToRenderPerBatch={isGrid ? 12 : 20}
+        initialNumToRender={isGrid ? 10 : 15}
+        removeClippedSubviews
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        ListEmptyComponent={EmptyComponent}
+      />
+      {scrollerVisible && (
+        <AlphabetScroller
+          activeLetters={activeLetters}
+          onLetterChange={handleLetterChange}
+        />
+      )}
+    </View>
   );
 }
 
@@ -156,6 +203,9 @@ export function ArtistListView({
 /* ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -164,6 +214,9 @@ const styles = StyleSheet.create({
   listContent: {
     padding: LIST_PADDING,
     paddingBottom: 32,
+  },
+  listContentWithScroller: {
+    paddingRight: LIST_PADDING + 20,
   },
   emptyListContent: {
     flexGrow: 1,

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -12,12 +12,22 @@ import { useTheme } from '../hooks/useTheme';
 import type { Playlist } from '../services/subsonicService';
 import { PlaylistCard } from './PlaylistCard';
 import { PlaylistRow, ROW_HEIGHT } from './PlaylistRow';
+import { AlphabetScroller } from './AlphabetScroller';
 
 export type PlaylistLayout = 'list' | 'grid';
 
 const GRID_COLUMNS = 2;
 const GRID_GAP = 10;
 const LIST_PADDING = 16;
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                           */
+/* ------------------------------------------------------------------ */
+
+function getFirstLetter(name: string): string {
+  const ch = name.charAt(0).toUpperCase();
+  return /[A-Z]/.test(ch) ? ch : '#';
+}
 
 /* ------------------------------------------------------------------ */
 /*  PlaylistListView                                                  */
@@ -36,6 +46,8 @@ export interface PlaylistListViewProps {
   onRefresh?: () => void;
   /** Whether a refresh is in progress (pull-to-refresh spinner) */
   refreshing?: boolean;
+  /** Show the A-Z alphabet scroller on the right (list mode only) */
+  showAlphabetScroller?: boolean;
 }
 
 export function PlaylistListView({
@@ -45,8 +57,10 @@ export function PlaylistListView({
   error = null,
   onRefresh,
   refreshing = false,
+  showAlphabetScroller = false,
 }: PlaylistListViewProps) {
   const { colors } = useTheme();
+  const flatListRef = useRef<FlatList<Playlist>>(null);
 
   const screenWidth = Dimensions.get('window').width;
   const cardWidth = useMemo(
@@ -81,6 +95,29 @@ export function PlaylistListView({
 
   const columnWrapperStyle = useMemo(() => ({ gap: GRID_GAP }), []);
 
+  /* ---- Alphabet scroller support ---- */
+  const isList = layout === 'list';
+  const scrollerVisible = showAlphabetScroller && isList && playlists.length > 0;
+
+  const activeLetters = useMemo(() => {
+    if (!scrollerVisible) return new Set<string>();
+    return new Set(playlists.map((p) => getFirstLetter(p.name)));
+  }, [playlists, scrollerVisible]);
+
+  const handleLetterChange = useCallback(
+    (letter: string) => {
+      const idx = playlists.findIndex((p) => {
+        const first = getFirstLetter(p.name);
+        if (letter === '#') return first === '#';
+        return first === letter;
+      });
+      if (idx >= 0) {
+        flatListRef.current?.scrollToIndex({ index: idx, animated: false });
+      }
+    },
+    [playlists]
+  );
+
   if (loading && playlists.length === 0) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -102,27 +139,39 @@ export function PlaylistListView({
   const isGrid = layout === 'grid';
 
   return (
-    <FlatList
-      key={layout}
-      data={playlists}
-      renderItem={isGrid ? renderGridItem : renderListItem}
-      keyExtractor={keyExtractor}
-      {...(isGrid
-        ? { numColumns: GRID_COLUMNS, columnWrapperStyle }
-        : { getItemLayout })}
-      contentContainerStyle={styles.listContent}
-      windowSize={11}
-      maxToRenderPerBatch={isGrid ? 12 : 20}
-      initialNumToRender={isGrid ? 10 : 15}
-      removeClippedSubviews
-      onRefresh={onRefresh}
-      refreshing={refreshing}
-      ListEmptyComponent={
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          No playlists
-        </Text>
-      }
-    />
+    <View style={styles.wrapper}>
+      <FlatList
+        ref={flatListRef}
+        key={layout}
+        data={playlists}
+        renderItem={isGrid ? renderGridItem : renderListItem}
+        keyExtractor={keyExtractor}
+        {...(isGrid
+          ? { numColumns: GRID_COLUMNS, columnWrapperStyle }
+          : { getItemLayout })}
+        contentContainerStyle={[
+          styles.listContent,
+          scrollerVisible && styles.listContentWithScroller,
+        ]}
+        windowSize={11}
+        maxToRenderPerBatch={isGrid ? 12 : 20}
+        initialNumToRender={isGrid ? 10 : 15}
+        removeClippedSubviews
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        ListEmptyComponent={
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            No playlists
+          </Text>
+        }
+      />
+      {scrollerVisible && (
+        <AlphabetScroller
+          activeLetters={activeLetters}
+          onLetterChange={handleLetterChange}
+        />
+      )}
+    </View>
   );
 }
 
@@ -131,6 +180,9 @@ export function PlaylistListView({
 /* ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -139,6 +191,9 @@ const styles = StyleSheet.create({
   listContent: {
     padding: LIST_PADDING,
     paddingBottom: 32,
+  },
+  listContentWithScroller: {
+    paddingRight: LIST_PADDING + 20,
   },
   errorText: {
     fontSize: 16,
