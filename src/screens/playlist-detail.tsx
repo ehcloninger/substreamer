@@ -4,6 +4,7 @@ import {
   Animated,
   ActivityIndicator,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -149,30 +150,44 @@ export function PlaylistDetailScreen() {
           </View>
         </View>
         <View style={styles.info}>
-          <Text style={[styles.playlistName, { color: colors.textPrimary }]}>
-            {playlist.name}
-          </Text>
-          {playlist.owner && (
-            <Text style={[styles.ownerName, { color: colors.textSecondary }]}>
-              by {playlist.owner}
+          <View style={styles.infoText}>
+            <Text style={[styles.playlistName, { color: colors.textPrimary }]}>
+              {playlist.name}
             </Text>
-          )}
-          {playlist.comment ? (
-            <Text style={[styles.comment, { color: colors.textSecondary }]}>
-              {playlist.comment}
-            </Text>
-          ) : null}
-          <View style={styles.meta}>
-            <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
-            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-              {playlist.songCount} {playlist.songCount === 1 ? 'song' : 'songs'}
-            </Text>
-            <View style={styles.metaSpacer} />
-            <Ionicons name="time-outline" size={14} color={colors.primary} />
-            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-              {formatCompactDuration(playlist.duration)}
-            </Text>
+            {playlist.owner && (
+              <Text style={[styles.ownerName, { color: colors.textSecondary }]}>
+                by {playlist.owner}
+              </Text>
+            )}
+            {playlist.comment ? (
+              <Text style={[styles.comment, { color: colors.textSecondary }]}>
+                {playlist.comment}
+              </Text>
+            ) : null}
+            <View style={styles.meta}>
+              <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                {playlist.songCount} {playlist.songCount === 1 ? 'song' : 'songs'}
+              </Text>
+              <View style={styles.metaSpacer} />
+              <Ionicons name="time-outline" size={14} color={colors.primary} />
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                {formatCompactDuration(playlist.duration)}
+              </Text>
+            </View>
           </View>
+          {tracks.length > 0 && (
+            <Pressable
+              onPress={() => playTrack(tracks[0], tracks)}
+              style={({ pressed }) => [
+                styles.playAllButton,
+                { backgroundColor: colors.primary },
+                pressed && styles.playAllButtonPressed,
+              ]}
+            >
+              <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
+            </Pressable>
+          )}
         </View>
 
         {tracks.length === 0 ? (
@@ -234,9 +249,28 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   info: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 8,
+  },
+  infoText: {
+    flex: 1,
+  },
+  playAllButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 16,
+  },
+  playAllButtonPressed: {
+    opacity: 0.7,
+  },
+  playAllIcon: {
+    marginLeft: 3,
   },
   playlistName: {
     fontSize: 24,

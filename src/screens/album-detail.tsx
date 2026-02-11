@@ -4,6 +4,7 @@ import {
   Animated,
   ActivityIndicator,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { Ionicons } from '@expo/vector-icons';
 
 import { AlbumOptionsSheet } from '../components/AlbumOptionsSheet';
 import { CachedImage } from '../components/CachedImage';
@@ -197,17 +200,31 @@ export function AlbumDetailScreen() {
         </View>
       </View>
       <View style={styles.info}>
-        <Text style={[styles.albumName, { color: colors.textPrimary }]}>
-          {album.name}
-        </Text>
-        <Text style={[styles.artistName, { color: colors.textSecondary }]}>
-          {album.artist ?? album.displayArtist ?? 'Unknown Artist'}
-        </Text>
-        {album.year ? (
-          <Text style={[styles.albumYear, { color: colors.textSecondary }]}>
-            {album.year}
+        <View style={styles.infoText}>
+          <Text style={[styles.albumName, { color: colors.textPrimary }]}>
+            {album.name}
           </Text>
-        ) : null}
+          <Text style={[styles.artistName, { color: colors.textSecondary }]}>
+            {album.artist ?? album.displayArtist ?? 'Unknown Artist'}
+          </Text>
+          {album.year ? (
+            <Text style={[styles.albumYear, { color: colors.textSecondary }]}>
+              {album.year}
+            </Text>
+          ) : null}
+        </View>
+        {album.song && album.song.length > 0 && (
+          <Pressable
+            onPress={() => playTrack(album.song![0], album.song!)}
+            style={({ pressed }) => [
+              styles.playAllButton,
+              { backgroundColor: colors.primary },
+              pressed && styles.playAllButtonPressed,
+            ]}
+          >
+            <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
+          </Pressable>
+        )}
       </View>
 
       {discs.size === 0 ? (
@@ -286,9 +303,28 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   info: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 8,
+  },
+  infoText: {
+    flex: 1,
+  },
+  playAllButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 16,
+  },
+  playAllButtonPressed: {
+    opacity: 0.7,
+  },
+  playAllIcon: {
+    marginLeft: 3,
   },
   albumName: {
     fontSize: 24,
