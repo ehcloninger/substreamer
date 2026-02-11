@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AlbumDetailsModal } from './AlbumDetailsModal';
 import { useTheme } from '../hooks/useTheme';
 import {
   starAlbum,
@@ -41,6 +42,7 @@ export function AlbumOptionsSheet({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
+  const [detailsVisible, setDetailsVisible] = useState(false);
 
   const isStarred = Boolean(album.starred);
   const hasArtist = Boolean(album.artistId);
@@ -72,7 +74,14 @@ export function AlbumOptionsSheet({
     }
   }, [album.artistId, onClose, router]);
 
+  const handleShowDetails = useCallback(() => {
+    onClose();
+    // Small delay so the options sheet finishes closing before the details modal opens
+    setTimeout(() => setDetailsVisible(true), 300);
+  }, [onClose]);
+
   return (
+    <>
     <Modal
       visible={visible}
       transparent
@@ -144,8 +153,35 @@ export function AlbumOptionsSheet({
           </Pressable>
         )}
 
+        {/* Album Details option */}
+        <Pressable
+          onPress={handleShowDetails}
+          style={({ pressed }) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={22}
+            color={colors.textPrimary}
+            style={styles.optionIcon}
+          />
+          <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+            Album Details
+          </Text>
+        </Pressable>
+
       </View>
     </Modal>
+
+    {/* Album Details Modal */}
+    <AlbumDetailsModal
+      album={album}
+      visible={detailsVisible}
+      onClose={() => setDetailsVisible(false)}
+    />
+    </>
   );
 }
 
