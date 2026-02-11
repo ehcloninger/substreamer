@@ -47,7 +47,7 @@ export function TrackRow({ track, trackNumber, showArtist, colors }: TrackRowPro
       </View>
       <View style={styles.trackRight}>
         {starred && (
-          <Ionicons name="star" size={14} color={colors.primary} />
+          <Ionicons name="heart" size={14} color={colors.red} />
         )}
         {rating != null && rating > 0 && (
           <Text style={[styles.trackRating, { color: colors.textSecondary }]}>

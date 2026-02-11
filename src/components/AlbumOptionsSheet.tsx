@@ -104,6 +104,14 @@ export function AlbumOptionsSheet({
         {/* Handle indicator */}
         <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
+        {/* Album title */}
+        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+          {album.name}{album.year ? ` (${album.year})` : ''}
+        </Text>
+        <Text style={[styles.sheetSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+          {album.artist ?? album.displayArtist ?? 'Unknown Artist'}
+        </Text>
+
         {/* Favorite / Unfavorite option */}
         <Pressable
           onPress={handleToggleStar}
@@ -201,7 +209,19 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+    paddingHorizontal: 4,
+  },
+  sheetSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   option: {
     flexDirection: 'row',

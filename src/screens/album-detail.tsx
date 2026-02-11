@@ -185,6 +185,11 @@ export function AlbumDetailScreen() {
         <Text style={[styles.artistName, { color: colors.textSecondary }]}>
           {album.artist ?? album.displayArtist ?? 'Unknown Artist'}
         </Text>
+        {album.year ? (
+          <Text style={[styles.albumYear, { color: colors.textSecondary }]}>
+            {album.year}
+          </Text>
+        ) : null}
       </View>
 
       {discs.size === 0 ? (
@@ -269,6 +274,11 @@ const styles = StyleSheet.create({
   albumName: {
     fontSize: 24,
     fontWeight: '700',
+  },
+  albumYear: {
+    fontSize: 16,
+    fontWeight: '400',
+    marginTop: 4,
   },
   artistName: {
     fontSize: 16,
