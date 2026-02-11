@@ -4,6 +4,8 @@ import {
   Animated,
   ActivityIndicator,
   Image,
+  Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -52,6 +54,7 @@ export function AlbumDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [album, setAlbum] = useState<AlbumWithSongsID3 | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
 
@@ -83,35 +86,32 @@ export function AlbumDetailScreen() {
     []
   );
 
-  useEffect(() => {
+  /* ---- Data fetching ---- */
+  const fetchData = useCallback(async (isRefresh = false) => {
     if (!id) {
       setError('Missing album id');
-      setLoading(false);
+      if (!isRefresh) setLoading(false);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await ensureCoverArtAuth();
-        if (cancelled) return;
-        const data = await getAlbum(id);
-        if (cancelled) return;
-        setAlbum(data);
-        if (!data) setError('Album not found');
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load album');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      await ensureCoverArtAuth();
+      const data = await getAlbum(id);
+      setAlbum(data);
+      if (!data) setError('Album not found');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load album');
+    } finally {
+      if (isRefresh) setRefreshing(false);
+      else setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const onRefresh = useCallback(() => fetchData(true), [fetchData]);
 
   const discs = useMemo(() => {
     if (!album?.song?.length) return new Map<number, Child[]>();
@@ -165,9 +165,19 @@ export function AlbumDetailScreen() {
           style={styles.scrollView}
           contentContainerStyle={[
             styles.content,
-            { paddingTop: insets.top + HEADER_BAR_HEIGHT },
+            Platform.OS !== 'ios' && { paddingTop: insets.top + HEADER_BAR_HEIGHT },
           ]}
+          contentInset={Platform.OS === 'ios' ? { top: insets.top + HEADER_BAR_HEIGHT } : undefined}
+          contentOffset={Platform.OS === 'ios' ? { x: 0, y: -(insets.top + HEADER_BAR_HEIGHT) } : undefined}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              progressViewOffset={insets.top + HEADER_BAR_HEIGHT}
+            />
+          }
         >
       <View style={styles.hero}>
         <View style={styles.heroImageWrap}>

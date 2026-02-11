@@ -1,9 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
   Image,
+  Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -34,6 +36,7 @@ export function PlaylistDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [playlist, setPlaylist] = useState<PlaylistWithSongs | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
@@ -41,35 +44,32 @@ export function PlaylistDetailScreen() {
     colors.background,
   );
 
-  useEffect(() => {
+  /* ---- Data fetching ---- */
+  const fetchData = useCallback(async (isRefresh = false) => {
     if (!id) {
       setError('Missing playlist id');
-      setLoading(false);
+      if (!isRefresh) setLoading(false);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await ensureCoverArtAuth();
-        if (cancelled) return;
-        const data = await getPlaylist(id);
-        if (cancelled) return;
-        setPlaylist(data);
-        if (!data) setError('Playlist not found');
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load playlist');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      await ensureCoverArtAuth();
+      const data = await getPlaylist(id);
+      setPlaylist(data);
+      if (!data) setError('Playlist not found');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load playlist');
+    } finally {
+      if (isRefresh) setRefreshing(false);
+      else setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const onRefresh = useCallback(() => fetchData(true), [fetchData]);
 
   const gradientStart = coverBackgroundColor ?? colors.background;
 
@@ -117,9 +117,19 @@ export function PlaylistDetailScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + HEADER_BAR_HEIGHT },
+          Platform.OS !== 'ios' && { paddingTop: insets.top + HEADER_BAR_HEIGHT },
         ]}
+        contentInset={Platform.OS === 'ios' ? { top: insets.top + HEADER_BAR_HEIGHT } : undefined}
+        contentOffset={Platform.OS === 'ios' ? { x: 0, y: -(insets.top + HEADER_BAR_HEIGHT) } : undefined}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            progressViewOffset={insets.top + HEADER_BAR_HEIGHT}
+          />
+        }
       >
         <View style={styles.hero}>
           <View style={styles.heroImageWrap}>

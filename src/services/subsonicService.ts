@@ -414,3 +414,21 @@ export async function unstarAlbum(albumId: string): Promise<void> {
   if (!api) return;
   await api.unstar({ albumId });
 }
+
+/**
+ * Star (favorite) an artist by its ID3 artistId.
+ */
+export async function starArtist(artistId: string): Promise<void> {
+  const api = getApi();
+  if (!api) return;
+  await api.star({ artistId });
+}
+
+/**
+ * Unstar (unfavorite) an artist by its ID3 artistId.
+ */
+export async function unstarArtist(artistId: string): Promise<void> {
+  const api = getApi();
+  if (!api) return;
+  await api.unstar({ artistId });
+}

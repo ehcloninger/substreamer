@@ -1,10 +1,12 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumRow } from '../components/AlbumRow';
+import { ArtistOptionsSheet } from '../components/ArtistOptionsSheet';
+import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { SectionTitle } from '../components/SectionTitle';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
@@ -125,6 +129,7 @@ function TopSongItem({
 export function ArtistDetailScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [artist, setArtist] = useState<ArtistWithAlbumsID3 | null>(null);
@@ -132,73 +137,93 @@ export function ArtistDetailScreen() {
   const [topSongs, setTopSongs] = useState<Child[]>([]);
   const [biography, setBiography] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bioExpanded, setBioExpanded] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
 
   const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
     artist?.coverArt,
     colors.background,
   );
 
-  /* ---- Data fetching ---- */
+  /* ---- Header right: more options button ---- */
   useEffect(() => {
+    if (!artist) return;
+    navigation.setOptions({
+      headerRight: () => (
+        <MoreOptionsButton
+          onPress={() => setSheetVisible(true)}
+          color={colors.textPrimary}
+        />
+      ),
+    });
+  }, [artist, navigation, colors.textPrimary]);
+
+  const handleStarChanged = useCallback(
+    (_artistId: string, starred: boolean) => {
+      setArtist((prev) => {
+        if (!prev) return prev;
+        return { ...prev, starred: starred ? new Date() : undefined };
+      });
+    },
+    []
+  );
+
+  /* ---- Data fetching ---- */
+  const fetchData = useCallback(async (isRefresh = false) => {
     if (!id) {
       setError('Missing artist id');
-      setLoading(false);
+      if (!isRefresh) setLoading(false);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      setBiography(null);
-      try {
-        await ensureCoverArtAuth();
-        if (cancelled) return;
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    setBiography(null);
+    try {
+      await ensureCoverArtAuth();
 
-        const [artistData, infoData] = await Promise.all([
-          getArtist(id),
-          getArtistInfo2(id),
-        ]);
-        if (cancelled) return;
+      const [artistData, infoData] = await Promise.all([
+        getArtist(id),
+        getArtistInfo2(id),
+      ]);
 
-        setArtist(artistData);
-        setArtistInfo(infoData);
-        if (!artistData) {
-          setError('Artist not found');
-          return;
-        }
-
-        // Fetch top songs after we have the artist name
-        getTopSongs(artistData.name, 20).then((songs) => {
-          if (!cancelled) setTopSongs(songs);
-        });
-
-        // Resolve biography: prefer Subsonic, fall back to MusicBrainz
-        const subsonicBio = infoData?.biography ? stripHtml(infoData.biography) : null;
-        if (subsonicBio && subsonicBio.length > 0) {
-          if (!cancelled) setBiography(subsonicBio);
-        } else {
-          // Try MusicBrainz: use existing MBID from artistInfo, or search by name
-          const mbid = infoData?.musicBrainzId || (await searchArtistMBID(artistData.name));
-          if (cancelled) return;
-          if (mbid) {
-            const mbBio = await getArtistBiography(mbid);
-            if (!cancelled && mbBio) setBiography(stripHtml(mbBio));
-          }
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load artist');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      setArtist(artistData);
+      setArtistInfo(infoData);
+      if (!artistData) {
+        setError('Artist not found');
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+
+      // Fetch top songs after we have the artist name
+      getTopSongs(artistData.name, 20).then((songs) => {
+        setTopSongs(songs);
+      });
+
+      // Resolve biography: prefer Subsonic, fall back to MusicBrainz
+      const subsonicBio = infoData?.biography ? stripHtml(infoData.biography) : null;
+      if (subsonicBio && subsonicBio.length > 0) {
+        setBiography(subsonicBio);
+      } else {
+        // Try MusicBrainz: use existing MBID from artistInfo, or search by name
+        const mbid = infoData?.musicBrainzId || (await searchArtistMBID(artistData.name));
+        if (mbid) {
+          const mbBio = await getArtistBiography(mbid);
+          if (mbBio) setBiography(stripHtml(mbBio));
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load artist');
+    } finally {
+      if (isRefresh) setRefreshing(false);
+      else setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const onRefresh = useCallback(() => fetchData(true), [fetchData]);
 
   /* ---- Derived values ---- */
   const gradientStart = coverBackgroundColor ?? colors.background;
@@ -257,9 +282,19 @@ export function ArtistDetailScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + HEADER_BAR_HEIGHT },
+          Platform.OS !== 'ios' && { paddingTop: insets.top + HEADER_BAR_HEIGHT },
         ]}
+        contentInset={Platform.OS === 'ios' ? { top: insets.top + HEADER_BAR_HEIGHT } : undefined}
+        contentOffset={Platform.OS === 'ios' ? { x: 0, y: -(insets.top + HEADER_BAR_HEIGHT) } : undefined}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            progressViewOffset={insets.top + HEADER_BAR_HEIGHT}
+          />
+        }
       >
         {/* ---- Hero ---- */}
         <View style={styles.hero}>
@@ -344,6 +379,15 @@ export function ArtistDetailScreen() {
           </View>
         )}
       </ScrollView>
+
+      {artist && (
+        <ArtistOptionsSheet
+          artist={artist}
+          visible={sheetVisible}
+          onClose={() => setSheetVisible(false)}
+          onStarChanged={handleStarChanged}
+        />
+      )}
     </View>
   );
 }
