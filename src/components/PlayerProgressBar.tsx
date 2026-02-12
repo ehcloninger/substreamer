@@ -21,6 +21,8 @@ export interface PlayerProgressBarProps {
   position: number;
   /** Total duration of the current track in seconds. */
   duration: number;
+  /** How far ahead the player has buffered, in seconds. */
+  bufferedPosition?: number;
   /** Theme colors. */
   colors: ThemeColors;
   /** Called when the user finishes seeking (finger released). */
@@ -30,6 +32,7 @@ export interface PlayerProgressBarProps {
 export function PlayerProgressBar({
   position,
   duration,
+  bufferedPosition = 0,
   colors,
   onSeek,
 }: PlayerProgressBarProps) {
@@ -95,6 +98,9 @@ export function PlayerProgressBar({
       ? clamp(position / duration, 0, 1)
       : 0;
 
+  const bufferedFraction =
+    duration > 0 ? clamp(bufferedPosition / duration, 0, 1) : 0;
+
   const displayPosition = isDragging ? dragFraction * duration : position;
   const remaining = Math.max(0, duration - displayPosition);
 
@@ -107,6 +113,17 @@ export function PlayerProgressBar({
         {...panResponder.panHandlers}
       >
         <View style={[styles.track, { backgroundColor: colors.border }]}>
+          {/* Buffered range (behind played fill) */}
+          <View
+            style={[
+              styles.bufferedFill,
+              {
+                width: `${bufferedFraction * 100}%`,
+                backgroundColor: colors.primary,
+              },
+            ]}
+          />
+          {/* Played range */}
           <View
             style={[
               styles.fill,
@@ -152,6 +169,14 @@ const styles = StyleSheet.create({
     height: TRACK_HEIGHT,
     borderRadius: TRACK_HEIGHT / 2,
     overflow: 'hidden',
+  },
+  bufferedFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    height: '100%',
+    opacity: 0.25,
+    borderRadius: TRACK_HEIGHT / 2,
   },
   fill: {
     height: '100%',

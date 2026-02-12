@@ -29,12 +29,17 @@ export interface PlayerState {
   position: number;
   /** Duration of the current track in seconds. */
   duration: number;
+  /** How far ahead the player has buffered, in seconds. */
+  bufferedPosition: number;
+  /** Last playback error message, or null when healthy. */
+  error: string | null;
 
   /* ---- Setters (called by playerService) ---- */
   setCurrentTrack: (track: Child | null) => void;
   setPlaybackState: (state: PlaybackStatus) => void;
   setQueue: (queue: Child[]) => void;
-  setProgress: (position: number, duration: number) => void;
+  setProgress: (position: number, duration: number, buffered: number) => void;
+  setError: (error: string | null) => void;
 }
 
 export const playerStore = create<PlayerState>()((set) => ({
@@ -43,9 +48,17 @@ export const playerStore = create<PlayerState>()((set) => ({
   queue: [],
   position: 0,
   duration: 0,
+  bufferedPosition: 0,
+  error: null,
 
   setCurrentTrack: (track) => set({ currentTrack: track }),
   setPlaybackState: (playbackState) => set({ playbackState }),
   setQueue: (queue) => set({ queue }),
-  setProgress: (position, duration) => set({ position, duration }),
+  setProgress: (position, duration, buffered) =>
+    set((state) => ({
+      position,
+      duration: duration > 0 ? duration : (state.currentTrack?.duration ?? 0),
+      bufferedPosition: buffered,
+    })),
+  setError: (error) => set({ error }),
 }));

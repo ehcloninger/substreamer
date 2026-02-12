@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Pressable,
   ScrollView,
@@ -24,6 +25,7 @@ import { PlayerProgressBar } from '../components/PlayerProgressBar';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import {
+  retryPlayback,
   seekTo,
   skipToNext,
   skipToPrevious,
@@ -49,10 +51,14 @@ export function PlayerView({ onClose }: PlayerViewProps) {
   const playbackState = playerStore((s) => s.playbackState);
   const position = playerStore((s) => s.position);
   const duration = playerStore((s) => s.duration);
+  const bufferedPosition = playerStore((s) => s.bufferedPosition);
   const queue = playerStore((s) => s.queue);
+  const error = playerStore((s) => s.error);
 
   const isPlaying =
     playbackState === 'playing' || playbackState === 'buffering';
+  const isBuffering =
+    playbackState === 'buffering' || playbackState === 'loading';
 
   const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
     currentTrack?.coverArt,
@@ -143,6 +149,11 @@ export function PlayerView({ onClose }: PlayerViewProps) {
           >
             {currentTrack.artist ?? 'Unknown Artist'}
           </Text>
+          {isBuffering && (
+            <Text style={[styles.bufferingLabel, { color: colors.textSecondary }]}>
+              Buffering…
+            </Text>
+          )}
         </View>
 
         {/* Progress bar */}
@@ -150,10 +161,41 @@ export function PlayerView({ onClose }: PlayerViewProps) {
           <PlayerProgressBar
             position={position}
             duration={duration}
+            bufferedPosition={bufferedPosition}
             colors={colors}
             onSeek={handleSeek}
           />
         </View>
+
+        {/* Error banner */}
+        {error != null && (
+          <View
+            style={[
+              styles.errorBanner,
+              { backgroundColor: `${colors.red}18` },
+            ]}
+          >
+            <Text
+              style={[styles.errorText, { color: colors.red }]}
+              numberOfLines={2}
+            >
+              {error}
+            </Text>
+            <Pressable
+              onPress={retryPlayback}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.retryButton,
+                { borderColor: colors.red },
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.retryText, { color: colors.red }]}>
+                Retry
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Playback controls */}
         <View style={styles.controls}>
@@ -177,12 +219,16 @@ export function PlayerView({ onClose }: PlayerViewProps) {
               pressed && styles.playPausePressed,
             ]}
           >
-            <Ionicons
-              name={isPlaying ? 'pause' : 'play'}
-              size={32}
-              color={colors.background}
-              style={!isPlaying ? styles.playIcon : undefined}
-            />
+            {isBuffering ? (
+              <ActivityIndicator size="small" color={colors.background} />
+            ) : (
+              <Ionicons
+                name={isPlaying ? 'pause' : 'play'}
+                size={32}
+                color={colors.background}
+                style={!isPlaying ? styles.playIcon : undefined}
+              />
+            )}
           </Pressable>
 
           <Pressable
@@ -373,6 +419,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 4,
   },
+  bufferingLabel: {
+    fontSize: 13,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
   progressSection: {
     paddingHorizontal: HERO_PADDING,
     marginBottom: 8,
@@ -400,6 +451,30 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: HERO_PADDING,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+  },
+  retryButton: {
+    marginLeft: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  retryText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   queueSection: {
     paddingHorizontal: 16,

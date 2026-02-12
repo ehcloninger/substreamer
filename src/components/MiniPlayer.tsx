@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
 import { useCachedCoverArt } from '../hooks/useCachedCoverArt';
@@ -41,7 +41,9 @@ export function MiniPlayer() {
     }).start();
   }, [progress, progressAnim]);
 
+  const error = playerStore((s) => s.error);
   const isPlaying = playbackState === 'playing' || playbackState === 'buffering';
+  const isBuffering = playbackState === 'buffering' || playbackState === 'loading';
 
   // --- Colour extraction ---
   const cachedUri = useCachedCoverArt(currentTrack?.coverArt, 50);
@@ -169,17 +171,21 @@ export function MiniPlayer() {
         </View>
       </Pressable>
 
-      {/* Play / Pause */}
+      {/* Play / Pause / Buffering */}
       <Pressable
         onPress={togglePlayPause}
         hitSlop={12}
         style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
       >
-        <Ionicons
-          name={isPlaying ? 'pause' : 'play'}
-          size={28}
-          color={colors.textPrimary}
-        />
+        {isBuffering ? (
+          <ActivityIndicator size="small" color={colors.textPrimary} />
+        ) : (
+          <Ionicons
+            name={isPlaying ? 'pause' : 'play'}
+            size={28}
+            color={error ? colors.red : colors.textPrimary}
+          />
+        )}
       </Pressable>
 
       {/* Full player modal */}

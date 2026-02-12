@@ -74,8 +74,8 @@ function startProgressPolling() {
   if (progressInterval) return;
   progressInterval = setInterval(async () => {
     try {
-      const { position, duration } = await TrackPlayer.getProgress();
-      playerStore.getState().setProgress(position, duration);
+      const { position, duration, buffered } = await TrackPlayer.getProgress();
+      playerStore.getState().setProgress(position, duration, buffered);
     } catch {
       /* player not ready */
     }
@@ -128,12 +128,25 @@ export async function initPlayer(): Promise<void> {
   // --- Event listeners that push state into the Zustand store ---
 
   TrackPlayer.addEventListener(Event.PlaybackState, ({ state }) => {
-    playerStore.getState().setPlaybackState(mapState(state));
+    const store = playerStore.getState();
+    store.setPlaybackState(mapState(state));
+
     if (state === State.Playing) {
+      // Clear any previous error when playback resumes successfully.
+      if (store.error) store.setError(null);
+      startProgressPolling();
+    } else if (state === State.Buffering || state === State.Loading) {
+      // Keep polling during buffering so the UI can show buffer progress.
       startProgressPolling();
     } else {
       stopProgressPolling();
     }
+  });
+
+  TrackPlayer.addEventListener(Event.PlaybackError, (e) => {
+    const message =
+      (e as { message?: string }).message ?? 'Playback error occurred';
+    playerStore.getState().setError(message);
   });
 
   TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, ({ track }) => {
@@ -173,10 +186,14 @@ async function syncStoreFromNative(): Promise<void> {
       playerStore.getState().setCurrentTrack(child);
     }
 
-    const { position, duration } = await TrackPlayer.getProgress();
-    playerStore.getState().setProgress(position, duration);
+    const { position, duration, buffered } = await TrackPlayer.getProgress();
+    playerStore.getState().setProgress(position, duration, buffered);
 
-    if (state.state === State.Playing) {
+    if (
+      state.state === State.Playing ||
+      state.state === State.Buffering ||
+      state.state === State.Loading
+    ) {
       startProgressPolling();
     } else {
       stopProgressPolling();
@@ -243,5 +260,11 @@ export async function seekTo(position: number): Promise<void> {
 /** Skip to a specific track in the queue by index. */
 export async function skipToTrack(index: number): Promise<void> {
   await TrackPlayer.skip(index);
+  await TrackPlayer.play();
+}
+
+/** Clear the current error and attempt to resume playback. */
+export async function retryPlayback(): Promise<void> {
+  playerStore.getState().setError(null);
   await TrackPlayer.play();
 }
