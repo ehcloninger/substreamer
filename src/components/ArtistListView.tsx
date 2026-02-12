@@ -51,7 +51,7 @@ export interface ArtistListViewProps {
   emptyMessage?: string;
   /** Optional Ionicons icon name for empty state */
   emptyIcon?: string;
-  /** Show the A-Z alphabet scroller on the right (list mode only) */
+  /** Show the A-Z alphabet scroller on the right */
   showAlphabetScroller?: boolean;
 }
 
@@ -122,8 +122,7 @@ export function ArtistListView({
   );
 
   /* ---- Alphabet scroller support ---- */
-  const isList = layout === 'list';
-  const scrollerVisible = showAlphabetScroller && isList && artists.length > 0;
+  const scrollerVisible = showAlphabetScroller && artists.length > 0;
 
   const activeLetters = useMemo(() => {
     if (!scrollerVisible) return new Set<string>();

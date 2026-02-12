@@ -52,7 +52,7 @@ export interface AlbumListViewProps {
   emptyMessage?: string;
   /** Optional Ionicons icon name for empty state */
   emptyIcon?: string;
-  /** Show the A-Z alphabet scroller on the right (list mode only) */
+  /** Show the A-Z alphabet scroller on the right */
   showAlphabetScroller?: boolean;
 }
 
@@ -123,8 +123,7 @@ export function AlbumListView({
   );
 
   /* ---- Alphabet scroller support ---- */
-  const isList = layout === 'list';
-  const scrollerVisible = showAlphabetScroller && isList && albums.length > 0;
+  const scrollerVisible = showAlphabetScroller && albums.length > 0;
   const albumSortOrder = layoutPreferencesStore((s) => s.albumSortOrder);
 
   /** Return the field the list is currently sorted by for a given album. */

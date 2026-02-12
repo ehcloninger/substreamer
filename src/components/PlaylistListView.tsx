@@ -46,7 +46,7 @@ export interface PlaylistListViewProps {
   onRefresh?: () => void;
   /** Whether a refresh is in progress (pull-to-refresh spinner) */
   refreshing?: boolean;
-  /** Show the A-Z alphabet scroller on the right (list mode only) */
+  /** Show the A-Z alphabet scroller on the right */
   showAlphabetScroller?: boolean;
 }
 
@@ -96,8 +96,7 @@ export function PlaylistListView({
   const keyExtractor = useCallback((item: Playlist) => item.id, []);
 
   /* ---- Alphabet scroller support ---- */
-  const isList = layout === 'list';
-  const scrollerVisible = showAlphabetScroller && isList && playlists.length > 0;
+  const scrollerVisible = showAlphabetScroller && playlists.length > 0;
 
   const activeLetters = useMemo(() => {
     if (!scrollerVisible) return new Set<string>();

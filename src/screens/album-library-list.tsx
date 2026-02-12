@@ -38,7 +38,7 @@ export function AlbumLibraryListScreen({ layout = 'list' }: { layout?: AlbumLayo
         error={error}
         onRefresh={handleRefresh}
         refreshing={refreshing}
-        showAlphabetScroller={layout === 'list'}
+        showAlphabetScroller
       />
     </View>
   );
