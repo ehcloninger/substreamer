@@ -129,6 +129,10 @@ export default function RootLayout() {
           name="cache-browser"
           options={{ title: 'Image Cache', headerBackTitle: 'Back' }}
         />
+        <Stack.Screen
+          name="metadata-browser"
+          options={{ title: 'Metadata Cache', headerBackTitle: 'Back' }}
+        />
       </Stack>
 
       {/* Animated splash renders as an overlay on top of the Stack so the

@@ -1,0 +1,426 @@
+import { Ionicons } from '@expo/vector-icons';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+
+import { CachedImage } from '../components/CachedImage';
+import { useTheme } from '../hooks/useTheme';
+import { albumDetailStore } from '../store/albumDetailStore';
+import { artistDetailStore } from '../store/artistDetailStore';
+import { playlistDetailStore } from '../store/playlistDetailStore';
+
+const THUMB_SIZE = 50;
+
+interface MetadataEntry {
+  id: string;
+  name: string;
+  type: 'album' | 'artist' | 'playlist';
+  coverArt?: string;
+  retrievedAt: number;
+}
+
+type RowStatus = 'idle' | 'refreshing' | 'success' | 'error';
+
+function formatDate(timestamp: number): string {
+  const d = new Date(timestamp);
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function buildEntries(): MetadataEntry[] {
+  const entries: MetadataEntry[] = [];
+
+  const albums = albumDetailStore.getState().albums;
+  for (const [id, entry] of Object.entries(albums)) {
+    entries.push({
+      id,
+      name: entry.album.name,
+      type: 'album',
+      coverArt: entry.album.coverArt,
+      retrievedAt: entry.retrievedAt,
+    });
+  }
+
+  const artists = artistDetailStore.getState().artists;
+  for (const [id, entry] of Object.entries(artists)) {
+    entries.push({
+      id,
+      name: entry.artist.name,
+      type: 'artist',
+      coverArt: entry.artist.coverArt,
+      retrievedAt: entry.retrievedAt,
+    });
+  }
+
+  const playlists = playlistDetailStore.getState().playlists;
+  for (const [id, entry] of Object.entries(playlists)) {
+    entries.push({
+      id,
+      name: entry.playlist.name,
+      type: 'playlist',
+      coverArt: entry.playlist.coverArt,
+      retrievedAt: entry.retrievedAt,
+    });
+  }
+
+  // Sort by most recently retrieved first
+  entries.sort((a, b) => b.retrievedAt - a.retrievedAt);
+  return entries;
+}
+
+const TYPE_LABELS: Record<MetadataEntry['type'], string> = {
+  album: 'Album',
+  artist: 'Artist',
+  playlist: 'Playlist',
+};
+
+/* ------------------------------------------------------------------ */
+/*  Row component                                                      */
+/* ------------------------------------------------------------------ */
+
+const MetadataRow = memo(function MetadataRow({
+  entry,
+  colors,
+  status,
+  onRefresh,
+  onDelete,
+}: {
+  entry: MetadataEntry;
+  colors: ReturnType<typeof useTheme>['colors'];
+  status: RowStatus;
+  onRefresh: (entry: MetadataEntry) => void;
+  onDelete: (entry: MetadataEntry) => void;
+}) {
+  const busy = status === 'refreshing';
+
+  return (
+    <View style={[styles.row, { borderBottomColor: colors.border }]}>
+      <CachedImage
+        coverArtId={entry.coverArt}
+        size={150}
+        style={[
+          styles.thumb,
+          { backgroundColor: colors.border },
+          entry.type === 'artist' && styles.thumbRound,
+        ]}
+        resizeMode="cover"
+      />
+      <View style={styles.info}>
+        <Text
+          style={[styles.name, { color: colors.textPrimary }]}
+          numberOfLines={1}
+        >
+          {entry.name}
+        </Text>
+        <Text style={[styles.typeLabel, { color: colors.textSecondary }]}>
+          {TYPE_LABELS[entry.type]}
+        </Text>
+        <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+          {formatDate(entry.retrievedAt)}
+        </Text>
+        {status === 'refreshing' && (
+          <Text style={[styles.statusText, { color: colors.primary }]}>
+            Refreshing…
+          </Text>
+        )}
+        {status === 'success' && (
+          <Text style={[styles.statusText, { color: '#00BA7C' }]}>
+            Refreshed successfully
+          </Text>
+        )}
+        {status === 'error' && (
+          <Text style={[styles.statusText, { color: colors.red }]}>
+            Refresh failed
+          </Text>
+        )}
+      </View>
+      <View style={styles.actions}>
+        {busy ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+          <Pressable
+            onPress={() => onRefresh(entry)}
+            hitSlop={8}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+          </Pressable>
+        )}
+        <Pressable
+          onPress={() => onDelete(entry)}
+          disabled={busy}
+          hitSlop={8}
+          style={({ pressed }) => [
+            pressed && styles.pressed,
+            busy && styles.disabled,
+          ]}
+        >
+          <Ionicons name="trash-outline" size={20} color={colors.red} />
+        </Pressable>
+      </View>
+    </View>
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/*  Screen                                                             */
+/* ------------------------------------------------------------------ */
+
+export function MetadataBrowserScreen() {
+  const { colors } = useTheme();
+  const [entries, setEntries] = useState<MetadataEntry[]>(() => buildEntries());
+  const [filter, setFilter] = useState('');
+  const listRef = useRef<FlashListRef<MetadataEntry>>(null);
+
+  const handleFilterChange = useCallback((text: string) => {
+    setFilter(text);
+    if (text.length === 0) {
+      setTimeout(() => {
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 50);
+    }
+  }, []);
+  const [refreshing, setRefreshing] = useState(false);
+  const [statusMap, setStatusMap] = useState<Map<string, RowStatus>>(new Map());
+
+  const filteredEntries = useMemo(() => {
+    const query = filter.trim().toLowerCase();
+    if (query.length === 0) return entries;
+    return entries.filter(
+      (e) =>
+        e.name.toLowerCase().includes(query) ||
+        e.type.toLowerCase().includes(query),
+    );
+  }, [entries, filter]);
+
+  const setItemStatus = useCallback((id: string, s: RowStatus) => {
+    setStatusMap((prev) => new Map(prev).set(id, s));
+  }, []);
+
+  const handlePullRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Re-read from stores (synchronous)
+    setEntries(buildEntries());
+    setRefreshing(false);
+  }, []);
+
+  const handleRefresh = useCallback(
+    (entry: MetadataEntry) => {
+      setItemStatus(entry.id, 'refreshing');
+
+      let fetchPromise: Promise<unknown>;
+      if (entry.type === 'album') {
+        fetchPromise = albumDetailStore.getState().fetchAlbum(entry.id);
+      } else if (entry.type === 'artist') {
+        fetchPromise = artistDetailStore.getState().fetchArtist(entry.id);
+      } else {
+        fetchPromise = playlistDetailStore.getState().fetchPlaylist(entry.id);
+      }
+
+      fetchPromise
+        .then(() => {
+          setEntries(buildEntries());
+          setItemStatus(entry.id, 'success');
+          setTimeout(() => setItemStatus(entry.id, 'idle'), 3000);
+        })
+        .catch(() => {
+          setItemStatus(entry.id, 'error');
+          setTimeout(() => setItemStatus(entry.id, 'idle'), 3000);
+        });
+    },
+    [setItemStatus],
+  );
+
+  const handleDelete = useCallback(
+    (entry: MetadataEntry) => {
+      Alert.alert(
+        'Delete Cached Metadata',
+        `Remove cached data for "${entry.name}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              if (entry.type === 'album') {
+                const { [entry.id]: _, ...rest } = albumDetailStore.getState().albums;
+                albumDetailStore.setState({ albums: rest });
+              } else if (entry.type === 'artist') {
+                const { [entry.id]: _, ...rest } = artistDetailStore.getState().artists;
+                artistDetailStore.setState({ artists: rest });
+              } else {
+                const { [entry.id]: _, ...rest } = playlistDetailStore.getState().playlists;
+                playlistDetailStore.setState({ playlists: rest });
+              }
+              setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+            },
+          },
+        ],
+      );
+    },
+    [],
+  );
+
+  const statusMapRef = useRef(statusMap);
+  statusMapRef.current = statusMap;
+
+  const renderItem = useCallback(
+    ({ item }: { item: MetadataEntry }) => (
+      <MetadataRow
+        entry={item}
+        colors={colors}
+        status={statusMapRef.current.get(item.id) ?? 'idle'}
+        onRefresh={handleRefresh}
+        onDelete={handleDelete}
+      />
+    ),
+    [colors, handleRefresh, handleDelete],
+  );
+
+  const keyExtractor = useCallback(
+    (item: MetadataEntry) => `${item.type}-${item.id}`,
+    [],
+  );
+
+  // Memoize the empty component to avoid re-creation on every render
+  const emptyMessage = filter.trim().length > 0 ? 'No matching items' : 'No cached metadata';
+  const listEmpty = useMemo(
+    () => (
+      <View style={styles.center}>
+        <Ionicons name="library-outline" size={48} color={colors.textSecondary} />
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          {emptyMessage}
+        </Text>
+      </View>
+    ),
+    [colors.textSecondary, emptyMessage],
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View style={[styles.filterContainer, { borderBottomColor: colors.border }]}>
+        <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
+        <TextInput
+          style={[styles.filterInput, { color: colors.textPrimary }]}
+          placeholder="Filter..."
+          placeholderTextColor={colors.textSecondary}
+          value={filter}
+          onChangeText={handleFilterChange}
+          autoCapitalize="none"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+        />
+      </View>
+    ),
+    [colors, filter, handleFilterChange],
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {listHeader}
+      <FlashList
+        ref={listRef}
+        data={filteredEntries}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        extraData={statusMap}
+        refreshing={refreshing}
+        onRefresh={handlePullRefresh}
+        contentContainerStyle={filteredEntries.length === 0 ? styles.emptyContainer : undefined}
+        ListEmptyComponent={listEmpty}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 6,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 12,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  thumb: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: 6,
+  },
+  thumbRound: {
+    borderRadius: THUMB_SIZE / 2,
+  },
+  info: {
+    flex: 1,
+    marginLeft: 12,
+    gap: 1,
+  },
+  name: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  typeLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  dateLabel: {
+    fontSize: 11,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginLeft: 12,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  disabled: {
+    opacity: 0.3,
+  },
+});

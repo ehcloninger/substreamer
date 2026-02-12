@@ -23,6 +23,9 @@ import {
   type StreamFormat,
 } from '../store/playbackSettingsStore';
 import { serverInfoStore } from '../store/serverInfoStore';
+import { albumDetailStore } from '../store/albumDetailStore';
+import { artistDetailStore } from '../store/artistDetailStore';
+import { playlistDetailStore } from '../store/playlistDetailStore';
 
 const AUTH_PERSIST_KEY = 'substreamer-auth';
 const SERVER_INFO_PERSIST_KEY = 'substreamer-server-info';
@@ -121,6 +124,10 @@ export function SettingsScreen() {
   const totalBytes = imageCacheStore((s) => s.totalBytes);
   const fileCount = imageCacheStore((s) => s.fileCount);
   const imageCount = getImageCount(fileCount);
+  const cachedAlbumCount = albumDetailStore((s) => Object.keys(s.albums).length);
+  const cachedArtistCount = artistDetailStore((s) => Object.keys(s.artists).length);
+  const cachedPlaylistCount = playlistDetailStore((s) => Object.keys(s.playlists).length);
+  const totalMetadataCount = cachedAlbumCount + cachedArtistCount + cachedPlaylistCount;
   const activeAccentLabel = ACCENT_COLORS.find((c) => c.hex === activePrimary)?.label ?? 'Custom';
 
   const handleAccentSelect = useCallback(
@@ -212,6 +219,25 @@ export function SettingsScreen() {
       ],
     );
   }, [totalBytes]);
+
+  const handleClearMetadataCache = useCallback(() => {
+    Alert.alert(
+      'Clear Metadata Cache',
+      `This will remove ${totalMetadataCount} cached ${totalMetadataCount === 1 ? 'item' : 'items'}. Continue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            albumDetailStore.getState().clearAlbums();
+            artistDetailStore.getState().clearArtists();
+            playlistDetailStore.getState().clearPlaylists();
+          },
+        },
+      ],
+    );
+  }, [totalMetadataCount]);
 
   const dynamicStyles = useMemo(
     () =>
@@ -331,6 +357,51 @@ export function SettingsScreen() {
           >
             <Ionicons name="trash-outline" size={18} color={colors.red} />
             <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Image Cache</Text>
+          </Pressable>
+        </View>
+
+        <View style={[styles.card, dynamicStyles.card, styles.metadataCard]}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Cached albums</Text>
+            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+              {cachedAlbumCount}
+            </Text>
+          </View>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Cached artists</Text>
+            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+              {cachedArtistCount}
+            </Text>
+          </View>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Cached playlists</Text>
+            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+              {cachedPlaylistCount}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/metadata-browser')}
+            style={({ pressed }) => [
+              styles.browseCacheButton,
+              { borderTopColor: colors.border },
+              pressed && styles.themeRowPressed,
+            ]}
+          >
+            <View style={styles.browseCacheLeft}>
+              <Ionicons name="library-outline" size={18} color={colors.textPrimary} />
+              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>Browse Metadata Cache</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            onPress={handleClearMetadataCache}
+            style={({ pressed }) => [
+              styles.clearCacheButton,
+              pressed && styles.themeRowPressed,
+            ]}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.red} />
+            <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Metadata Cache</Text>
           </Pressable>
         </View>
       </View>
@@ -892,6 +963,9 @@ const styles = StyleSheet.create({
   clearCacheText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  metadataCard: {
+    marginTop: 12,
   },
   dropdownRight: {
     flexDirection: 'row',

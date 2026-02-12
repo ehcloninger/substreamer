@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { FlashList } from '@shopify/flash-list';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,6 +8,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -107,9 +108,30 @@ const CacheRow = memo(function CacheRow({
 export function CacheBrowserScreen() {
   const { colors } = useTheme();
   const [entries, setEntries] = useState<CachedImageEntry[]>([]);
+  const [filter, setFilter] = useState('');
+  const listRef = useRef<FlashListRef<CachedImageEntry>>(null);
+
+  const handleFilterChange = useCallback((text: string) => {
+    setFilter(text);
+    if (text.length === 0) {
+      setTimeout(() => {
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 50);
+    }
+  }, []);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusMap, setStatusMap] = useState<Map<string, RowStatus>>(new Map());
+
+  const filteredEntries = useMemo(() => {
+    const query = filter.trim().toLowerCase();
+    if (query.length === 0) return entries;
+    return entries.filter(
+      (e) =>
+        e.coverArtId.toLowerCase().includes(query) ||
+        e.files.some((f) => f.fileName.toLowerCase().includes(query)),
+    );
+  }, [entries, filter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,6 +220,38 @@ export function CacheBrowserScreen() {
     [],
   );
 
+  const emptyMessage = filter.trim().length > 0 ? 'No matching images' : 'No cached images';
+  const listEmpty = useMemo(
+    () => (
+      <View style={styles.center}>
+        <Ionicons name="images-outline" size={48} color={colors.textSecondary} />
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          {emptyMessage}
+        </Text>
+      </View>
+    ),
+    [colors.textSecondary, emptyMessage],
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View style={[styles.filterContainer, { borderBottomColor: colors.border }]}>
+        <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
+        <TextInput
+          style={[styles.filterInput, { color: colors.textPrimary }]}
+          placeholder="Filter..."
+          placeholderTextColor={colors.textSecondary}
+          value={filter}
+          onChangeText={handleFilterChange}
+          autoCapitalize="none"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+        />
+      </View>
+    ),
+    [colors, filter, handleFilterChange],
+  );
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -208,22 +262,17 @@ export function CacheBrowserScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {listHeader}
       <FlashList
-        data={entries}
+        ref={listRef}
+        data={filteredEntries}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         extraData={statusMap}
         refreshing={refreshing}
         onRefresh={handlePullRefresh}
-        contentContainerStyle={entries.length === 0 ? styles.emptyContainer : undefined}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Ionicons name="images-outline" size={48} color={colors.textSecondary} />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No cached images
-            </Text>
-          </View>
-        }
+        contentContainerStyle={filteredEntries.length === 0 ? styles.emptyContainer : undefined}
+        ListEmptyComponent={listEmpty}
       />
     </View>
   );
@@ -232,6 +281,19 @@ export function CacheBrowserScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 6,
   },
   center: {
     flex: 1,
