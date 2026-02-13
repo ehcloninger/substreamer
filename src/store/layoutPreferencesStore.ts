@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
 
 export type ItemLayout = 'list' | 'grid';
 export type AlbumSortOrder = 'artist' | 'title';
@@ -52,7 +53,7 @@ export const layoutPreferencesStore = create<LayoutPreferencesState>()(
     }),
     {
       name: PERSIST_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         albumLayout: state.albumLayout,
         artistLayout: state.artistLayout,

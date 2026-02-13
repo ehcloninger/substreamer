@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
 
 export interface ScanStatusState {
   scanning: boolean;
@@ -54,7 +55,7 @@ export const scanStatusStore = create<ScanStatusState>()(
     }),
     {
       name: PERSIST_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         scanning: state.scanning,
         count: state.count,

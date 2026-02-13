@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
 
 export interface OpenSubsonicExtension {
   name: string;
@@ -47,7 +48,7 @@ export const serverInfoStore = create<ServerInfoState>()(
     }),
     {
       name: PERSIST_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         serverType: state.serverType,
         serverVersion: state.serverVersion,

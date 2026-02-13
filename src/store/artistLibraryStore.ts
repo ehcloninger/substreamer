@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
 
 import {
   ensureCoverArtAuth,
@@ -66,7 +67,7 @@ export const artistLibraryStore = create<ArtistLibraryState>()(
     }),
     {
       name: PERSIST_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         artists: state.artists,
         lastFetchedAt: state.lastFetchedAt,

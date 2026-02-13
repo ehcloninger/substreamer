@@ -36,7 +36,7 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
-  // --- Rehydrate auth from AsyncStorage ---
+  // --- Rehydrate auth from SQLite ---
   useEffect(() => {
     (async () => {
       await clearPersistedData();

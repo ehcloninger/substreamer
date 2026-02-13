@@ -1,35 +1,38 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
+
+import { type Child } from '../services/subsonicService';
 
 export interface PendingScrobble {
   /** Unique identifier for this pending scrobble entry. */
   id: string;
-  /** Subsonic song ID to submit. */
-  songId: string;
+  /** Full Subsonic songID3 object. */
+  song: Child;
   /** Unix timestamp (ms) when playback completed. */
   time: number;
 }
 
-export interface ScrobbleState {
+export interface PendingScrobbleState {
   pendingScrobbles: PendingScrobble[];
 
-  addScrobble: (songId: string, time: number) => void;
+  addScrobble: (song: Child, time: number) => void;
   removeScrobble: (id: string) => void;
 }
 
 const PERSIST_KEY = 'substreamer-scrobbles';
 
-export const scrobbleStore = create<ScrobbleState>()(
+export const pendingScrobbleStore = create<PendingScrobbleState>()(
   persist(
     (set) => ({
       pendingScrobbles: [],
 
-      addScrobble: (songId, time) =>
+      addScrobble: (song, time) =>
         set((state) => ({
           pendingScrobbles: [
             ...state.pendingScrobbles,
-            { id: `${time}-${Math.random().toString(36).slice(2, 8)}`, songId, time },
+            { id: `${time}-${Math.random().toString(36).slice(2, 8)}`, song, time },
           ],
         })),
 
@@ -40,7 +43,7 @@ export const scrobbleStore = create<ScrobbleState>()(
     }),
     {
       name: PERSIST_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         pendingScrobbles: state.pendingScrobbles,
       }),

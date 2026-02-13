@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -25,7 +26,7 @@ export const themeStore = create<ThemeState>()(
     }),
     {
       name: PERSIST_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         themePreference: state.themePreference,
         primaryColor: state.primaryColor,

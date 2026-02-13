@@ -88,8 +88,8 @@ let isFullyBuffered = false;
 let lastRawBuffered = 0;
 /** How many consecutive polls position has exceeded the stalled buffered value. */
 let positionPastBufferCount = 0;
-/** Track ID of the previously active track, used for scrobble-on-completion. */
-let previousActiveTrackId: string | null = null;
+/** The previously active Child, used for scrobble-on-completion. */
+let previousActiveChild: Child | null = null;
 /**
  * Set to true before user-initiated track changes (skip, play new queue)
  * so the PlaybackActiveTrackChanged handler can distinguish them from
@@ -240,17 +240,19 @@ export async function initPlayer(): Promise<void> {
   TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, ({ track }) => {
     // Scrobble: if the previous track finished naturally (not a user skip),
     // record it as a completed scrobble.
-    if (previousActiveTrackId && !isUserSkipping) {
-      addCompletedScrobble(previousActiveTrackId);
+    if (previousActiveChild && !isUserSkipping) {
+      addCompletedScrobble(previousActiveChild);
     }
 
     maxBufferedSeen = 0;
     isFullyBuffered = false;
     lastRawBuffered = 0;
     positionPastBufferCount = 0;
+
+    let resolvedChild: Child | null = null;
     if (track != null && track.id) {
-      const child = currentChildQueue.find((c) => c.id === track.id) ?? null;
-      playerStore.getState().setCurrentTrack(child);
+      resolvedChild = currentChildQueue.find((c) => c.id === track.id) ?? null;
+      playerStore.getState().setCurrentTrack(resolvedChild);
 
       // Scrobble: send "now playing" for the new track.
       sendNowPlaying(track.id);
@@ -258,7 +260,7 @@ export async function initPlayer(): Promise<void> {
       playerStore.getState().setCurrentTrack(null);
     }
 
-    previousActiveTrackId = track?.id ?? null;
+    previousActiveChild = resolvedChild;
     isUserSkipping = false;
   });
 

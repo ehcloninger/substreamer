@@ -7,8 +7,10 @@
  * the persisted pending-scrobble queue, retry logic, and periodic processing.
  */
 
-import { scrobbleStore } from '../store/scrobbleStore';
-import { getApi } from './subsonicService';
+import { albumListsStore } from '../store/albumListsStore';
+import { completedScrobbleStore } from '../store/completedScrobbleStore';
+import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
+import { getApi, type Child } from './subsonicService';
 
 /* ------------------------------------------------------------------ */
 /*  Module state                                                       */
@@ -60,8 +62,8 @@ export async function sendNowPlaying(songId: string): Promise<void> {
  * Record a completed-playback scrobble.  The item is added to the
  * persisted pending queue and processing is triggered immediately.
  */
-export function addCompletedScrobble(songId: string): void {
-  scrobbleStore.getState().addScrobble(songId, Date.now());
+export function addCompletedScrobble(song: Child): void {
+  pendingScrobbleStore.getState().addScrobble(song, Date.now());
   processScrobbles();
 }
 
@@ -88,28 +90,41 @@ async function processScrobbles(): Promise<void> {
 
     // Snapshot the queue – iterate over a copy so mutations don't
     // interfere with the loop.
-    const pending = [...scrobbleStore.getState().pendingScrobbles];
+    const pending = [...pendingScrobbleStore.getState().pendingScrobbles];
+    let anySucceeded = false;
 
     for (const item of pending) {
       let success = false;
 
       try {
-        await api.scrobble({ id: item.songId, time: item.time, submission: true });
+        await api.scrobble({ id: item.song.id, time: item.time, submission: true });
         success = true;
       } catch {
         // First attempt failed – retry once.
         try {
-          await api.scrobble({ id: item.songId, time: item.time, submission: true });
+          await api.scrobble({ id: item.song.id, time: item.time, submission: true });
           success = true;
         } catch {
           // Double failure – stop processing; timer will retry later.
-          return;
+          break;
         }
       }
 
       if (success) {
-        scrobbleStore.getState().removeScrobble(item.id);
+        anySucceeded = true;
+        pendingScrobbleStore.getState().removeScrobble(item.id);
+        completedScrobbleStore.getState().addCompleted({
+          id: item.id,
+          song: item.song,
+          time: item.time,
+        });
       }
+    }
+
+    // Refresh the home screen's recently played list if any scrobbles
+    // were submitted so it reflects the latest play history.
+    if (anySucceeded) {
+      albumListsStore.getState().refreshRecentlyPlayed();
     }
   } finally {
     isProcessing = false;

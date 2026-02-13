@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
 
 export interface AuthState {
   serverUrl: string | null;
@@ -22,13 +23,13 @@ export interface AuthState {
 const PERSIST_KEY = 'substreamer-auth';
 
 /**
- * Temporary: clears all persisted auth data (AsyncStorage + in-memory state).
+ * Temporary: clears all persisted auth data (SQLite + in-memory state).
  * Remove this when no longer needed for development.
  */
 export async function clearPersistedData(): Promise<void> {
   const debug = false;
   if (debug) {
-  await AsyncStorage.removeItem(PERSIST_KEY);
+  sqliteStorage.removeItem(PERSIST_KEY);
   authStore.getState().clearSession();
   } else {
     return Promise.resolve();
@@ -67,7 +68,7 @@ export const authStore = create<AuthState>()(
     }),
     {
       name: PERSIST_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         serverUrl: state.serverUrl,
         username: state.username,

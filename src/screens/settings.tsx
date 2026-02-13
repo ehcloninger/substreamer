@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,7 +31,9 @@ import { serverInfoStore } from '../store/serverInfoStore';
 import { albumDetailStore } from '../store/albumDetailStore';
 import { artistDetailStore } from '../store/artistDetailStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
-import { scrobbleStore } from '../store/scrobbleStore';
+import { completedScrobbleStore } from '../store/completedScrobbleStore';
+import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
+import { sqliteStorage } from '../store/sqliteStorage';
 
 const AUTH_PERSIST_KEY = 'substreamer-auth';
 const SERVER_INFO_PERSIST_KEY = 'substreamer-server-info';
@@ -136,7 +137,8 @@ export function SettingsScreen() {
   const cachedArtistCount = artistDetailStore((s) => Object.keys(s.artists).length);
   const cachedPlaylistCount = playlistDetailStore((s) => Object.keys(s.playlists).length);
   const totalMetadataCount = cachedAlbumCount + cachedArtistCount + cachedPlaylistCount;
-  const pendingScrobbleCount = scrobbleStore((s) => s.pendingScrobbles.length);
+  const pendingScrobbleCount = pendingScrobbleStore((s) => s.pendingScrobbles.length);
+  const completedScrobbleCount = completedScrobbleStore((s) => s.completedScrobbles.length);
   const activeAccentLabel = ACCENT_COLORS.find((c) => c.hex === activePrimary)?.label ?? 'Custom';
 
   const handleAccentSelect = useCallback(
@@ -237,7 +239,9 @@ export function SettingsScreen() {
     serverInfoStore.getState().clearServerInfo();
     scanStatusStore.getState().clearScanStatus();
     clearApiCache();
-    await AsyncStorage.multiRemove([AUTH_PERSIST_KEY, SERVER_INFO_PERSIST_KEY, SCAN_STATUS_PERSIST_KEY]);
+    sqliteStorage.removeItem(AUTH_PERSIST_KEY);
+    sqliteStorage.removeItem(SERVER_INFO_PERSIST_KEY);
+    sqliteStorage.removeItem(SCAN_STATUS_PERSIST_KEY);
     router.replace('/login');
   };
 
@@ -540,10 +544,16 @@ export function SettingsScreen() {
         </View>
 
         <View style={[styles.card, dynamicStyles.card, styles.metadataCard]}>
-          <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Pending scrobbles</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {pendingScrobbleCount}
+            </Text>
+          </View>
+          <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Completed scrobbles</Text>
+            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+              {completedScrobbleCount}
             </Text>
           </View>
         </View>

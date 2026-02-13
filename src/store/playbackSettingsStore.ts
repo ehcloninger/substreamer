@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
 
 export type StreamFormat = 'raw' | 'mp3';
 export type MaxBitRate = 64 | 128 | 256 | 320 | null;
@@ -33,7 +34,7 @@ export const playbackSettingsStore = create<PlaybackSettingsState>()(
     }),
     {
       name: PERSIST_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         maxBitRate: state.maxBitRate,
         streamFormat: state.streamFormat,

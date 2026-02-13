@@ -11,9 +11,10 @@ alwaysApply: false
 Each store is a separate file in `src/store/` following this pattern:
 
 ```typescript
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { sqliteStorage } from './sqliteStorage';
 
 interface MyState {
   data: Item[];
@@ -40,12 +41,14 @@ export const myStore = create<MyState>()(
     }),
     {
       name: 'substreamer-my-data',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({ data: state.data }),
     }
   )
 );
 ```
+
+Persistence uses a shared SQLite adapter (`src/store/sqliteStorage.ts`) backed by `expo-sqlite` with database `substreamer7.db`. This provides identical behavior on iOS and Android.
 
 ## Key Conventions
 

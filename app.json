@@ -12,7 +12,9 @@
       "bundleIdentifier": "com.substreamer",
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -35,7 +37,8 @@
           "backgroundColor": "#1D9BF0"
         }
       ],
-      "./plugins/silence-hermes-warning"
+      "./plugins/silence-hermes-warning",
+      "expo-sqlite"
     ]
   }
 }
