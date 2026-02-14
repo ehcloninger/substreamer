@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import WaveformLogo from './WaveformLogo';
 import { useCachedCoverArt } from '../hooks/useCachedCoverArt';
 import { useTheme } from '../hooks/useTheme';
 import { PlayerView } from '../screens/player-view';
@@ -153,34 +154,31 @@ export function MiniPlayer() {
         onPress={openPlayer}
         style={({ pressed }) => [styles.touchable, pressed && styles.pressed]}
       >
+        {/* Cover art (or placeholder while loading) */}
         {queueLoading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color={colors.textSecondary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading...
-            </Text>
+          <View style={[styles.cover, styles.coverPlaceholder, { backgroundColor: 'rgba(150,150,150,0.25)' }]}>
+            <WaveformLogo size={16} color="rgba(150,150,150,1)" />
           </View>
         ) : (
-          <>
-            {/* Cover art */}
-            <CachedImage
-              coverArtId={currentTrack.coverArt}
-              size={300}
-              style={styles.cover}
-              resizeMode="cover"
-            />
-
-            {/* Track info */}
-            <View style={styles.info}>
-              <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-                {currentTrack.title}
-              </Text>
-              <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
-                {currentTrack.artist ?? 'Unknown Artist'}
-              </Text>
-            </View>
-          </>
+          <CachedImage
+            coverArtId={currentTrack.coverArt}
+            size={300}
+            style={styles.cover}
+            resizeMode="cover"
+          />
         )}
+
+        {/* Track info */}
+        <View style={styles.info}>
+          <Text style={[styles.title, { color: queueLoading ? colors.textSecondary : colors.textPrimary }]} numberOfLines={1}>
+            {queueLoading ? 'Loading...' : currentTrack.title}
+          </Text>
+          {!queueLoading && (
+            <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
+              {currentTrack.artist ?? 'Unknown Artist'}
+            </Text>
+          )}
+        </View>
       </Pressable>
 
       {/* Play / Pause / Buffering */}
@@ -189,7 +187,7 @@ export function MiniPlayer() {
         hitSlop={12}
         style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
       >
-        {isBuffering ? (
+        {(isBuffering || queueLoading) ? (
           <ActivityIndicator size="small" color={colors.textPrimary} />
         ) : (
           <Ionicons
@@ -257,14 +255,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 1,
   },
-  loadingRow: {
-    flex: 1,
-    flexDirection: 'row',
+  coverPlaceholder: {
     alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    marginLeft: 10,
+    justifyContent: 'center',
   },
   playButton: {
     marginLeft: 8,
