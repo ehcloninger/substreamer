@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
@@ -25,6 +25,7 @@ import { useTheme } from '../hooks/useTheme';
 import { refreshCachedImage } from '../services/imageCacheService';
 import { playTrack } from '../services/playerService';
 import { artistDetailStore } from '../store/artistDetailStore';
+import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
 
 import {
   type ArtistID3,
@@ -137,6 +138,9 @@ export function ArtistDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [bioExpanded, setBioExpanded] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [albumSortDesc, setAlbumSortDesc] = useState(
+    () => layoutPreferencesStore.getState().artistAlbumSortOrder === 'newest',
+  );
 
   const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
     artist?.coverArt,
@@ -227,6 +231,18 @@ export function ArtistDetailScreen() {
   const gradientStart = coverBackgroundColor ?? colors.background;
   const gradientEnd = colors.background;
 
+  const albums = artist?.album ?? [];
+  const similarArtists = artistInfo?.similarArtist ?? [];
+
+  const sortedAlbums = useMemo(() => {
+    if (albums.length === 0) return albums;
+    return [...albums].sort((a, b) => {
+      const yearA = a.year ?? 0;
+      const yearB = b.year ?? 0;
+      return albumSortDesc ? yearB - yearA : yearA - yearB;
+    });
+  }, [albums, albumSortDesc]);
+
   /* ---- Loading state ---- */
   if (loading) {
     return (
@@ -246,9 +262,6 @@ export function ArtistDetailScreen() {
       </View>
     );
   }
-
-  const albums = artist.album ?? [];
-  const similarArtists = artistInfo?.similarArtist ?? [];
 
   const gradientFillStyle = [
     StyleSheet.absoluteFillObject,
@@ -364,9 +377,29 @@ export function ArtistDetailScreen() {
         {/* ---- Albums ---- */}
         {albums.length > 0 && (
           <View style={styles.section}>
-            <SectionTitle title="Albums" color={colors.label} />
+            <View style={styles.sectionHeader}>
+              <SectionTitle title="Albums" color={colors.label} />
+              <Pressable
+                onPress={() => setAlbumSortDesc((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.sortButton,
+                  { backgroundColor: colors.card },
+                  pressed && styles.pressed,
+                ]}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name={albumSortDesc ? 'arrow-down' : 'arrow-up'}
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={[styles.sortLabel, { color: colors.textSecondary }]}>
+                  {albumSortDesc ? 'Newest' : 'Oldest'}
+                </Text>
+              </Pressable>
+            </View>
             <View style={styles.albumList}>
-              {albums.map((album) => (
+              {sortedAlbums.map((album) => (
                 <AlbumRow key={album.id} album={album} />
               ))}
             </View>
@@ -461,6 +494,23 @@ const styles = StyleSheet.create({
   },
 
   /* Album list */
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    gap: 4,
+  },
+  sortLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   albumList: {
     // AlbumRow handles its own spacing
   },

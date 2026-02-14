@@ -5,6 +5,7 @@ import { sqliteStorage } from './sqliteStorage';
 
 export type ItemLayout = 'list' | 'grid';
 export type AlbumSortOrder = 'artist' | 'title';
+export type ArtistAlbumSortOrder = 'newest' | 'oldest';
 
 export interface LayoutPreferencesState {
   albumLayout: ItemLayout;
@@ -14,6 +15,7 @@ export interface LayoutPreferencesState {
   favAlbumLayout: ItemLayout;
   favArtistLayout: ItemLayout;
   albumSortOrder: AlbumSortOrder;
+  artistAlbumSortOrder: ArtistAlbumSortOrder;
   setAlbumLayout: (layout: ItemLayout) => void;
   setArtistLayout: (layout: ItemLayout) => void;
   setPlaylistLayout: (layout: ItemLayout) => void;
@@ -21,6 +23,7 @@ export interface LayoutPreferencesState {
   setFavAlbumLayout: (layout: ItemLayout) => void;
   setFavArtistLayout: (layout: ItemLayout) => void;
   setAlbumSortOrder: (order: AlbumSortOrder) => void;
+  setArtistAlbumSortOrder: (order: ArtistAlbumSortOrder) => void;
 }
 
 const PERSIST_KEY = 'substreamer-layout-preferences';
@@ -35,6 +38,7 @@ export const layoutPreferencesStore = create<LayoutPreferencesState>()(
       favAlbumLayout: 'list',
       favArtistLayout: 'list',
       albumSortOrder: 'artist',
+      artistAlbumSortOrder: 'newest',
       setAlbumLayout: (albumLayout) => set({ albumLayout }),
       setArtistLayout: (artistLayout) => set({ artistLayout }),
       setPlaylistLayout: (playlistLayout) => set({ playlistLayout }),
@@ -50,6 +54,8 @@ export const layoutPreferencesStore = create<LayoutPreferencesState>()(
           albumLibraryStore.getState().resortAlbums();
         }, 0);
       },
+      setArtistAlbumSortOrder: (artistAlbumSortOrder) =>
+        set({ artistAlbumSortOrder }),
     }),
     {
       name: PERSIST_KEY,
@@ -62,6 +68,7 @@ export const layoutPreferencesStore = create<LayoutPreferencesState>()(
         favAlbumLayout: state.favAlbumLayout,
         favArtistLayout: state.favArtistLayout,
         albumSortOrder: state.albumSortOrder,
+        artistAlbumSortOrder: state.artistAlbumSortOrder,
       }),
     }
   )

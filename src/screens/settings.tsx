@@ -19,6 +19,7 @@ import { authStore } from '../store/authStore';
 import {
   layoutPreferencesStore,
   type AlbumSortOrder,
+  type ArtistAlbumSortOrder,
   type ItemLayout,
 } from '../store/layoutPreferencesStore';
 import {
@@ -94,6 +95,11 @@ const ALBUM_SORT_OPTIONS: { value: AlbumSortOrder; label: string }[] = [
   { value: 'title', label: 'Album title' },
 ];
 
+const ARTIST_ALBUM_SORT_OPTIONS: { value: ArtistAlbumSortOrder; label: string }[] = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+];
+
 const BITRATE_OPTIONS: { value: MaxBitRate; label: string }[] = [
   { value: 64, label: '64 kbps' },
   { value: 128, label: '128 kbps' },
@@ -124,6 +130,7 @@ export function SettingsScreen() {
   const activePrimary = primaryColor ?? DEFAULT_PRIMARY_COLOR;
   const [accentOpen, setAccentOpen] = useState(false);
   const [sortOrderOpen, setSortOrderOpen] = useState(false);
+  const [artistAlbumSortOpen, setArtistAlbumSortOpen] = useState(false);
   const [bitrateOpen, setBitrateOpen] = useState(false);
   const [formatOpen, setFormatOpen] = useState(false);
   const maxBitRate = playbackSettingsStore((s) => s.maxBitRate);
@@ -199,6 +206,9 @@ export function SettingsScreen() {
 
   const albumSortOrder = layoutPreferencesStore((s) => s.albumSortOrder);
   const setAlbumSortOrder = layoutPreferencesStore((s) => s.setAlbumSortOrder);
+
+  const artistAlbumSortOrder = layoutPreferencesStore((s) => s.artistAlbumSortOrder);
+  const setArtistAlbumSortOrder = layoutPreferencesStore((s) => s.setArtistAlbumSortOrder);
 
   const favSongLayout = layoutPreferencesStore((s) => s.favSongLayout);
   const favAlbumLayout = layoutPreferencesStore((s) => s.favAlbumLayout);
@@ -715,6 +725,56 @@ export function SettingsScreen() {
                     onPress={() => {
                       setAlbumSortOrder(opt.value);
                       setSortOrderOpen(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.accentOption,
+                      { borderBottomColor: colors.border },
+                      pressed && styles.themeRowPressed,
+                    ]}
+                  >
+                    <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
+                      {opt.label}
+                    </Text>
+                    {isActive && (
+                      <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Artist album sort order</Text>
+        <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
+          <Pressable
+            onPress={() => setArtistAlbumSortOpen((prev) => !prev)}
+            style={({ pressed }) => [
+              styles.accentHeader,
+              pressed && styles.themeRowPressed,
+            ]}
+          >
+            <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
+              {ARTIST_ALBUM_SORT_OPTIONS.find((o) => o.value === artistAlbumSortOrder)?.label ?? 'Newest first'}
+            </Text>
+            <Ionicons
+              name={artistAlbumSortOpen ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+          {artistAlbumSortOpen && (
+            <View style={[styles.accentList, { borderTopColor: colors.border }]}>
+              {ARTIST_ALBUM_SORT_OPTIONS.map((opt) => {
+                const isActive = artistAlbumSortOrder === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => {
+                      setArtistAlbumSortOrder(opt.value);
+                      setArtistAlbumSortOpen(false);
                     }}
                     style={({ pressed }) => [
                       styles.accentOption,
