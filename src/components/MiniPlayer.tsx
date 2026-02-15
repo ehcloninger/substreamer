@@ -23,6 +23,8 @@ import { getProminentColor, type ExtractedColors } from '../utils/colors';
 
 const COVER_SIZE = 50;
 const MINI_PLAYER_HEIGHT = 56;
+/** Matches the placeholder cover art background (rgb 150,150,150). */
+const PLACEHOLDER_BG = '#969696';
 
 export function MiniPlayer() {
   const { colors } = useTheme();
@@ -110,7 +112,7 @@ export function MiniPlayer() {
 
   if (!currentTrack) return null;
 
-  const gradientStart = bgColor ?? colors.card;
+  const gradientStart = queueLoading ? PLACEHOLDER_BG : (bgColor ?? colors.card);
   const gradientEnd = colors.background;
 
   /** Append alpha hex to a colour string (supports #RGB, #RRGGBB). */
