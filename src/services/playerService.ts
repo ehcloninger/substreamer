@@ -566,3 +566,30 @@ export async function retryPlayback(): Promise<void> {
   playerStore.getState().setError(null);
   await TrackPlayer.play();
 }
+
+/**
+ * Stop playback, clear the queue, and reset all player state to defaults.
+ *
+ * Resets both the native RNTP player and the Zustand store so the UI
+ * returns to its idle state (MiniPlayer hidden, no current track).
+ */
+export async function clearQueue(): Promise<void> {
+  stopProgressPolling();
+  isUserSkipping = true;
+  positionOffset = 0;
+  maxBufferedSeen = 0;
+  isFullyBuffered = false;
+  isRecoveringStream = false;
+  previousActiveChild = null;
+  currentChildQueue = [];
+
+  await TrackPlayer.reset();
+
+  const store = playerStore.getState();
+  store.setCurrentTrack(null);
+  store.setQueue([]);
+  store.setPlaybackState('idle');
+  store.setProgress(0, 0, 0);
+  store.setError(null);
+  store.setRetrying(false);
+}

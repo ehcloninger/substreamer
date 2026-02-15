@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Pressable,
   ScrollView,
@@ -26,6 +27,7 @@ import { PlayerProgressBar } from '../components/PlayerProgressBar';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import {
+  clearQueue,
   retryPlayback,
   seekTo,
   skipToNext,
@@ -80,6 +82,26 @@ export function PlayerView({ onClose }: PlayerViewProps) {
   const handleQueueItemPress = useCallback((index: number) => {
     skipToTrack(index);
   }, []);
+
+  const handleClearQueue = useCallback(() => {
+    Alert.alert(
+      'Clear Queue',
+      'This will stop playback and clear the queue.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            onClose();
+            setTimeout(() => {
+              clearQueue();
+            }, 350);
+          },
+        },
+      ],
+    );
+  }, [onClose]);
 
   if (!currentTrack) return null;
 
@@ -238,11 +260,30 @@ export function PlayerView({ onClose }: PlayerViewProps) {
             {/* Queue section */}
             {queue.length > 0 && (
               <View style={styles.queueSection}>
-                <Text
-                  style={[styles.queueHeader, { color: colors.textSecondary }]}
-                >
-                  Queue
-                </Text>
+                <View style={styles.queueHeaderRow}>
+                  <Text
+                    style={[styles.queueHeader, { color: colors.textSecondary }]}
+                  >
+                    Queue
+                  </Text>
+                  <Pressable
+                    onPress={handleClearQueue}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.clearButton,
+                      { borderColor: colors.primary, opacity: pressed ? 0.5 : 0.75 },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.clearButtonText,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      Clear
+                    </Text>
+                  </Pressable>
+                </View>
                 {queue.map((track, index) => (
                   <QueueItem
                     key={`${track.id}-${index}`}
@@ -454,12 +495,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
+  queueHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   queueHeader: {
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
+  },
+  clearButton: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  clearButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 
