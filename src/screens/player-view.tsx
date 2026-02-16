@@ -9,7 +9,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -26,12 +26,14 @@ import { MarqueeText } from '../components/MarqueeText';
 import { PlaybackRateButton } from '../components/PlaybackRateButton';
 import { PlayerProgressBar } from '../components/PlayerProgressBar';
 import { RepeatButton } from '../components/RepeatButton';
+import { ShuffleButton } from '../components/ShuffleButton';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import {
   clearQueue,
   retryPlayback,
   seekTo,
+  shuffleQueue,
   skipToNext,
   skipToPrevious,
   skipToTrack,
@@ -105,6 +107,47 @@ export function PlayerView({ onClose }: PlayerViewProps) {
     );
   }, [onClose]);
 
+  // --- Shuffle overlay state ---
+  const [shuffling, setShuffling] = useState(false);
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  const handleShuffle = useCallback(async () => {
+    if (shuffling) return;
+    setShuffling(true);
+    spinAnim.setValue(0);
+
+    // Fade in overlay + start spinning icon
+    Animated.timing(overlayOpacity, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ).start();
+
+    // Run shuffle + enforce minimum display time in parallel
+    const MIN_DISPLAY = 1200;
+    await Promise.all([
+      shuffleQueue(),
+      new Promise<void>((r) => setTimeout(r, MIN_DISPLAY)),
+    ]);
+
+    // Stop spin, fade out overlay
+    spinAnim.stopAnimation();
+    Animated.timing(overlayOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setShuffling(false));
+  }, [shuffling, overlayOpacity, spinAnim]);
+
   const renderQueueItem = useCallback(
     ({ item, index }: { item: Child; index: number }) => (
       <QueueItem
@@ -141,6 +184,8 @@ export function PlayerView({ onClose }: PlayerViewProps) {
         retrying={retrying}
         handleSeek={handleSeek}
         handleClearQueue={handleClearQueue}
+        handleShuffle={handleShuffle}
+        shuffling={shuffling}
         queueLength={queue.length}
       />
     ),
@@ -160,6 +205,8 @@ export function PlayerView({ onClose }: PlayerViewProps) {
       retrying,
       handleSeek,
       handleClearQueue,
+      handleShuffle,
+      shuffling,
       queue.length,
     ],
   );
@@ -191,6 +238,34 @@ export function PlayerView({ onClose }: PlayerViewProps) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
       />
+
+      {/* Shuffle overlay */}
+      {shuffling && (
+        <Animated.View
+          style={[styles.shuffleOverlay, { opacity: overlayOpacity }]}
+          pointerEvents="auto"
+        >
+          <View style={[styles.shuffleCard, { backgroundColor: colors.card }]}>
+            <Animated.View
+              style={{
+                transform: [
+                  {
+                    rotate: spinAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '360deg'],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <Ionicons name="shuffle" size={32} color={colors.primary} />
+            </Animated.View>
+            <Text style={[styles.shuffleText, { color: colors.textPrimary }]}>
+              Shuffling…
+            </Text>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -221,6 +296,8 @@ interface PlayerListHeaderProps {
   retrying: boolean;
   handleSeek: (seconds: number) => void;
   handleClearQueue: () => void;
+  handleShuffle: () => void;
+  shuffling: boolean;
   queueLength: number;
 }
 
@@ -240,6 +317,8 @@ const PlayerListHeader = memo(function PlayerListHeader({
   retrying,
   handleSeek,
   handleClearQueue,
+  handleShuffle,
+  shuffling,
   queueLength,
 }: PlayerListHeaderProps) {
   if (!currentTrack) return null;
@@ -397,23 +476,29 @@ const PlayerListHeader = memo(function PlayerListHeader({
                 >
                   Queue
                 </Text>
-                <Pressable
-                  onPress={handleClearQueue}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.clearButton,
-                    { borderColor: colors.primary, opacity: pressed ? 0.5 : 0.75 },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.clearButtonText,
-                      { color: colors.primary },
+                <View style={styles.queueActions}>
+                  <ShuffleButton
+                    onPress={handleShuffle}
+                    disabled={shuffling || queueLength < 2}
+                  />
+                  <Pressable
+                    onPress={handleClearQueue}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.clearButton,
+                      { borderColor: colors.primary, opacity: pressed ? 0.5 : 0.75 },
                     ]}
                   >
-                    Clear
-                  </Text>
-                </Pressable>
+                    <Text
+                      style={[
+                        styles.clearButtonText,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      Clear
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           )}
@@ -635,6 +720,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  queueActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   clearButton: {
     borderWidth: 1,
     borderRadius: 14,
@@ -643,6 +733,24 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     fontSize: 13,
+    fontWeight: '600',
+  },
+  shuffleOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  shuffleCard: {
+    borderRadius: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+    alignItems: 'center',
+    gap: 12,
+  },
+  shuffleText: {
+    fontSize: 16,
     fontWeight: '600',
   },
 });

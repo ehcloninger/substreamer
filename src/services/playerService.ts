@@ -116,6 +116,8 @@ let isUserSkipping = false;
 let positionOffset = 0;
 /** True while we are reloading the current track for stream recovery. */
 let isRecoveringStream = false;
+/** True while the queue is being shuffled, to guard event handlers. */
+let isShuffling = false;
 
 /* ------------------------------------------------------------------ */
 /*  Progress polling                                                   */
@@ -391,6 +393,12 @@ export async function initPlayer(): Promise<void> {
       return;
     }
 
+    // During a shuffle the queue is replaced atomically.  RNTP may fire
+    // a transient null-track event — ignore it so the UI stays open.
+    if (isShuffling && (track == null || !track.id)) {
+      return;
+    }
+
     // Scrobble: if the previous track finished naturally (not a user skip),
     // record it as a completed scrobble.
     if (previousActiveChild && !isUserSkipping) {
@@ -644,4 +652,39 @@ export async function cyclePlaybackRate(): Promise<void> {
   const next: PlaybackRate = PLAYBACK_RATES[nextIndex];
   playbackSettingsStore.getState().setPlaybackRate(next);
   await TrackPlayer.setRate(next);
+}
+
+/**
+ * Shuffle the current queue using Fisher-Yates, then reload RNTP and
+ * start playback from the first track of the new order.
+ */
+export async function shuffleQueue(): Promise<void> {
+  if (currentChildQueue.length < 2) return;
+
+  isUserSkipping = true;
+  isShuffling = true;
+  positionOffset = 0;
+  maxBufferedSeen = 0;
+  isFullyBuffered = false;
+
+  try {
+    await TrackPlayer.pause();
+
+    // Fisher-Yates shuffle on a copy.
+    const shuffled = [...currentChildQueue];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    currentChildQueue = shuffled;
+    playerStore.getState().setQueue(shuffled);
+
+    // Replace the RNTP queue atomically, skip to the first track, and play.
+    await TrackPlayer.setQueue(shuffled.map(childToTrack));
+    await TrackPlayer.skip(0);
+    await TrackPlayer.play();
+  } finally {
+    isShuffling = false;
+  }
 }
