@@ -13,6 +13,7 @@
  * Requires: sharp (npm i -D sharp)
  */
 
+const fs = require('fs');
 const sharp = require('sharp');
 const path = require('path');
 
@@ -87,13 +88,12 @@ async function generate() {
     .toFile(path.join(ASSETS_DIR, 'adaptive-icon.png'));
   console.log('✔  adaptive-icon.png (1024×1024)');
 
-  // 3. Splash icon – 200×200, transparent bg, white bars only
-  //    (expo-splash-screen plugin applies backgroundColor from app.json)
+  // 3. Splash logo SVG – vector source for react-native-bootsplash plugin.
+  //    Transparent bg + white bars. The plugin rasterises this at every
+  //    density (@1x – @4x) so the native splash is always crisp.
   const splashSvg = buildSvg(200, 'none', WHITE, 0.80, 0);
-  await sharp(Buffer.from(splashSvg))
-    .png()
-    .toFile(path.join(ASSETS_DIR, 'splash-icon.png'));
-  console.log('✔  splash-icon.png (200×200)');
+  fs.writeFileSync(path.join(ASSETS_DIR, 'splash-logo.svg'), splashSvg);
+  console.log('✔  splash-logo.svg (200×200 vector)');
 
   // 4. Favicon – 48×48, blue bg, white bars
   const faviconSvg = buildSvg(48, PRIMARY, WHITE, 0.60, 6);

@@ -1,16 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import BootSplash from 'react-native-bootsplash';
 
-import WaveformLogo from './WaveformLogo';
+import AnimatedWaveformLogo from './AnimatedWaveformLogo';
 import { getPendingTasks, runMigrations } from '../services/migrationService';
 import { migrationStore } from '../store/migrationStore';
 
@@ -30,134 +31,136 @@ type Props = {
 };
 
 export default function AnimatedSplashScreen({ onFinish }: Props) {
-  const scale = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
+  const containerOpacity = useRef(new Animated.Value(1)).current;
+  const logoImageOpacity = useRef(new Animated.Value(1)).current;
+  const animatedLogoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(1)).current;
   const logoTranslateY = useRef(new Animated.Value(0)).current;
   const migrationOpacity = useRef(new Animated.Value(0)).current;
+
   const onFinishRef = useRef(onFinish);
   const didFinish = useRef(false);
   const [migrationPhase, setMigrationPhase] = useState<MigrationPhase>('idle');
+  const [rippling, setRippling] = useState(false);
   onFinishRef.current = onFinish;
 
-  useEffect(() => {
-    const complete = () => {
-      if (!didFinish.current) {
-        didFinish.current = true;
-        onFinishRef.current();
-      }
-    };
+  const complete = useCallback(() => {
+    if (!didFinish.current) {
+      didFinish.current = true;
+      onFinishRef.current();
+    }
+  }, []);
 
-    const fadeOut = () =>
-      Animated.timing(opacity, {
+  const fadeOut = useCallback(
+    () =>
+      Animated.timing(containerOpacity, {
         toValue: 0,
         duration: 500,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
-      });
-
-    SplashScreen.hideAsync();
-
-    // ── Phase 1: Logo intro (unchanged from original) ──────────────
-
-    const pulse = (toValue: number) =>
-      Animated.spring(scale, {
-        toValue,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 120,
-      });
-
-    const introAnim = Animated.sequence([
-      // Grow from nothing to pulse peak
-      Animated.spring(scale, {
-        toValue: 1.15,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 80,
       }),
-      // Settle to resting size
-      pulse(1),
-      // Two additional pulses
-      Animated.sequence([pulse(1.15), pulse(1)]),
-      Animated.sequence([pulse(1.15), pulse(1)]),
-    ]);
+    [containerOpacity],
+  );
 
-    introAnim.start(({ finished: introFinished }) => {
-      if (!introFinished) return;
+  const handleRippleComplete = useCallback(() => {
+    const completedVersion = migrationStore.getState().completedVersion;
+    const pending = getPendingTasks(completedVersion);
 
-      // ── Check for pending migrations ───────────────────────────
+    if (pending.length === 0) {
+      fadeOut().start(() => complete());
+      return;
+    }
 
-      const completedVersion = migrationStore.getState().completedVersion;
-      const pending = getPendingTasks(completedVersion);
+    setMigrationPhase('running');
 
-      if (pending.length === 0) {
-        // Phase 2a: no migrations – fade out immediately
-        fadeOut().start(() => complete());
-        return;
-      }
+    Animated.parallel([
+      Animated.spring(logoScale, {
+        toValue: 0.6,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 60,
+      }),
+      Animated.spring(logoTranslateY, {
+        toValue: -60,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 60,
+      }),
+      Animated.timing(migrationOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished: transitionFinished }) => {
+      if (!transitionFinished) return;
 
-      // ── Phase 2b: migrations needed ────────────────────────────
+      runMigrations(completedVersion).then((finalVersion) => {
+        migrationStore.getState().setCompletedVersion(finalVersion);
+        setMigrationPhase('done');
 
-      // Show the migration UI (rendered at opacity 0, faded in below)
-      setMigrationPhase('running');
-
-      // Transition: shrink logo, slide it up, fade in migration text
-      Animated.parallel([
-        Animated.spring(scale, {
-          toValue: 0.6,
-          useNativeDriver: true,
-          friction: 8,
-          tension: 60,
-        }),
-        Animated.spring(logoTranslateY, {
-          toValue: -60,
-          useNativeDriver: true,
-          friction: 8,
-          tension: 60,
-        }),
-        Animated.timing(migrationOpacity, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start(({ finished: transitionFinished }) => {
-        if (!transitionFinished) return;
-
-        // Run all pending migration tasks
-        runMigrations(completedVersion).then((finalVersion) => {
-          migrationStore.getState().setCompletedVersion(finalVersion);
-          setMigrationPhase('done');
-
-          // Hold briefly so the user can read "Update complete"
-          setTimeout(() => {
-            fadeOut().start(() => complete());
-          }, 1200);
-        });
+        setTimeout(() => {
+          fadeOut().start(() => complete());
+        }, 1200);
       });
     });
+  }, [complete, fadeOut, logoScale, logoTranslateY, migrationOpacity]);
 
+  // The useHideAnimation hook provides container + logo props that
+  // exactly replicate the native splash layout. When it determines
+  // everything is ready (layout rendered, logo image loaded) it hides
+  // the native splash and fires our animate callback.
+  const { container, logo } = BootSplash.useHideAnimation({
+    manifest: require('../../assets/bootsplash/manifest.json'),
+    logo: require('../../assets/bootsplash/logo.png'),
+    navigationBarTranslucent: true,
+
+    animate: () => {
+      // Swap: hide the static logo Image, show the animated bars, start ripple.
+      logoImageOpacity.setValue(0);
+      animatedLogoOpacity.setValue(1);
+      setRippling(true);
+    },
+  });
+
+  // Safety timeout
+  useEffect(() => {
     const timeout = setTimeout(complete, SAFETY_TIMEOUT);
-
-    return () => {
-      introAnim.stop();
-      clearTimeout(timeout);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => clearTimeout(timeout);
+  }, [complete]);
 
   return (
-    <Animated.View style={[styles.container, { opacity }]}>
+    <Animated.View
+      {...container}
+      style={[container.style, { opacity: containerOpacity }]}
+    >
       <Animated.View
         style={[
           styles.logoWrap,
-          { transform: [{ scale }, { translateY: logoTranslateY }] },
+          {
+            transform: [
+              { scale: logoScale },
+              { translateY: logoTranslateY },
+            ],
+          },
         ]}
       >
-        <WaveformLogo size={130} color="#FFFFFF" />
+        {/* Static bootsplash logo Image – visible until animate() fires */}
+        <Animated.Image
+          {...logo}
+          style={[logo.style, { opacity: logoImageOpacity, position: 'absolute' }]}
+        />
+
+        {/* Animated waveform bars – hidden until animate() swaps them in */}
+        <Animated.View style={{ opacity: animatedLogoOpacity }}>
+          <AnimatedWaveformLogo
+            size={130}
+            color="#FFFFFF"
+            onComplete={rippling ? handleRippleComplete : undefined}
+          />
+        </Animated.View>
       </Animated.View>
 
-      {/* Migration status – always mounted (at opacity 0) so the fade-in
-          animation is smooth. Content swaps when phase changes. */}
+      {/* Migration status */}
       <Animated.View
         style={[styles.migrationWrap, { opacity: migrationOpacity }]}
         pointerEvents="none"
@@ -178,12 +181,6 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: PRIMARY,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   logoWrap: {
     alignItems: 'center',
     justifyContent: 'center',

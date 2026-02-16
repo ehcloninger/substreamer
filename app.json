@@ -4,6 +4,7 @@
     "slug": "substreamer",
     "version": "1.0.0",
     "scheme": "substreamer",
+    "platforms": ["android", "ios"],
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -36,10 +37,11 @@
     "plugins": [
       "expo-router",
       [
-        "expo-splash-screen",
+        "react-native-bootsplash",
         {
-          "image": "./src/assets/splash-icon.png",
-          "backgroundColor": "#1D9BF0"
+          "logo": "./src/assets/splash-logo.svg",
+          "logoWidth": 130,
+          "background": "#1D9BF0"
         }
       ],
       "./plugins/silence-hermes-warning",

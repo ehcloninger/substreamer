@@ -1,8 +1,6 @@
-import * as SplashScreen from 'expo-splash-screen';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
 
 import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
 import { useTheme } from '../hooks/useTheme';
@@ -18,10 +16,9 @@ import { favoritesStore } from '../store/favoritesStore';
 import { fetchServerInfo } from '../services/subsonicService';
 import { serverInfoStore } from '../store/serverInfoStore';
 
-// Keep the native splash visible until the animated splash is ready.
-// AnimatedSplashScreen calls hideAsync() itself once mounted so the
-// transition is seamless (both share the same blue + logo appearance).
-SplashScreen.preventAutoHideAsync();
+// react-native-bootsplash keeps the native splash visible by default
+// until BootSplash.hide() is called. AnimatedSplashScreen handles the
+// hide via useHideAnimation for a seamless native → JS transition.
 
 // Initialise the on-disk image cache directory at module load.
 initImageCache();
