@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { AlbumListView, type AlbumLayout } from '../components/AlbumListView';
 import { useTheme } from '../hooks/useTheme';
 import { albumLibraryStore } from '../store/albumLibraryStore';
+import { minDelay } from '../utils/stringHelpers';
 
 export function AlbumLibraryListScreen({ layout = 'list' }: { layout?: AlbumLayout }) {
   const { colors } = useTheme();
@@ -23,9 +24,9 @@ export function AlbumLibraryListScreen({ layout = 'list' }: { layout?: AlbumLayo
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 2000));
+    const delay = minDelay();
     await fetchAllAlbums();
-    await minDelay;
+    await delay;
     setRefreshing(false);
   }, [fetchAllAlbums]);
 

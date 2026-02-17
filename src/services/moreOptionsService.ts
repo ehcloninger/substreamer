@@ -25,7 +25,7 @@ import {
 /*  Star / Unstar                                                      */
 /* ------------------------------------------------------------------ */
 
-export type StarrableType = 'song' | 'album' | 'artist';
+type StarrableType = 'song' | 'album' | 'artist';
 
 /**
  * Toggle the starred (favorite) state for an item and refresh the

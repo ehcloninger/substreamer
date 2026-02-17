@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { sqliteStorage } from './sqliteStorage';
 
-export interface OpenSubsonicExtension {
+interface OpenSubsonicExtension {
   name: string;
   versions: number[];
 }

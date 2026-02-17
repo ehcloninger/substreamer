@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
-  InteractionManager,
   Platform,
   Pressable,
   RefreshControl,
@@ -21,7 +20,9 @@ import { closeOpenRow } from '../components/SwipeableRow';
 import { TrackRow } from '../components/TrackRow';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
+import { useTransitionComplete } from '../hooks/useTransitionComplete';
 import { refreshCachedImage } from '../services/imageCacheService';
+import { minDelay } from '../utils/stringHelpers';
 import { playTrack } from '../services/playerService';
 import { playlistDetailStore } from '../store/playlistDetailStore';
 import { formatCompactDuration } from '../utils/formatters';
@@ -41,14 +42,7 @@ export function PlaylistDetailScreen() {
   const [loading, setLoading] = useState(!cachedEntry);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [transitionComplete, setTransitionComplete] = useState(false);
-
-  useEffect(() => {
-    const handle = InteractionManager.runAfterInteractions(() => {
-      setTransitionComplete(true);
-    });
-    return () => handle.cancel();
-  }, []);
+  const transitionComplete = useTransitionComplete();
 
   const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
     playlist?.coverArt,
@@ -68,16 +62,14 @@ export function PlaylistDetailScreen() {
     else setLoading(true);
     setError(null);
     try {
-      const minDelay = isRefresh
-        ? new Promise((resolve) => setTimeout(resolve, 2000))
-        : null;
+      const delay = isRefresh ? minDelay() : null;
       const data = await fetchPlaylist(id);
       setPlaylist(data);
       if (!data) setError('Playlist not found');
       if (isRefresh && data?.coverArt) {
-        refreshCachedImage(data.coverArt).catch(() => {});
+        refreshCachedImage(data.coverArt).catch(() => { /* non-critical */ });
       }
-      await minDelay;
+      await delay;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load playlist');
     } finally {

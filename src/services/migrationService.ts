@@ -15,7 +15,7 @@ import { Directory, Paths } from 'expo-file-system';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export interface MigrationTask {
+interface MigrationTask {
   /** Sequential ID starting at 1. Must be unique and increasing. */
   id: number;
   /** Short name shown to the user during migration. */

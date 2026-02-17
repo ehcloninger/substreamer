@@ -7,6 +7,7 @@ import { AlbumListView } from '../components/AlbumListView';
 import { ArtistListView } from '../components/ArtistListView';
 import { SongListView } from '../components/SongListView';
 import { useTheme } from '../hooks/useTheme';
+import { minDelay } from '../utils/stringHelpers';
 import {
   layoutPreferencesStore,
   type ItemLayout,
@@ -155,9 +156,9 @@ export function FavoritesScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 2000));
+    const delay = minDelay();
     await fetchStarred();
-    await minDelay;
+    await delay;
     setRefreshing(false);
   }, [fetchStarred]);
 

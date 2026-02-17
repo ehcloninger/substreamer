@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { ArtistListView, type ArtistLayout } from '../components/ArtistListView';
 import { useTheme } from '../hooks/useTheme';
 import { artistLibraryStore } from '../store/artistLibraryStore';
+import { minDelay } from '../utils/stringHelpers';
 
 export function ArtistListScreen({ layout = 'list' }: { layout?: ArtistLayout }) {
   const { colors } = useTheme();
@@ -23,9 +24,9 @@ export function ArtistListScreen({ layout = 'list' }: { layout?: ArtistLayout })
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 2000));
+    const delay = minDelay();
     await fetchAllArtists();
-    await minDelay;
+    await delay;
     setRefreshing(false);
   }, [fetchAllArtists]);
 

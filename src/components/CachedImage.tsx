@@ -159,7 +159,7 @@ export const CachedImage = memo(function CachedImage({
           const newCached = getCachedImageUri(coverArtId, size);
           if (newCached) setUri(newCached);
         })
-        .catch(() => {});
+        .catch(() => { /* non-critical: disk cache miss is handled by fallback */ });
     }, DEBOUNCE_MS);
 
     return () => {

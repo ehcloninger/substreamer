@@ -48,15 +48,7 @@ export const layoutPreferencesStore = create<LayoutPreferencesState>()(
       setFavSongLayout: (favSongLayout) => set({ favSongLayout }),
       setFavAlbumLayout: (favAlbumLayout) => set({ favAlbumLayout }),
       setFavArtistLayout: (favArtistLayout) => set({ favArtistLayout }),
-      setAlbumSortOrder: (albumSortOrder) => {
-        set({ albumSortOrder });
-        // Trigger re-sort of the album library without a re-fetch.
-        // Use setTimeout + require to avoid circular dependency.
-        setTimeout(() => {
-          const { albumLibraryStore } = require('./albumLibraryStore');
-          albumLibraryStore.getState().resortAlbums();
-        }, 0);
-      },
+      setAlbumSortOrder: (albumSortOrder) => set({ albumSortOrder }),
       setArtistAlbumSortOrder: (artistAlbumSortOrder) =>
         set({ artistAlbumSortOrder }),
       setMarqueeScrolling: (marqueeScrolling) => set({ marqueeScrolling }),

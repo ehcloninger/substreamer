@@ -40,7 +40,7 @@ let cachedCoverArtKey: string | null = null;
 let cachedCoverArtSalt: string | null = null;
 let cachedCoverArtToken: string | null = null;
 
-export type LoginResult = { success: true; version: string } | { success: false; error: string };
+type LoginResult = { success: true; version: string } | { success: false; error: string };
 
 export async function login(
   serverUrl: string,
@@ -500,7 +500,7 @@ export async function unstarSong(id: string): Promise<void> {
 /*  Library Scan                                                       */
 /* ------------------------------------------------------------------ */
 
-export interface ScanStatusResult {
+interface ScanStatusResult {
   scanning: boolean;
   count: number;
   lastScan: number | null;

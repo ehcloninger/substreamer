@@ -55,7 +55,7 @@ export function useCachedCoverArt(
           const newCached = getCachedImageUri(coverArtId, size);
           if (newCached) setUri(newCached);
         })
-        .catch(() => {});
+        .catch(() => { /* non-critical: caching failure falls back to network URL */ });
     }
 
     return () => { cancelled = true; };

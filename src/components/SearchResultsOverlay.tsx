@@ -23,7 +23,6 @@ import { searchStore } from '../store/searchStore';
 
 const COVER_SIZE = 150;
 const TOTAL_BUDGET = 9;
-const DEFAULT_PER_CATEGORY = 3;
 
 /* ------------------------------------------------------------------ */
 /*  Result redistribution logic                                       */

@@ -11,6 +11,7 @@ import {
 
 import { CachedImage } from '../components/CachedImage';
 import { useTheme } from '../hooks/useTheme';
+import { minDelay } from '../utils/stringHelpers';
 import {
   type AlbumID3,
   type ArtistID3,
@@ -176,9 +177,9 @@ export function SearchScreen() {
   const handleRefresh = useCallback(async () => {
     if (!query.trim()) return;
     setRefreshing(true);
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 2000));
+    const delay = minDelay();
     await performSearch();
-    await minDelay;
+    await delay;
     setRefreshing(false);
   }, [query, performSearch]);
 

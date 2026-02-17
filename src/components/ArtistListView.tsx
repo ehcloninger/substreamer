@@ -11,6 +11,7 @@ import {
 
 import { useTheme } from '../hooks/useTheme';
 import type { ArtistID3 } from '../services/subsonicService';
+import { getFirstLetter } from '../utils/stringHelpers';
 import { ArtistCard } from './ArtistCard';
 import { ArtistRow } from './ArtistRow';
 import { closeOpenRow } from './SwipeableRow';
@@ -21,15 +22,6 @@ export type ArtistLayout = 'list' | 'grid';
 const GRID_COLUMNS = 2;
 const GRID_GAP = 10;
 const LIST_PADDING = 16;
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                           */
-/* ------------------------------------------------------------------ */
-
-function getFirstLetter(name: string): string {
-  const ch = name.charAt(0).toUpperCase();
-  return /[A-Z]/.test(ch) ? ch : '#';
-}
 
 /* ------------------------------------------------------------------ */
 /*  ArtistListView                                                    */

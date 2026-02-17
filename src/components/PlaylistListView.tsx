@@ -10,6 +10,7 @@ import {
 
 import { useTheme } from '../hooks/useTheme';
 import type { Playlist } from '../services/subsonicService';
+import { getFirstLetter } from '../utils/stringHelpers';
 import { PlaylistCard } from './PlaylistCard';
 import { PlaylistRow } from './PlaylistRow';
 import { closeOpenRow } from './SwipeableRow';
@@ -20,15 +21,6 @@ export type PlaylistLayout = 'list' | 'grid';
 const GRID_COLUMNS = 2;
 const GRID_GAP = 10;
 const LIST_PADDING = 16;
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                           */
-/* ------------------------------------------------------------------ */
-
-function getFirstLetter(name: string): string {
-  const ch = name.charAt(0).toUpperCase();
-  return /[A-Z]/.test(ch) ? ch : '#';
-}
 
 /* ------------------------------------------------------------------ */
 /*  PlaylistListView                                                  */

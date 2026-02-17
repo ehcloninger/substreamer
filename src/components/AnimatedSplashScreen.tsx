@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  Image,
   StyleSheet,
   Text,
   View,

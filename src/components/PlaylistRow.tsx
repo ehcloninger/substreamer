@@ -14,7 +14,7 @@ import { formatCompactDuration } from '../utils/formatters';
 const COVER_SIZE = 300;
 
 /** Total row height (padding 12*2 + image 56 = 80). */
-export const ROW_HEIGHT = 80;
+const ROW_HEIGHT = 80;
 
 export const PlaylistRow = memo(function PlaylistRow({ playlist }: { playlist: Playlist }) {
   const { colors } = useTheme();

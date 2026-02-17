@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AlbumListView } from '../components/AlbumListView';
 import { useTheme } from '../hooks/useTheme';
+import { minDelay } from '../utils/stringHelpers';
 import {
   ensureCoverArtAuth,
   getFrequentlyPlayedAlbums,
@@ -84,9 +85,9 @@ export function AlbumListScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 2000));
+    const delay = minDelay();
     await fetchAlbums();
-    await minDelay;
+    await delay;
     setRefreshing(false);
   }, [fetchAlbums]);
 

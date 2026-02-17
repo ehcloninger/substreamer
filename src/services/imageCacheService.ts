@@ -203,7 +203,7 @@ export function getImageCacheStats(): ImageCacheStats {
 /* ------------------------------------------------------------------ */
 
 /** A single cached file variant. */
-export interface CachedFileEntry {
+interface CachedFileEntry {
   size: number;
   fileName: string;
   uri: string;
@@ -222,7 +222,7 @@ const SIZE_FILE_RE = /^(50|150|300|600)\.(jpg|png|webp)$/;
  * List all cached images grouped by coverArtId.
  * Each entry includes the individual file variants found on disk.
  */
-export function listCachedImages(): CachedImageEntry[] {
+function listCachedImages(): CachedImageEntry[] {
   const dir = ensureCacheDir();
   let subDirs: (File | Directory)[];
   try {

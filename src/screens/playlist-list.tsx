@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { PlaylistListView, type PlaylistLayout } from '../components/PlaylistListView';
 import { useTheme } from '../hooks/useTheme';
 import { playlistLibraryStore } from '../store/playlistLibraryStore';
+import { minDelay } from '../utils/stringHelpers';
 
 export function PlaylistListScreen({ layout = 'list' }: { layout?: PlaylistLayout }) {
   const { colors } = useTheme();
@@ -23,9 +24,9 @@ export function PlaylistListScreen({ layout = 'list' }: { layout?: PlaylistLayou
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 2000));
+    const delay = minDelay();
     await fetchAllPlaylists();
-    await minDelay;
+    await delay;
     setRefreshing(false);
   }, [fetchAllPlaylists]);
 

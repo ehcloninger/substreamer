@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
-  InteractionManager,
   Platform,
   Pressable,
   RefreshControl,
@@ -24,7 +23,9 @@ import { SectionTitle } from '../components/SectionTitle';
 import { SongCard } from '../components/SongCard';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
+import { useTransitionComplete } from '../hooks/useTransitionComplete';
 import { refreshCachedImage } from '../services/imageCacheService';
+import { minDelay } from '../utils/stringHelpers';
 import { playTrack } from '../services/playerService';
 import { artistDetailStore } from '../store/artistDetailStore';
 import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
@@ -68,16 +69,7 @@ export function ArtistDetailScreen() {
   // Defer heavy sections (top songs, similar artists, albums) until the
   // navigation animation completes so the transition isn't blocked by
   // mounting dozens of CachedImage components synchronously.
-  const [ready, setReady] = useState(!cachedEntry);
-
-  useEffect(() => {
-    if (cachedEntry && !ready) {
-      const handle = InteractionManager.runAfterInteractions(() => {
-        setReady(true);
-      });
-      return () => handle.cancel();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const ready = useTransitionComplete(!cachedEntry);
 
   const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
     artist?.coverArt,
@@ -112,9 +104,7 @@ export function ArtistDetailScreen() {
     else setLoading(true);
     setError(null);
     try {
-      const minDelay = isRefresh
-        ? new Promise((resolve) => setTimeout(resolve, 2000))
-        : null;
+      const delay = isRefresh ? minDelay() : null;
       const entry = await fetchArtist(id);
       if (!entry) {
         setError('Artist not found');
@@ -128,18 +118,15 @@ export function ArtistDetailScreen() {
         setTopSongs(entry.topSongs);
         setBiography(entry.biography);
         if (isRefresh && entry.artist.coverArt) {
-          refreshCachedImage(entry.artist.coverArt).catch(() => {});
+          refreshCachedImage(entry.artist.coverArt).catch(() => { /* non-critical */ });
         }
       }
-      await minDelay;
+      await delay;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load artist');
     } finally {
       if (isRefresh) setRefreshing(false);
-      else {
-        setLoading(false);
-        setReady(true);
-      }
+      else setLoading(false);
     }
   }, [id, fetchArtist]);
 

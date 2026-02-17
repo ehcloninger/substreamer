@@ -112,3 +112,10 @@ export const albumLibraryStore = create<AlbumLibraryState>()(
     }
   )
 );
+
+// Re-sort albums when the user changes the sort preference.
+layoutPreferencesStore.subscribe((state, prevState) => {
+  if (state.albumSortOrder !== prevState.albumSortOrder) {
+    albumLibraryStore.getState().resortAlbums();
+  }
+});

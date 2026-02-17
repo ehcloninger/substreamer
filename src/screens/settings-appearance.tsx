@@ -144,7 +144,6 @@ export function SettingsAppearanceScreen() {
                 style={({ pressed }) => [
                   styles.themeRow,
                   dynamicStyles.themeRow,
-                  isSelected && styles.themeRowSelected,
                   pressed && styles.pressed,
                 ]}
                 onPress={() => setThemePreference(opt.value)}
@@ -473,9 +472,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  themeRowSelected: {
-    // selected state handled by checkmark
   },
   themeRowContent: {
     flexDirection: 'row',
