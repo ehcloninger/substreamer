@@ -46,6 +46,16 @@ let cacheDir: Directory | null = null;
 /** In-flight download guard: prevents duplicate parallel downloads. */
 const downloading = new Set<string>();
 
+/**
+ * In-memory URI cache: avoids repeated synchronous filesystem lookups
+ * for the same coverArtId + size combination. Keyed by "coverArtId:size".
+ */
+const uriCache = new Map<string, string | null>();
+
+function uriCacheKey(coverArtId: string, size: number): string {
+  return `${coverArtId}:${size}`;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Initialisation                                                     */
 /* ------------------------------------------------------------------ */
@@ -82,12 +92,23 @@ export function getCachedImageUri(
   size: number,
 ): string | null {
   if (!coverArtId) return null;
+
+  const key = uriCacheKey(coverArtId, size);
+  if (uriCache.has(key)) return uriCache.get(key)!;
+
   const subDir = new Directory(ensureCacheDir(), coverArtId);
-  if (!subDir.exists) return null;
+  if (!subDir.exists) {
+    uriCache.set(key, null);
+    return null;
+  }
   for (const ext of EXTENSIONS) {
     const file = new File(subDir, `${size}${ext}`);
-    if (file.exists) return file.uri;
+    if (file.exists) {
+      uriCache.set(key, file.uri);
+      return file.uri;
+    }
   }
+  uriCache.set(key, null);
   return null;
 }
 
@@ -138,6 +159,12 @@ export async function cacheAllSizes(coverArtId: string): Promise<void> {
     await Promise.all(IMAGE_SIZES.map((s) => downloadOne(coverArtId, s)));
   } finally {
     downloading.delete(coverArtId);
+    // Re-populate the in-memory cache so subsequent lookups skip FS I/O.
+    for (const s of IMAGE_SIZES) {
+      const key = uriCacheKey(coverArtId, s);
+      uriCache.delete(key);
+      getCachedImageUri(coverArtId, s);
+    }
   }
 }
 
@@ -286,6 +313,12 @@ export async function listCachedImagesAsync(): Promise<CachedImageEntry[]> {
  */
 export function deleteCachedImage(coverArtId: string): void {
   if (!coverArtId) return;
+
+  // Evict all size variants from the in-memory cache.
+  for (const s of IMAGE_SIZES) {
+    uriCache.delete(uriCacheKey(coverArtId, s));
+  }
+
   const subDir = new Directory(ensureCacheDir(), coverArtId);
   if (!subDir.exists) return;
 
@@ -343,6 +376,7 @@ export function clearImageCache(): number {
   }
   // Recreate.
   cacheDir = null;
+  uriCache.clear();
   initImageCache();
   imageCacheStore.getState().reset();
   return freedBytes;

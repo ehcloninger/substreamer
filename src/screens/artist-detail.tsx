@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
+  InteractionManager,
   Platform,
   Pressable,
   RefreshControl,
@@ -64,6 +65,20 @@ export function ArtistDetailScreen() {
     () => layoutPreferencesStore.getState().artistAlbumSortOrder === 'newest',
   );
 
+  // Defer heavy sections (top songs, similar artists, albums) until the
+  // navigation animation completes so the transition isn't blocked by
+  // mounting dozens of CachedImage components synchronously.
+  const [ready, setReady] = useState(!cachedEntry);
+
+  useEffect(() => {
+    if (cachedEntry && !ready) {
+      const handle = InteractionManager.runAfterInteractions(() => {
+        setReady(true);
+      });
+      return () => handle.cancel();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
     artist?.coverArt,
     colors.background,
@@ -121,7 +136,10 @@ export function ArtistDetailScreen() {
       setError(e instanceof Error ? e.message : 'Failed to load artist');
     } finally {
       if (isRefresh) setRefreshing(false);
-      else setLoading(false);
+      else {
+        setLoading(false);
+        setReady(true);
+      }
     }
   }, [id, fetchArtist]);
 
@@ -224,89 +242,94 @@ export function ArtistDetailScreen() {
           </View>
         </View>
 
-        {/* ---- Biography ---- */}
-        {biography != null && biography.length > 0 && (
-          <View style={styles.section}>
-            <SectionTitle title="About" color={colors.label} />
-            <Text
-              style={[styles.bioText, { color: colors.textSecondary }]}
-              numberOfLines={bioExpanded ? undefined : 4}
-            >
-              {biography}
-            </Text>
-            <Pressable
-              onPress={() => setBioExpanded((prev) => !prev)}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <Text style={[styles.bioToggle, { color: colors.primary }]}>
-                {bioExpanded ? 'Show less' : 'Read more'}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* ---- Top Songs ---- */}
-        {topSongs.length > 0 && (
-          <View style={styles.section}>
-            <SectionTitle title="Top Songs" color={colors.label} />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}
-            >
-              {topSongs.map((song, index) => (
-                <SongCard key={`${song.id}-${index}`} song={song} width={CARD_WIDTH} onPress={() => playTrack(song, topSongs)} />
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ---- Similar Artists ---- */}
-        {similarArtists.length > 0 && (
-          <View style={styles.section}>
-            <SectionTitle title="Similar Artists" color={colors.label} />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}
-            >
-              {similarArtists.map((sa) => (
-                <ArtistCard key={sa.id} artist={sa} width={CARD_WIDTH} />
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ---- Albums ---- */}
-        {albums.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <SectionTitle title="Albums" color={colors.label} />
-              <Pressable
-                onPress={() => setAlbumSortDesc((prev) => !prev)}
-                style={({ pressed }) => [
-                  styles.sortButton,
-                  { backgroundColor: colors.card },
-                  pressed && styles.pressed,
-                ]}
-                hitSlop={8}
-              >
-                <Ionicons
-                  name={albumSortDesc ? 'arrow-down' : 'arrow-up'}
-                  size={14}
-                  color={colors.primary}
-                />
-                <Text style={[styles.sortLabel, { color: colors.textSecondary }]}>
-                  {albumSortDesc ? 'Newest' : 'Oldest'}
+        {/* Heavy sections deferred until after the navigation animation */}
+        {ready && (
+          <>
+            {/* ---- Biography ---- */}
+            {biography != null && biography.length > 0 && (
+              <View style={styles.section}>
+                <SectionTitle title="About" color={colors.label} />
+                <Text
+                  style={[styles.bioText, { color: colors.textSecondary }]}
+                  numberOfLines={bioExpanded ? undefined : 4}
+                >
+                  {biography}
                 </Text>
-              </Pressable>
-            </View>
-            <View style={styles.albumList}>
-              {sortedAlbums.map((album) => (
-                <AlbumRow key={album.id} album={album} />
-              ))}
-            </View>
-          </View>
+                <Pressable
+                  onPress={() => setBioExpanded((prev) => !prev)}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <Text style={[styles.bioToggle, { color: colors.primary }]}>
+                    {bioExpanded ? 'Show less' : 'Read more'}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
+            {/* ---- Top Songs ---- */}
+            {topSongs.length > 0 && (
+              <View style={styles.section}>
+                <SectionTitle title="Top Songs" color={colors.label} />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalList}
+                >
+                  {topSongs.map((song, index) => (
+                    <SongCard key={`${song.id}-${index}`} song={song} width={CARD_WIDTH} onPress={() => playTrack(song, topSongs)} />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* ---- Similar Artists ---- */}
+            {similarArtists.length > 0 && (
+              <View style={styles.section}>
+                <SectionTitle title="Similar Artists" color={colors.label} />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalList}
+                >
+                  {similarArtists.map((sa) => (
+                    <ArtistCard key={sa.id} artist={sa} width={CARD_WIDTH} />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* ---- Albums ---- */}
+            {albums.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <SectionTitle title="Albums" color={colors.label} />
+                  <Pressable
+                    onPress={() => setAlbumSortDesc((prev) => !prev)}
+                    style={({ pressed }) => [
+                      styles.sortButton,
+                      { backgroundColor: colors.card },
+                      pressed && styles.pressed,
+                    ]}
+                    hitSlop={8}
+                  >
+                    <Ionicons
+                      name={albumSortDesc ? 'arrow-down' : 'arrow-up'}
+                      size={14}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.sortLabel, { color: colors.textSecondary }]}>
+                      {albumSortDesc ? 'Newest' : 'Oldest'}
+                    </Text>
+                  </Pressable>
+                </View>
+                <View style={styles.albumList}>
+                  {sortedAlbums.map((album) => (
+                    <AlbumRow key={album.id} album={album} />
+                  ))}
+                </View>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </View>
