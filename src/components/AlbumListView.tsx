@@ -14,6 +14,7 @@ import type { AlbumID3 } from '../services/subsonicService';
 import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
 import { AlbumCard } from './AlbumCard';
 import { AlbumRow } from './AlbumRow';
+import { closeOpenRow } from './SwipeableRow';
 import { AlphabetScroller } from './AlphabetScroller';
 
 export type AlbumLayout = 'list' | 'grid';
@@ -178,6 +179,7 @@ export function AlbumListView({
         data={albums}
         renderItem={isGrid ? renderGridItem : renderListItem}
         keyExtractor={keyExtractor}
+        onScrollBeginDrag={closeOpenRow}
         numColumns={isGrid ? GRID_COLUMNS : 1}
         contentContainerStyle={[
           styles.listContent,

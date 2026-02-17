@@ -14,6 +14,7 @@ import { playTrack } from '../services/playerService';
 import type { Child } from '../services/subsonicService';
 import { SongCard } from './SongCard';
 import { SongRow } from './SongRow';
+import { closeOpenRow } from './SwipeableRow';
 
 export type SongLayout = 'list' | 'grid';
 
@@ -136,6 +137,7 @@ export function SongListView({
       data={songs}
       renderItem={isGrid ? renderGridItem : renderListItem}
       keyExtractor={keyExtractor}
+      onScrollBeginDrag={closeOpenRow}
       numColumns={isGrid ? GRID_COLUMNS : 1}
       contentContainerStyle={[
         styles.listContent,

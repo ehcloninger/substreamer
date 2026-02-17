@@ -626,6 +626,53 @@ export async function clearQueue(): Promise<void> {
 }
 
 /**
+ * Append one or more tracks to the end of the current play queue.
+ *
+ * If the queue is empty (nothing loaded), this starts playback from the
+ * first track in the supplied array.  Otherwise the tracks are silently
+ * appended and playback continues uninterrupted.
+ */
+export async function addToQueue(tracks: Child[]): Promise<void> {
+  if (tracks.length === 0) return;
+
+  // Nothing loaded yet – start fresh playback with these tracks.
+  if (currentChildQueue.length === 0) {
+    await playTrack(tracks[0], tracks);
+    return;
+  }
+
+  await ensureCoverArtAuth();
+
+  const rnTracks = tracks.map(childToTrack);
+  await TrackPlayer.add(rnTracks);
+
+  currentChildQueue = [...currentChildQueue, ...tracks];
+  playerStore.getState().setQueue(currentChildQueue);
+}
+
+/**
+ * Remove a track from the play queue by its index.
+ *
+ * Handles the edge case where the removed track is the currently playing
+ * track – RNTP will automatically advance to the next track.  If the
+ * removed track is the last one in the queue the player is cleared.
+ */
+export async function removeFromQueue(index: number): Promise<void> {
+  if (index < 0 || index >= currentChildQueue.length) return;
+
+  // If this is the only track, just clear everything.
+  if (currentChildQueue.length === 1) {
+    await clearQueue();
+    return;
+  }
+
+  await TrackPlayer.remove(index);
+
+  currentChildQueue = currentChildQueue.filter((_, i) => i !== index);
+  playerStore.getState().setQueue(currentChildQueue);
+}
+
+/**
  * Cycle the repeat mode: off → all → one → off.
  *
  * Updates both the persisted store and the native RNTP player.

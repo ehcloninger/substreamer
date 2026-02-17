@@ -1,10 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useCallback, useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useTheme } from '../hooks/useTheme';
+import { addSongToQueue, toggleStar } from '../services/moreOptionsService';
 import { type Child } from '../services/subsonicService';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 import { formatTrackDuration } from '../utils/formatters';
 
 const COVER_SIZE = 300;
@@ -17,50 +20,79 @@ export const SongRow = memo(function SongRow({ song, onPress }: { song: Child; o
   const duration =
     song.duration != null ? formatTrackDuration(song.duration) : '—';
 
+  const handleAddToQueue = useCallback(() => {
+    addSongToQueue(song);
+  }, [song]);
+
+  const handleToggleStar = useCallback(() => {
+    toggleStar('song', song.id, Boolean(song.starred));
+  }, [song.id, song.starred]);
+
+  const handleLongPress = useCallback(() => {
+    moreOptionsStore.getState().show({ type: 'song', item: song });
+  }, [song]);
+
+  const rightActions: SwipeAction[] = useMemo(
+    () => [{ icon: 'list-outline', color: colors.primary, label: 'Queue', onPress: handleAddToQueue }],
+    [colors.primary, handleAddToQueue],
+  );
+
+  const leftActions: SwipeAction[] = useMemo(
+    () => [
+      {
+        icon: song.starred ? 'heart' : 'heart-outline',
+        color: colors.red,
+        label: 'Favorite',
+        onPress: handleToggleStar,
+      },
+    ],
+    [song.starred, colors.red, handleToggleStar],
+  );
+
   return (
-    <Pressable
+    <SwipeableRow
+      rightActions={rightActions}
+      leftActions={leftActions}
+      onLongPress={handleLongPress}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: colors.card },
-        pressed && styles.pressed,
-      ]}
     >
-      <CachedImage coverArtId={song.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
-      <View style={styles.text}>
-        <Text
-          style={[styles.songName, { color: colors.textPrimary }]}
-          numberOfLines={1}
-        >
-          {song.title}
-        </Text>
-        <Text
-          style={[styles.artistName, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {song.artist ?? 'Unknown Artist'}
-        </Text>
-        <View style={styles.meta}>
-          <View style={styles.metaAlbum}>
-            <Ionicons name="disc-outline" size={14} color={colors.primary} />
-            <View style={styles.albumTextWrapper}>
-              <Text
-                style={[styles.albumText, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {song.album ?? 'Unknown Album'}
+      <View style={[styles.row, { backgroundColor: colors.card }]}>
+        <CachedImage coverArtId={song.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
+        <View style={styles.text}>
+          <Text
+            style={[styles.songName, { color: colors.textPrimary }]}
+            numberOfLines={1}
+          >
+            {song.title}
+          </Text>
+          <Text
+            style={[styles.artistName, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {song.artist ?? 'Unknown Artist'}
+          </Text>
+          <View style={styles.meta}>
+            <View style={styles.metaAlbum}>
+              <Ionicons name="disc-outline" size={14} color={colors.primary} />
+              <View style={styles.albumTextWrapper}>
+                <Text
+                  style={[styles.albumText, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {song.album ?? 'Unknown Album'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.metaDuration}>
+              <Ionicons name="time-outline" size={14} color={colors.primary} />
+              <Text style={[styles.durationText, { color: colors.textSecondary }]}>
+                {duration}
               </Text>
             </View>
           </View>
-          <View style={styles.metaDuration}>
-            <Ionicons name="time-outline" size={14} color={colors.primary} />
-            <Text style={[styles.durationText, { color: colors.textSecondary }]}>
-              {duration}
-            </Text>
-          </View>
         </View>
       </View>
-    </Pressable>
+    </SwipeableRow>
   );
 });
 
@@ -71,9 +103,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   cover: {
     width: 56,

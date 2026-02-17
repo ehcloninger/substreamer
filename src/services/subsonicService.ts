@@ -478,6 +478,24 @@ export async function unstarArtist(artistId: string): Promise<void> {
   await api.unstar({ artistId });
 }
 
+/**
+ * Star (favorite) a song/media item by its id.
+ */
+export async function starSong(id: string): Promise<void> {
+  const api = getApi();
+  if (!api) return;
+  await api.star({ id });
+}
+
+/**
+ * Unstar (unfavorite) a song/media item by its id.
+ */
+export async function unstarSong(id: string): Promise<void> {
+  const api = getApi();
+  if (!api) return;
+  await api.unstar({ id });
+}
+
 /* ------------------------------------------------------------------ */
 /*  Library Scan                                                       */
 /* ------------------------------------------------------------------ */

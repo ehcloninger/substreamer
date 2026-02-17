@@ -27,6 +27,8 @@ import { PlaybackRateButton } from '../components/PlaybackRateButton';
 import { PlayerProgressBar } from '../components/PlayerProgressBar';
 import { RepeatButton } from '../components/RepeatButton';
 import { ShuffleButton } from '../components/ShuffleButton';
+import { QueueItemRow } from '../components/QueueItemRow';
+import { closeOpenRow } from '../components/SwipeableRow';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import {
@@ -42,7 +44,7 @@ import {
 import { type Child } from '../services/subsonicService';
 import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
 import { playerStore } from '../store/playerStore';
-import { formatTrackDuration } from '../utils/formatters';
+
 
 const HERO_PADDING = 32;
 const HERO_COVER_SIZE = 600;
@@ -150,7 +152,7 @@ export function PlayerView({ onClose }: PlayerViewProps) {
 
   const renderQueueItem = useCallback(
     ({ item, index }: { item: Child; index: number }) => (
-      <QueueItem
+      <QueueItemRow
         track={item}
         index={index}
         isActive={item.id === currentTrack?.id}
@@ -234,6 +236,7 @@ export function PlayerView({ onClose }: PlayerViewProps) {
         keyExtractor={keyExtractor}
         ListHeaderComponent={listHeader}
         estimatedItemSize={60}
+        onScrollBeginDrag={closeOpenRow}
         drawDistance={200}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
@@ -511,83 +514,6 @@ const PlayerListHeader = memo(function PlayerListHeader({
 });
 
 /* ------------------------------------------------------------------ */
-/*  Queue item                                                         */
-/* ------------------------------------------------------------------ */
-
-interface QueueItemProps {
-  track: Child;
-  index: number;
-  isActive: boolean;
-  colors: {
-    textPrimary: string;
-    textSecondary: string;
-    primary: string;
-    border: string;
-  };
-  onPress: (index: number) => void;
-}
-
-const QueueItem = memo(function QueueItem({ track, index, isActive, colors, onPress }: QueueItemProps) {
-  const handlePress = useCallback(() => {
-    onPress(index);
-  }, [index, onPress]);
-
-  const titleColor = isActive ? colors.primary : colors.textPrimary;
-  const subtitleColor = isActive ? colors.primary : colors.textSecondary;
-  const durationText =
-    track.duration != null ? formatTrackDuration(track.duration) : '—';
-
-  return (
-    <Pressable
-      onPress={handlePress}
-      style={({ pressed }) => [
-        queueStyles.row,
-        { borderBottomColor: colors.border },
-        pressed && queueStyles.pressed,
-      ]}
-    >
-      {/* Cover art with now-playing overlay */}
-      <View style={queueStyles.coverWrap}>
-        <CachedImage
-          coverArtId={track.coverArt}
-          size={150}
-          style={queueStyles.cover}
-          resizeMode="cover"
-        />
-        {isActive && (
-          <View style={queueStyles.activeOverlay}>
-            <Ionicons name="play" size={22} color={colors.primary} />
-          </View>
-        )}
-      </View>
-
-      {/* Track info */}
-      <View style={queueStyles.info}>
-        <Text
-          style={[queueStyles.title, { color: titleColor }]}
-          numberOfLines={1}
-        >
-          {track.title}
-        </Text>
-        {track.artist && (
-          <Text
-            style={[queueStyles.artist, { color: subtitleColor }]}
-            numberOfLines={1}
-          >
-            {track.artist}
-          </Text>
-        )}
-      </View>
-
-      {/* Duration */}
-      <Text style={[queueStyles.duration, { color: isActive ? colors.primary : colors.textSecondary }]}>
-        {durationText}
-      </Text>
-    </Pressable>
-  );
-});
-
-/* ------------------------------------------------------------------ */
 /*  Styles                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -753,53 +679,5 @@ const styles = StyleSheet.create({
   shuffleText: {
     fontSize: 16,
     fontWeight: '600',
-  },
-});
-
-const QUEUE_COVER_SIZE = 40;
-
-const queueStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  coverWrap: {
-    width: QUEUE_COVER_SIZE,
-    height: QUEUE_COVER_SIZE,
-    borderRadius: 4,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.06)',
-  },
-  cover: {
-    width: QUEUE_COVER_SIZE,
-    height: QUEUE_COVER_SIZE,
-  },
-  activeOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  info: {
-    flex: 1,
-    minWidth: 0,
-    marginLeft: 10,
-  },
-  title: {
-    fontSize: 16,
-  },
-  artist: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  duration: {
-    fontSize: 15,
-    marginLeft: 12,
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });

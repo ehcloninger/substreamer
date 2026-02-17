@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { memo, useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useCallback, useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useTheme } from '../hooks/useTheme';
+import { addAlbumToQueue, toggleStar } from '../services/moreOptionsService';
 import { type AlbumID3 } from '../services/subsonicService';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 import { formatCompactDuration } from '../utils/formatters';
 
 const COVER_SIZE = 300;
@@ -16,56 +19,86 @@ export const ROW_HEIGHT = 80;
 export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
   const { colors } = useTheme();
   const router = useRouter();
+
   const onPress = useCallback(() => {
     router.push(`/album/${album.id}`);
   }, [album.id, router]);
 
+  const handleAddToQueue = useCallback(() => {
+    addAlbumToQueue(album);
+  }, [album]);
+
+  const handleToggleStar = useCallback(() => {
+    toggleStar('album', album.id, Boolean(album.starred));
+  }, [album.id, album.starred]);
+
+  const handleLongPress = useCallback(() => {
+    moreOptionsStore.getState().show({ type: 'album', item: album });
+  }, [album]);
+
+  const rightActions: SwipeAction[] = useMemo(
+    () => [{ icon: 'list-outline', color: colors.primary, label: 'Queue', onPress: handleAddToQueue }],
+    [colors.primary, handleAddToQueue],
+  );
+
+  const leftActions: SwipeAction[] = useMemo(
+    () => [
+      {
+        icon: album.starred ? 'heart' : 'heart-outline',
+        color: colors.red,
+        label: 'Favorite',
+        onPress: handleToggleStar,
+      },
+    ],
+    [album.starred, colors.red, handleToggleStar],
+  );
+
   return (
-    <Pressable
+    <SwipeableRow
+      rightActions={rightActions}
+      leftActions={leftActions}
+      onLongPress={handleLongPress}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: colors.card },
-        pressed && styles.pressed,
-      ]}
     >
-      <CachedImage coverArtId={album.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
-      <View style={styles.text}>
-        <View style={styles.titleRow}>
+      <View style={[styles.row, { backgroundColor: colors.card }]}>
+        <CachedImage coverArtId={album.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
+        <View style={styles.text}>
+          <View style={styles.titleRow}>
+            <Text
+              style={[styles.albumName, { color: colors.textPrimary }]}
+              numberOfLines={1}
+            >
+              {album.name}
+            </Text>
+            {album.year != null && album.year > 0 && (
+              <Text style={[styles.year, { color: colors.textSecondary }]}>
+                ({album.year})
+              </Text>
+            )}
+          </View>
           <Text
-            style={[styles.albumName, { color: colors.textPrimary }]}
+            style={[styles.artistName, { color: colors.textSecondary }]}
             numberOfLines={1}
           >
-            {album.name}
+            {album.artist ?? 'Unknown Artist'}
           </Text>
-          {album.year != null && album.year > 0 && (
-            <Text style={[styles.year, { color: colors.textSecondary }]}>
-              ({album.year})
-            </Text>
-          )}
-        </View>
-        <Text
-          style={[styles.artistName, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {album.artist ?? 'Unknown Artist'}
-        </Text>
-        <View style={styles.meta}>
-          <View style={styles.metaLeft}>
-            <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
-            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-              {album.songCount} {album.songCount === 1 ? 'track' : 'tracks'}
-            </Text>
-          </View>
-          <View style={styles.metaRight}>
-            <Ionicons name="time-outline" size={14} color={colors.primary} />
-            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-              {formatCompactDuration(album.duration)}
-            </Text>
+          <View style={styles.meta}>
+            <View style={styles.metaLeft}>
+              <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                {album.songCount} {album.songCount === 1 ? 'track' : 'tracks'}
+              </Text>
+            </View>
+            <View style={styles.metaRight}>
+              <Ionicons name="time-outline" size={14} color={colors.primary} />
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                {formatCompactDuration(album.duration)}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
-    </Pressable>
+    </SwipeableRow>
   );
 });
 
@@ -76,9 +109,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   cover: {
     width: 56,

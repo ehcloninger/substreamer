@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
@@ -16,19 +16,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumRow } from '../components/AlbumRow';
-import { ArtistOptionsSheet } from '../components/ArtistOptionsSheet';
+import { ArtistCard } from '../components/ArtistCard';
 import { CachedImage } from '../components/CachedImage';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { SectionTitle } from '../components/SectionTitle';
+import { SongCard } from '../components/SongCard';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import { refreshCachedImage } from '../services/imageCacheService';
 import { playTrack } from '../services/playerService';
 import { artistDetailStore } from '../store/artistDetailStore';
 import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 
 import {
-  type ArtistID3,
   type ArtistInfo2,
   type ArtistWithAlbumsID3,
   type Child,
@@ -38,85 +39,7 @@ const HERO_PADDING = 24;
 const HERO_IMAGE_SIZE = 180;
 const HERO_COVER_SIZE = 600;
 const HEADER_BAR_HEIGHT = 44;
-const SIMILAR_THUMB_SIZE = 72;
-const SONG_THUMB_SIZE = 72;
-
-/* ------------------------------------------------------------------ */
-/*  Similar artist thumbnail                                          */
-/* ------------------------------------------------------------------ */
-
-function SimilarArtistItem({
-  artist,
-  colors,
-}: {
-  artist: ArtistID3;
-  colors: ReturnType<typeof useTheme>['colors'];
-}) {
-  const router = useRouter();
-
-  const onPress = useCallback(() => {
-    router.push(`/artist/${artist.id}`);
-  }, [artist.id, router]);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.similarItem, pressed && styles.pressed]}
-    >
-      <CachedImage
-        coverArtId={artist.coverArt}
-        size={300}
-        style={styles.similarImage}
-        resizeMode="cover"
-      />
-      <Text
-        style={[styles.similarName, { color: colors.textPrimary }]}
-        numberOfLines={2}
-      >
-        {artist.name}
-      </Text>
-    </Pressable>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Top song thumbnail                                                */
-/* ------------------------------------------------------------------ */
-
-function TopSongItem({
-  song,
-  colors,
-  onPress,
-}: {
-  song: Child;
-  colors: ReturnType<typeof useTheme>['colors'];
-  onPress?: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.songItem, pressed && styles.pressed]}>
-      <CachedImage
-        coverArtId={song.coverArt}
-        size={300}
-        style={styles.songImage}
-        resizeMode="cover"
-      />
-      <Text
-        style={[styles.songTitle, { color: colors.textPrimary }]}
-        numberOfLines={1}
-      >
-        {song.title}
-      </Text>
-      {song.artist && (
-        <Text
-          style={[styles.songArtist, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {song.artist}
-        </Text>
-      )}
-    </Pressable>
-  );
-}
+const CARD_WIDTH = 88;
 
 /* ------------------------------------------------------------------ */
 /*  Main screen                                                       */
@@ -137,7 +60,6 @@ export function ArtistDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bioExpanded, setBioExpanded] = useState(false);
-  const [sheetVisible, setSheetVisible] = useState(false);
   const [albumSortDesc, setAlbumSortDesc] = useState(
     () => layoutPreferencesStore.getState().artistAlbumSortOrder === 'newest',
   );
@@ -147,25 +69,11 @@ export function ArtistDetailScreen() {
     colors.background,
   );
 
-  /* ---- Header right: more options button ---- */
-  useEffect(() => {
-    if (!artist) return;
-    navigation.setOptions({
-      headerRight: () => (
-        <MoreOptionsButton
-          onPress={() => setSheetVisible(true)}
-          color={colors.textPrimary}
-        />
-      ),
-    });
-  }, [artist, navigation, colors.textPrimary]);
-
   const handleStarChanged = useCallback(
     (artistId: string, starred: boolean) => {
       setArtist((prev) => {
         if (!prev) return prev;
         const updated = { ...prev, starred: starred ? new Date() : undefined };
-        // Keep the persisted store in sync
         const entry = artistDetailStore.getState().artists[artistId];
         if (entry) {
           artistDetailStore.setState({
@@ -180,6 +88,23 @@ export function ArtistDetailScreen() {
     },
     []
   );
+
+  /* ---- Header right: more options button ---- */
+  useEffect(() => {
+    if (!artist) return;
+    navigation.setOptions({
+      headerRight: () => (
+        <MoreOptionsButton
+          onPress={() =>
+            moreOptionsStore
+              .getState()
+              .show({ type: 'artist', item: artist }, handleStarChanged)
+          }
+          color={colors.textPrimary}
+        />
+      ),
+    });
+  }, [artist, navigation, colors.textPrimary, handleStarChanged]);
 
   /* ---- Data fetching ---- */
   const { fetchArtist } = artistDetailStore.getState();
@@ -349,10 +274,10 @@ export function ArtistDetailScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.songList}
+              contentContainerStyle={styles.horizontalList}
             >
               {topSongs.map((song, index) => (
-                <TopSongItem key={`${song.id}-${index}`} song={song} colors={colors} onPress={() => playTrack(song, topSongs)} />
+                <SongCard key={`${song.id}-${index}`} song={song} width={CARD_WIDTH} onPress={() => playTrack(song, topSongs)} />
               ))}
             </ScrollView>
           </View>
@@ -365,10 +290,10 @@ export function ArtistDetailScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.similarList}
+              contentContainerStyle={styles.horizontalList}
             >
               {similarArtists.map((sa) => (
-                <SimilarArtistItem key={sa.id} artist={sa} colors={colors} />
+                <ArtistCard key={sa.id} artist={sa} width={CARD_WIDTH} />
               ))}
             </ScrollView>
           </View>
@@ -406,15 +331,6 @@ export function ArtistDetailScreen() {
           </View>
         )}
       </ScrollView>
-
-      {artist && (
-        <ArtistOptionsSheet
-          artist={artist}
-          visible={sheetVisible}
-          onClose={() => setSheetVisible(false)}
-          onStarChanged={handleStarChanged}
-        />
-      )}
     </View>
   );
 }
@@ -515,49 +431,9 @@ const styles = StyleSheet.create({
     // AlbumRow handles its own spacing
   },
 
-  /* Top Songs */
-  songList: {
+  /* Horizontal card lists (Top Songs / Similar Artists) */
+  horizontalList: {
     paddingRight: 16,
-    gap: 14,
-  },
-  songItem: {
-    width: SONG_THUMB_SIZE + 16,
-  },
-  songImage: {
-    width: SONG_THUMB_SIZE,
-    height: SONG_THUMB_SIZE,
-    borderRadius: 6,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-  },
-  songTitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 6,
-  },
-  songArtist: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-
-  /* Similar Artists */
-  similarList: {
-    paddingRight: 16,
-    gap: 14,
-  },
-  similarItem: {
-    alignItems: 'center',
-    width: SIMILAR_THUMB_SIZE + 16,
-  },
-  similarImage: {
-    width: SIMILAR_THUMB_SIZE,
-    height: SIMILAR_THUMB_SIZE,
-    borderRadius: SIMILAR_THUMB_SIZE / 2,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-  },
-  similarName: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 6,
-    textAlign: 'center',
+    gap: 10,
   },
 });

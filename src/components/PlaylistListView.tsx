@@ -12,6 +12,7 @@ import { useTheme } from '../hooks/useTheme';
 import type { Playlist } from '../services/subsonicService';
 import { PlaylistCard } from './PlaylistCard';
 import { PlaylistRow } from './PlaylistRow';
+import { closeOpenRow } from './SwipeableRow';
 import { AlphabetScroller } from './AlphabetScroller';
 
 export type PlaylistLayout = 'list' | 'grid';
@@ -145,6 +146,7 @@ export function PlaylistListView({
         data={playlists}
         renderItem={isGrid ? renderGridItem : renderListItem}
         keyExtractor={keyExtractor}
+        onScrollBeginDrag={closeOpenRow}
         numColumns={isGrid ? GRID_COLUMNS : 1}
         contentContainerStyle={[
           styles.listContent,

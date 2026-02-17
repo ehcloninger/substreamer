@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
+import { closeOpenRow } from '../components/SwipeableRow';
 import { TrackRow } from '../components/TrackRow';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
@@ -124,6 +125,7 @@ export function PlaylistDetailScreen() {
       </Animated.View>
       <ScrollView
         style={styles.scrollView}
+        onScrollBeginDrag={closeOpenRow}
         contentContainerStyle={[
           styles.content,
           Platform.OS !== 'ios' && { paddingTop: insets.top + HEADER_BAR_HEIGHT },

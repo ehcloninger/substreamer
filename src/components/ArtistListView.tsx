@@ -13,6 +13,7 @@ import { useTheme } from '../hooks/useTheme';
 import type { ArtistID3 } from '../services/subsonicService';
 import { ArtistCard } from './ArtistCard';
 import { ArtistRow } from './ArtistRow';
+import { closeOpenRow } from './SwipeableRow';
 import { AlphabetScroller } from './AlphabetScroller';
 
 export type ArtistLayout = 'list' | 'grid';
@@ -171,6 +172,7 @@ export function ArtistListView({
         data={artists}
         renderItem={isGrid ? renderGridItem : renderListItem}
         keyExtractor={keyExtractor}
+        onScrollBeginDrag={closeOpenRow}
         numColumns={isGrid ? GRID_COLUMNS : 1}
         contentContainerStyle={[
           styles.listContent,

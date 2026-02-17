@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
 import { memo, useCallback } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { LongPressable } from './LongPressable';
 import { useTheme } from '../hooks/useTheme';
 import { type AlbumID3 } from '../services/subsonicService';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 
 const COVER_SIZE = 300;
 
@@ -23,34 +25,33 @@ export const AlbumCard = memo(function AlbumCard({
     router.push(`/album/${album.id}`);
   }, [album.id, router]);
 
+  const onLongPress = useCallback(() => {
+    moreOptionsStore.getState().show({ type: 'album', item: album });
+  }, [album]);
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: colors.card, width },
-        pressed && styles.pressed,
-      ]}
-    >
-      <CachedImage
-        coverArtId={album.coverArt}
-        size={COVER_SIZE}
-        style={[styles.cover, { width: imageSize, height: imageSize }]}
-        resizeMode="cover"
-      />
-      <Text
-        style={[styles.albumName, { color: colors.textPrimary }]}
-        numberOfLines={1}
-      >
-        {album.name}
-      </Text>
-      <Text
-        style={[styles.artistName, { color: colors.textSecondary }]}
-        numberOfLines={1}
-      >
-        {album.artist ?? 'Unknown Artist'}
-      </Text>
-    </Pressable>
+    <LongPressable onPress={onPress} onLongPress={onLongPress}>
+      <View style={[styles.card, { backgroundColor: colors.card, width }]}>
+        <CachedImage
+          coverArtId={album.coverArt}
+          size={COVER_SIZE}
+          style={[styles.cover, { width: imageSize, height: imageSize }]}
+          resizeMode="cover"
+        />
+        <Text
+          style={[styles.albumName, { color: colors.textPrimary }]}
+          numberOfLines={1}
+        >
+          {album.name}
+        </Text>
+        <Text
+          style={[styles.artistName, { color: colors.textSecondary }]}
+          numberOfLines={1}
+        >
+          {album.artist ?? 'Unknown Artist'}
+        </Text>
+      </View>
+    </LongPressable>
   );
 });
 
@@ -58,9 +59,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     padding: 8,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   cover: {
     borderRadius: 8,

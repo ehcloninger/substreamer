@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { memo, useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { LongPressable } from './LongPressable';
 import { useTheme } from '../hooks/useTheme';
 import { type Playlist } from '../services/subsonicService';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 import { formatCompactDuration } from '../utils/formatters';
 
 const COVER_SIZE = 300;
@@ -25,39 +27,38 @@ export const PlaylistCard = memo(function PlaylistCard({
     router.push(`/playlist/${playlist.id}`);
   }, [playlist.id, router]);
 
+  const onLongPress = useCallback(() => {
+    moreOptionsStore.getState().show({ type: 'playlist', item: playlist });
+  }, [playlist]);
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: colors.card, width },
-        pressed && styles.pressed,
-      ]}
-    >
-      <CachedImage
-        coverArtId={playlist.coverArt}
-        size={COVER_SIZE}
-        style={[styles.cover, { width: imageSize, height: imageSize }]}
-        resizeMode="cover"
-      />
-      <Text
-        style={[styles.playlistName, { color: colors.textPrimary }]}
-        numberOfLines={1}
-      >
-        {playlist.name}
-      </Text>
-      <View style={styles.meta}>
-        <Ionicons name="musical-notes-outline" size={12} color={colors.primary} />
-        <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-          {playlist.songCount}
+    <LongPressable onPress={onPress} onLongPress={onLongPress}>
+      <View style={[styles.card, { backgroundColor: colors.card, width }]}>
+        <CachedImage
+          coverArtId={playlist.coverArt}
+          size={COVER_SIZE}
+          style={[styles.cover, { width: imageSize, height: imageSize }]}
+          resizeMode="cover"
+        />
+        <Text
+          style={[styles.playlistName, { color: colors.textPrimary }]}
+          numberOfLines={1}
+        >
+          {playlist.name}
         </Text>
-        <View style={styles.metaSpacer} />
-        <Ionicons name="time-outline" size={12} color={colors.primary} />
-        <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-          {formatCompactDuration(playlist.duration)}
-        </Text>
+        <View style={styles.meta}>
+          <Ionicons name="musical-notes-outline" size={12} color={colors.primary} />
+          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+            {playlist.songCount}
+          </Text>
+          <View style={styles.metaSpacer} />
+          <Ionicons name="time-outline" size={12} color={colors.primary} />
+          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+            {formatCompactDuration(playlist.duration)}
+          </Text>
+        </View>
       </View>
-    </Pressable>
+    </LongPressable>
   );
 });
 
@@ -65,9 +66,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     padding: 8,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   cover: {
     borderRadius: 8,

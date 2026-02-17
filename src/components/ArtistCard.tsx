@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
 import { memo, useCallback } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { LongPressable } from './LongPressable';
 import { useTheme } from '../hooks/useTheme';
 import { type ArtistID3 } from '../services/subsonicService';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 
 const COVER_SIZE = 300;
 
@@ -23,36 +25,35 @@ export const ArtistCard = memo(function ArtistCard({
     router.push(`/artist/${artist.id}`);
   }, [artist.id, router]);
 
+  const onLongPress = useCallback(() => {
+    moreOptionsStore.getState().show({ type: 'artist', item: artist });
+  }, [artist]);
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: colors.card, width },
-        pressed && styles.pressed,
-      ]}
-    >
-      <CachedImage
-        coverArtId={artist.coverArt}
-        size={COVER_SIZE}
-        style={[styles.cover, { width: imageSize, height: imageSize }]}
-        resizeMode="cover"
-      />
-      <Text
-        style={[styles.artistName, { color: colors.textPrimary }]}
-        numberOfLines={1}
-      >
-        {artist.name}
-      </Text>
-      <Text
-        style={[styles.albumCount, { color: colors.textSecondary }]}
-        numberOfLines={1}
-      >
-        {artist.albumCount === 1
-          ? '1 album'
-          : `${artist.albumCount} albums`}
-      </Text>
-    </Pressable>
+    <LongPressable onPress={onPress} onLongPress={onLongPress}>
+      <View style={[styles.card, { backgroundColor: colors.card, width }]}>
+        <CachedImage
+          coverArtId={artist.coverArt}
+          size={COVER_SIZE}
+          style={[styles.cover, { width: imageSize, height: imageSize }]}
+          resizeMode="cover"
+        />
+        <Text
+          style={[styles.artistName, { color: colors.textPrimary }]}
+          numberOfLines={1}
+        >
+          {artist.name}
+        </Text>
+        <Text
+          style={[styles.albumCount, { color: colors.textSecondary }]}
+          numberOfLines={1}
+        >
+          {artist.albumCount === 1
+            ? '1 album'
+            : `${artist.albumCount} albums`}
+        </Text>
+      </View>
+    </LongPressable>
   );
 });
 
@@ -60,9 +61,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     padding: 8,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   cover: {
     borderRadius: 999,

@@ -1,8 +1,10 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
+import { MoreOptionsSheet } from '../components/MoreOptionsSheet';
 import { useTheme } from '../hooks/useTheme';
 import { getImageCacheStats, initImageCache } from '../services/imageCacheService';
 import { initPlayer } from '../services/playerService';
@@ -87,7 +89,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -163,11 +165,14 @@ export default function RootLayout() {
         />
       </Stack>
 
+      {/* Global more-options bottom sheet driven by moreOptionsStore */}
+      <MoreOptionsSheet />
+
       {/* Animated splash renders as an overlay on top of the Stack so the
           navigator is always mounted and ready for auth-based navigation. */}
       {splashVisible && (
         <AnimatedSplashScreen onFinish={handleSplashFinish} />
       )}
-    </>
+    </GestureHandlerRootView>
   );
 }

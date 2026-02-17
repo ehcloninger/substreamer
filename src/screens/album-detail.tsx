@@ -16,15 +16,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Ionicons } from '@expo/vector-icons';
 
-import { AlbumOptionsSheet } from '../components/AlbumOptionsSheet';
 import { CachedImage } from '../components/CachedImage';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
+import { closeOpenRow } from '../components/SwipeableRow';
 import { TrackRow } from '../components/TrackRow';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import { refreshCachedImage } from '../services/imageCacheService';
 import { playTrack } from '../services/playerService';
 import { albumDetailStore } from '../store/albumDetailStore';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 
 import { type AlbumWithSongsID3, type Child } from '../services/subsonicService';
 
@@ -58,32 +59,16 @@ export function AlbumDetailScreen() {
   const [loading, setLoading] = useState(!cachedEntry);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sheetVisible, setSheetVisible] = useState(false);
-
   const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
     album?.coverArt,
     colors.background,
   );
-
-  /* ---- Header right: more options button ---- */
-  useEffect(() => {
-    if (!album) return;
-    navigation.setOptions({
-      headerRight: () => (
-        <MoreOptionsButton
-          onPress={() => setSheetVisible(true)}
-          color={colors.textPrimary}
-        />
-      ),
-    });
-  }, [album, navigation, colors.textPrimary]);
 
   const handleStarChanged = useCallback(
     (albumId: string, starred: boolean) => {
       setAlbum((prev) => {
         if (!prev) return prev;
         const updated = { ...prev, starred: starred ? new Date() : undefined };
-        // Keep the persisted store in sync
         const entry = albumDetailStore.getState().albums[albumId];
         if (entry) {
           albumDetailStore.setState({
@@ -98,6 +83,23 @@ export function AlbumDetailScreen() {
     },
     []
   );
+
+  /* ---- Header right: more options button ---- */
+  useEffect(() => {
+    if (!album) return;
+    navigation.setOptions({
+      headerRight: () => (
+        <MoreOptionsButton
+          onPress={() =>
+            moreOptionsStore
+              .getState()
+              .show({ type: 'album', item: album }, handleStarChanged)
+          }
+          color={colors.textPrimary}
+        />
+      ),
+    });
+  }, [album, navigation, colors.textPrimary, handleStarChanged]);
 
   /* ---- Data fetching ---- */
   const { fetchAlbum } = albumDetailStore.getState();
@@ -184,6 +186,7 @@ export function AlbumDetailScreen() {
         </Animated.View>
         <ScrollView
           style={styles.scrollView}
+          onScrollBeginDrag={closeOpenRow}
           contentContainerStyle={[
             styles.content,
             Platform.OS !== 'ios' && { paddingTop: insets.top + HEADER_BAR_HEIGHT },
@@ -265,15 +268,6 @@ export function AlbumDetailScreen() {
         </View>
       )}
         </ScrollView>
-
-      {album && (
-        <AlbumOptionsSheet
-          album={album}
-          visible={sheetVisible}
-          onClose={() => setSheetVisible(false)}
-          onStarChanged={handleStarChanged}
-        />
-      )}
     </View>
   );
 }

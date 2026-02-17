@@ -3,14 +3,22 @@
  *
  * Displays a single track with an optional track number, title, optional artist
  * subtitle, starred indicator, user rating, and duration.
+ *
+ * Supports swipe-right to add to queue, swipe-left to toggle favorite,
+ * and long-press to open the more options sheet.
  */
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { SwipeableRow, type SwipeAction } from './SwipeableRow';
+import { addSongToQueue, toggleStar } from '../services/moreOptionsService';
+import { moreOptionsStore } from '../store/moreOptionsStore';
+import { formatTrackDuration } from '../utils/formatters';
 
 import type { ThemeColors } from '../constants/theme';
 import type { Child } from '../services/subsonicService';
-import { formatTrackDuration } from '../utils/formatters';
 
 export interface TrackRowProps {
   track: Child;
@@ -28,46 +36,80 @@ export function TrackRow({ track, trackNumber, showArtist, colors, onPress }: Tr
   const starred = Boolean(track.starred);
   const rating = track.userRating;
 
+  const handleAddToQueue = useCallback(() => {
+    addSongToQueue(track);
+  }, [track]);
+
+  const handleToggleStar = useCallback(() => {
+    toggleStar('song', track.id, starred);
+  }, [track.id, starred]);
+
+  const handleLongPress = useCallback(() => {
+    moreOptionsStore.getState().show({ type: 'song', item: track });
+  }, [track]);
+
+  const rightActions: SwipeAction[] = useMemo(
+    () => [{ icon: 'list-outline', color: colors.primary, label: 'Queue', onPress: handleAddToQueue }],
+    [colors.primary, handleAddToQueue],
+  );
+
+  const leftActions: SwipeAction[] = useMemo(
+    () => [
+      {
+        icon: starred ? 'heart' : 'heart-outline',
+        color: colors.red,
+        label: 'Favorite',
+        onPress: handleToggleStar,
+      },
+    ],
+    [starred, colors.red, handleToggleStar],
+  );
+
   return (
-    <Pressable
+    <SwipeableRow
+      rightActions={rightActions}
+      leftActions={leftActions}
+      onLongPress={handleLongPress}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.trackRow,
-        { borderBottomColor: colors.border },
-        pressed && styles.pressed,
-      ]}
     >
-      <View style={styles.trackLeft}>
-        {trackNumber != null && (
-          <Text style={[styles.trackNum, { color: colors.textSecondary }]}>
-            {trackNumber}
-          </Text>
-        )}
-        <View style={styles.trackInfo}>
-          <Text style={[styles.trackTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-            {track.title}
-          </Text>
-          {showArtist && track.artist && (
-            <Text style={[styles.trackArtist, { color: colors.textSecondary }]} numberOfLines={1}>
-              {track.artist}
+      <View
+        style={[
+          styles.trackRow,
+          { borderBottomColor: colors.border },
+        ]}
+      >
+        <View style={styles.trackLeft}>
+          {trackNumber != null && (
+            <Text style={[styles.trackNum, { color: colors.textSecondary }]}>
+              {trackNumber}
             </Text>
           )}
+          <View style={styles.trackInfo}>
+            <Text style={[styles.trackTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+              {track.title}
+            </Text>
+            {showArtist && track.artist && (
+              <Text style={[styles.trackArtist, { color: colors.textSecondary }]} numberOfLines={1}>
+                {track.artist}
+              </Text>
+            )}
+          </View>
+        </View>
+        <View style={styles.trackRight}>
+          {starred && (
+            <Ionicons name="heart" size={14} color={colors.red} />
+          )}
+          {rating != null && rating > 0 && (
+            <Text style={[styles.trackRating, { color: colors.textSecondary }]}>
+              {rating}/5
+            </Text>
+          )}
+          <Text style={[styles.trackDuration, { color: colors.textSecondary }]}>
+            {duration}
+          </Text>
         </View>
       </View>
-      <View style={styles.trackRight}>
-        {starred && (
-          <Ionicons name="heart" size={14} color={colors.red} />
-        )}
-        {rating != null && rating > 0 && (
-          <Text style={[styles.trackRating, { color: colors.textSecondary }]}>
-            {rating}/5
-          </Text>
-        )}
-        <Text style={[styles.trackDuration, { color: colors.textSecondary }]}>
-          {duration}
-        </Text>
-      </View>
-    </Pressable>
+    </SwipeableRow>
   );
 }
 
@@ -76,6 +118,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 68,
     paddingVertical: 12,
     paddingHorizontal: 0,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -112,8 +155,5 @@ const styles = StyleSheet.create({
   },
   trackDuration: {
     fontSize: 15,
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });

@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { memo, useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useCallback, useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useTheme } from '../hooks/useTheme';
+import { toggleStar } from '../services/moreOptionsService';
 import { type ArtistID3 } from '../services/subsonicService';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 
 const COVER_SIZE = 300;
 
@@ -15,35 +18,55 @@ export const ROW_HEIGHT = 80;
 export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3 }) {
   const { colors } = useTheme();
   const router = useRouter();
+
   const onPress = useCallback(() => {
     router.push(`/artist/${artist.id}`);
   }, [artist.id, router]);
 
+  const handleToggleStar = useCallback(() => {
+    toggleStar('artist', artist.id, Boolean(artist.starred));
+  }, [artist.id, artist.starred]);
+
+  const handleLongPress = useCallback(() => {
+    moreOptionsStore.getState().show({ type: 'artist', item: artist });
+  }, [artist]);
+
+  const leftActions: SwipeAction[] = useMemo(
+    () => [
+      {
+        icon: artist.starred ? 'heart' : 'heart-outline',
+        color: colors.red,
+        label: 'Favorite',
+        onPress: handleToggleStar,
+      },
+    ],
+    [artist.starred, colors.red, handleToggleStar],
+  );
+
   return (
-    <Pressable
+    <SwipeableRow
+      leftActions={leftActions}
+      onLongPress={handleLongPress}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: colors.card },
-        pressed && styles.pressed,
-      ]}
     >
-      <CachedImage coverArtId={artist.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
-      <View style={styles.text}>
-        <Text
-          style={[styles.artistName, { color: colors.textPrimary }]}
-          numberOfLines={1}
-        >
-          {artist.name}
-        </Text>
-        <View style={styles.meta}>
-          <Ionicons name="disc-outline" size={14} color={colors.primary} />
-          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-            {artist.albumCount === 1 ? '1 album' : `${artist.albumCount} albums`}
+      <View style={[styles.row, { backgroundColor: colors.card }]}>
+        <CachedImage coverArtId={artist.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
+        <View style={styles.text}>
+          <Text
+            style={[styles.artistName, { color: colors.textPrimary }]}
+            numberOfLines={1}
+          >
+            {artist.name}
           </Text>
+          <View style={styles.meta}>
+            <Ionicons name="disc-outline" size={14} color={colors.primary} />
+            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+              {artist.albumCount === 1 ? '1 album' : `${artist.albumCount} albums`}
+            </Text>
+          </View>
         </View>
       </View>
-    </Pressable>
+    </SwipeableRow>
   );
 });
 
@@ -54,9 +77,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   cover: {
     width: 56,
