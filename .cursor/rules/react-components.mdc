@@ -126,11 +126,41 @@ Use `useSafeAreaInsets()` for bottom padding.
 
 ## Layout Constants
 
-Define reusable layout values as constants at the top of files:
+Define reusable layout values as constants at the top of files. Keep them **module-private** (`const`, not `export const`) unless they are consumed by another file:
 
 ```tsx
 const GRID_COLUMNS = 2;
 const GRID_GAP = 10;
 const LIST_PADDING = 16;
 const COVER_SIZE = 300;
+const ROW_HEIGHT = 80;
+```
+
+## Navigation Transition Deferral
+
+Detail screens (album, artist, playlist) use `useTransitionComplete()` to defer heavy rendering until the navigation transition animation finishes. This prevents janky transitions:
+
+```tsx
+import { useTransitionComplete } from '../hooks/useTransitionComplete';
+
+const transitionComplete = useTransitionComplete();
+// Render a lightweight placeholder until transitionComplete is true
+```
+
+Pass `skip = true` when there is no cached data and you want the loading state immediately.
+
+## Pull-to-Refresh Minimum Delay
+
+Use the shared `minDelay()` helper to ensure pull-to-refresh spinners are visible long enough for the user to perceive:
+
+```tsx
+import { minDelay } from '../utils/stringHelpers';
+
+const handleRefresh = useCallback(async () => {
+  setRefreshing(true);
+  const delay = minDelay();   // default 2000ms
+  await fetchData();
+  await delay;
+  setRefreshing(false);
+}, [fetchData]);
 ```

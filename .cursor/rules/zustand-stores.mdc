@@ -100,6 +100,35 @@ albumListsStore.getState().refreshAll();
 | `searchStore` | No | Search query and results |
 | `migrationStore` | No | Migration version tracking |
 
+## Cross-Store Subscriptions
+
+When one store needs to react to changes in another, use Zustand's `subscribe()` API at module scope in the **dependent** store's file. This avoids circular dependencies and `setTimeout + require` hacks:
+
+```typescript
+// At the bottom of albumLibraryStore.ts
+import { layoutPreferencesStore } from './layoutPreferencesStore';
+
+layoutPreferencesStore.subscribe((state, prevState) => {
+  if (state.albumSortOrder !== prevState.albumSortOrder) {
+    albumLibraryStore.getState().resortAlbums();
+  }
+});
+```
+
+Place the subscription after the store's `create()` call. The subscribing store imports the source store (not the other way around), keeping the dependency graph acyclic.
+
+## Export Scoping
+
+Only export the store itself and types that are consumed by other modules. Keep internal interfaces and type aliases module-private:
+
+```typescript
+// Good: exported because components consume it
+export const serverInfoStore = create<ServerInfoState>()(...);
+
+// Good: private because only used inside this file
+interface OpenSubsonicExtension { name: string; versions: number[] }
+```
+
 ## Error Handling in Stores
 
 Use `loading` / `error` state pattern:

@@ -88,12 +88,24 @@ export async function getAlbum(albumId: string): Promise<AlbumWithSongsID3 | nul
 - Tracks completed migration versions via `migrationStore`.
 - Handles schema changes and legacy data cleanup across app updates.
 
+## Export Scoping
+
+Only export functions and types that are consumed by other modules. Keep internal helpers, intermediate types, and implementation details module-private:
+
+- **Export:** API functions called from stores/screens, shared type aliases re-exported from `subsonic-api`.
+- **Do not export:** Internal types like `LoginResult`, `ScanStatusResult`, `CachedFileEntry`, `MigrationTask`, `StarrableType` that are only used within their own service file.
+
 ## Error Handling
 
 - Login returns a discriminated union: `{ success: true; version: string } | { success: false; error: string }`.
 - Data-fetching functions return `null` on failure rather than throwing.
 - Image caching and player sync swallow errors (best-effort).
 - Stores surface errors via `error` state field for UI display.
+- When swallowing errors in `.catch()`, always add a short comment explaining why:
+
+```typescript
+.catch(() => { /* non-critical: disk cache miss is handled by fallback */ });
+```
 
 ## Adding New API Endpoints
 
@@ -102,5 +114,5 @@ When adding a new Subsonic API call:
 1. Add the function to `subsonicService.ts`.
 2. Use `getApi()` to get the client, return `null` if not available.
 3. Wrap in try/catch, return `null` on failure.
-4. Re-export any new types from `subsonic-api`.
+4. Re-export any new types from `subsonic-api` that are needed by consumers. Keep internal types private.
 5. Consume from a Zustand store or directly in a screen.

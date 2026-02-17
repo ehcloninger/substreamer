@@ -30,12 +30,12 @@ src/
     artist/[id]
     playlist/[id]
   screens/        # Screen components with business logic
-  components/     # Reusable UI components (33)
-  hooks/          # Custom hooks (useTheme, useCachedCoverArt, useColorExtraction)
+  components/     # Reusable UI components (35)
+  hooks/          # Custom hooks (useTheme, useCachedCoverArt, useColorExtraction, useIsStarred, useTransitionComplete)
   services/       # API clients and external integrations
   store/          # Zustand stores (22 stores)
   constants/      # Theme definitions
-  utils/          # Formatting and color helpers
+  utils/          # Formatting, color, string, and timing helpers
   assets/         # App icons, splash images
 ```
 
@@ -46,6 +46,7 @@ src/
 3. **Services** are plain modules exporting async functions (no classes). `subsonicService.ts` wraps the `subsonic-api` library.
 4. **CachedImage** is the standard component for all cover art rendering – never use raw `<Image>` for Subsonic artwork.
 5. **`useTheme()`** provides `{ theme, colors }` – all components consume colors from this hook rather than importing theme constants directly.
+6. **Shared utilities** live in `src/utils/` – common helpers (alphabet indexing via `getFirstLetter`, minimum-delay promises via `minDelay`) are extracted here rather than duplicated across components and screens.
 
 ## Naming Conventions
 
