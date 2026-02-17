@@ -671,6 +671,18 @@ export async function removeFromQueue(index: number): Promise<void> {
 
   currentChildQueue = currentChildQueue.filter((_, i) => i !== index);
   playerStore.getState().setQueue(currentChildQueue);
+
+  // When a track before the currently playing track is removed, RNTP
+  // shifts its internal index but won't fire PlaybackActiveTrackChanged
+  // (the active track itself didn't change). Adjust our stored index so
+  // it continues to point at the correct track.
+  const { currentTrackIndex } = playerStore.getState();
+  if (currentTrackIndex != null && index < currentTrackIndex) {
+    playerStore.getState().setCurrentTrack(
+      playerStore.getState().currentTrack,
+      currentTrackIndex - 1,
+    );
+  }
 }
 
 /**
