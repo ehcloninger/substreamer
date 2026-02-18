@@ -46,6 +46,7 @@ import {
   togglePlayPause,
 } from '../services/playerService';
 import { type Child } from '../services/subsonicService';
+import { createShareStore } from '../store/createShareStore';
 import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
 import { moreOptionsStore } from '../store/moreOptionsStore';
 import { playerStore } from '../store/playerStore';
@@ -160,6 +161,13 @@ export function PlayerView({ onClose }: PlayerViewProps) {
     }).start(() => setShuffling(false));
   }, [shuffling, overlayOpacity, spinAnim]);
 
+  const handleShareQueue = useCallback(() => {
+    const ids = queue.map((t) => t.id);
+    if (ids.length > 0) {
+      createShareStore.getState().showQueue(ids);
+    }
+  }, [queue]);
+
   const renderQueueItem = useCallback(
     ({ item, index }: { item: Child; index: number }) => (
       <QueueItemRow
@@ -198,6 +206,7 @@ export function PlayerView({ onClose }: PlayerViewProps) {
         handleSeek={handleSeek}
         handleClearQueue={handleClearQueue}
         handleShuffle={handleShuffle}
+        handleShareQueue={handleShareQueue}
         shuffling={shuffling}
         queueLength={queue.length}
       />
@@ -219,6 +228,7 @@ export function PlayerView({ onClose }: PlayerViewProps) {
       handleSeek,
       handleClearQueue,
       handleShuffle,
+      handleShareQueue,
       shuffling,
       queue.length,
     ],
@@ -342,6 +352,7 @@ interface PlayerListHeaderProps {
   handleSeek: (seconds: number) => void;
   handleClearQueue: () => void;
   handleShuffle: () => void;
+  handleShareQueue: () => void;
   shuffling: boolean;
   queueLength: number;
 }
@@ -363,6 +374,7 @@ const PlayerListHeader = memo(function PlayerListHeader({
   handleSeek,
   handleClearQueue,
   handleShuffle,
+  handleShareQueue,
   shuffling,
   queueLength,
 }: PlayerListHeaderProps) {
@@ -536,6 +548,18 @@ const PlayerListHeader = memo(function PlayerListHeader({
                     onPress={handleShuffle}
                     disabled={shuffling || queueLength < 2}
                   />
+                  <Pressable
+                    onPress={handleShareQueue}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Share queue"
+                    style={({ pressed }) => [
+                      styles.queueActionButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Ionicons name="share-outline" size={20} color={colors.textPrimary} />
+                  </Pressable>
                   <Pressable
                     onPress={handleClearQueue}
                     hitSlop={8}

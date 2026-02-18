@@ -37,6 +37,7 @@ import {
   type Child,
   type Playlist,
 } from '../services/subsonicService';
+import { createShareStore } from '../store/createShareStore';
 import {
   moreOptionsStore,
   type MoreOptionsEntity,
@@ -97,6 +98,10 @@ function canAddToQueue(entity: MoreOptionsEntity): boolean {
 
 function hasAlbumDetails(entity: MoreOptionsEntity): boolean {
   return entity.type === 'album';
+}
+
+function canShare(entity: MoreOptionsEntity): boolean {
+  return entity.type === 'album' || entity.type === 'playlist';
 }
 
 /* ------------------------------------------------------------------ */
@@ -187,6 +192,18 @@ export function MoreOptionsSheet() {
     setTimeout(() => setDetailsVisible(true), 300);
   }, [handleClose]);
 
+  const handleShare = useCallback(() => {
+    if (!entity) return;
+    handleClose();
+    setTimeout(() => {
+      if (entity.type === 'album') {
+        createShareStore.getState().showAlbum(entity.item.id, entity.item.name);
+      } else if (entity.type === 'playlist') {
+        createShareStore.getState().showPlaylist(entity.item.id, entity.item.name);
+      }
+    }, 300);
+  }, [entity, handleClose]);
+
   if (!entity) {
     return (
       <>
@@ -202,6 +219,7 @@ export function MoreOptionsSheet() {
   const showAlbumLink = hasAlbumLink(entity);
   const showAddToQueue = canAddToQueue(entity);
   const showDetails = hasAlbumDetails(entity);
+  const showShare = canShare(entity);
 
   return (
     <>
@@ -330,6 +348,27 @@ export function MoreOptionsSheet() {
               />
               <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                 Go to Artist
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Share */}
+          {showShare && (
+            <Pressable
+              onPress={handleShare}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Ionicons
+                name="share-outline"
+                size={22}
+                color={colors.textPrimary}
+                style={styles.optionIcon}
+              />
+              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                Share
               </Text>
             </Pressable>
           )}

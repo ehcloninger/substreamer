@@ -1,0 +1,404 @@
+import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useTheme } from '../hooks/useTheme';
+import {
+  createShare,
+  createShareMultiple,
+} from '../services/subsonicService';
+import { createShareStore } from '../store/createShareStore';
+import { rewriteShareUrl } from '../store/shareSettingsStore';
+import { sharesStore } from '../store/sharesStore';
+
+const EXPIRATION_OPTIONS = [
+  { label: 'Never', days: null },
+  { label: '1 day', days: 1 },
+  { label: '7 days', days: 7 },
+  { label: '30 days', days: 30 },
+  { label: '90 days', days: 90 },
+  { label: '1 year', days: 365 },
+] as const;
+
+type ExpirationDays = (typeof EXPIRATION_OPTIONS)[number]['days'];
+
+function expirationToTimestamp(days: ExpirationDays): number | undefined {
+  if (days == null) return undefined;
+  return Date.now() + days * 24 * 60 * 60 * 1000;
+}
+
+export function CreateShareSheet() {
+  const visible = createShareStore((s) => s.visible);
+  const shareType = createShareStore((s) => s.shareType);
+  const itemId = createShareStore((s) => s.itemId);
+  const songIds = createShareStore((s) => s.songIds);
+  const itemName = createShareStore((s) => s.itemName);
+  const hide = createShareStore((s) => s.hide);
+
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const [description, setDescription] = useState('');
+  const [selectedExpiration, setSelectedExpiration] = useState<ExpirationDays>(null);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleClose = useCallback(() => {
+    hide();
+    setDescription('');
+    setSelectedExpiration(null);
+    setCreating(false);
+    setError(null);
+    setShareUrl(null);
+    setCopied(false);
+  }, [hide]);
+
+  const handleCreate = useCallback(async () => {
+    setCreating(true);
+    setError(null);
+
+    const expires = expirationToTimestamp(selectedExpiration);
+    const desc = description.trim() || undefined;
+
+    let share;
+    if (shareType === 'queue') {
+      share = await createShareMultiple(songIds, desc, expires);
+    } else {
+      if (!itemId) {
+        setError('Missing item ID');
+        setCreating(false);
+        return;
+      }
+      share = await createShare(itemId, desc, expires);
+    }
+
+    setCreating(false);
+    if (share) {
+      setShareUrl(rewriteShareUrl(share.url));
+      sharesStore.getState().fetchShares();
+    } else {
+      setError('Failed to create share. The server may not support sharing.');
+    }
+  }, [shareType, itemId, songIds, description, selectedExpiration]);
+
+  const handleCopy = useCallback(async () => {
+    if (!shareUrl) return;
+    await Clipboard.setStringAsync(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [shareUrl]);
+
+  const typeLabel = shareType === 'queue' ? 'Queue' : shareType === 'playlist' ? 'Playlist' : 'Album';
+
+  const dynamicStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        sheet: {
+          backgroundColor: colors.card,
+          paddingBottom: Math.max(insets.bottom, 16),
+        },
+        handle: { backgroundColor: colors.border },
+        title: { color: colors.textPrimary },
+        subtitle: { color: colors.textSecondary },
+        label: { color: colors.textSecondary },
+        input: {
+          backgroundColor: colors.inputBg,
+          color: colors.textPrimary,
+          borderColor: colors.border,
+        },
+        chipSelected: {
+          backgroundColor: colors.primary,
+        },
+        chipDefault: {
+          backgroundColor: colors.inputBg,
+          borderColor: colors.border,
+        },
+        chipTextSelected: { color: '#fff' },
+        chipTextDefault: { color: colors.textPrimary },
+        createButton: { backgroundColor: colors.primary },
+        errorText: { color: colors.red },
+        urlContainer: {
+          backgroundColor: colors.inputBg,
+          borderColor: colors.border,
+        },
+        urlText: { color: colors.textPrimary },
+        copyButton: { backgroundColor: colors.primary },
+      }),
+    [colors, insets.bottom],
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleClose}
+    >
+      <Pressable style={styles.backdrop} onPress={handleClose} />
+
+      <View style={[styles.sheet, dynamicStyles.sheet]}>
+        <View style={[styles.handle, dynamicStyles.handle]} />
+
+        <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
+          Share {typeLabel}
+        </Text>
+        <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
+          {itemName}
+        </Text>
+
+        {shareUrl ? (
+          <View style={styles.successSection}>
+            <View style={styles.successHeader}>
+              <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+              <Text style={[styles.successLabel, dynamicStyles.title]}>
+                Share created
+              </Text>
+            </View>
+
+            <View style={[styles.urlContainer, dynamicStyles.urlContainer]}>
+              <Text style={[styles.urlText, dynamicStyles.urlText]} selectable numberOfLines={2}>
+                {shareUrl}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={handleCopy}
+              style={({ pressed }) => [
+                styles.copyButton,
+                dynamicStyles.copyButton,
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={18} color="#fff" />
+              <Text style={styles.copyButtonText}>
+                {copied ? 'Copied!' : 'Copy to Clipboard'}
+              </Text>
+            </Pressable>
+
+            <Pressable onPress={handleClose} style={styles.doneButton}>
+              <Text style={[styles.doneButtonText, { color: colors.primary }]}>Done</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.formSection}>
+            <Text style={[styles.label, dynamicStyles.label]}>Description (optional)</Text>
+            <TextInput
+              style={[styles.input, dynamicStyles.input]}
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Add a note..."
+              placeholderTextColor={colors.textSecondary}
+              returnKeyType="done"
+              editable={!creating}
+            />
+
+            <Text style={[styles.label, dynamicStyles.label, styles.expirationLabel]}>
+              Expires
+            </Text>
+            <View style={styles.chipRow}>
+              {EXPIRATION_OPTIONS.map((opt) => {
+                const selected = selectedExpiration === opt.days;
+                return (
+                  <Pressable
+                    key={opt.label}
+                    onPress={() => setSelectedExpiration(opt.days)}
+                    disabled={creating}
+                    style={[
+                      styles.chip,
+                      selected ? dynamicStyles.chipSelected : dynamicStyles.chipDefault,
+                      !selected && styles.chipBorder,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        selected ? dynamicStyles.chipTextSelected : dynamicStyles.chipTextDefault,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {error && (
+              <Text style={[styles.errorText, dynamicStyles.errorText]}>{error}</Text>
+            )}
+
+            <Pressable
+              onPress={handleCreate}
+              disabled={creating}
+              style={({ pressed }) => [
+                styles.createButton,
+                dynamicStyles.createButton,
+                pressed && styles.buttonPressed,
+                creating && styles.buttonDisabled,
+              ]}
+            >
+              {creating ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="share-outline" size={18} color="#fff" />
+                  <Text style={styles.createButtonText}>Create Share</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  sheet: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 2,
+    paddingHorizontal: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  formSection: {
+    paddingHorizontal: 4,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  expirationLabel: {
+    marginTop: 16,
+  },
+  input: {
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  chipBorder: {
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 14,
+    marginTop: 12,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonPressed: {
+    opacity: 0.8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  successSection: {
+    paddingHorizontal: 4,
+  },
+  successHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  successLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  urlContainer: {
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    marginBottom: 16,
+  },
+  urlText: {
+    fontSize: 14,
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginBottom: 8,
+  },
+  copyButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  doneButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+});

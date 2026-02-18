@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
+import { CreateShareSheet } from '../components/CreateShareSheet';
 import { MoreOptionsSheet } from '../components/MoreOptionsSheet';
 import { useTheme } from '../hooks/useTheme';
 import { getImageCacheStats, initImageCache } from '../services/imageCacheService';
@@ -160,6 +161,10 @@ export default function RootLayout() {
           options={{ title: 'Storage & Data', headerBackTitle: 'Settings' }}
         />
         <Stack.Screen
+          name="settings-shares"
+          options={{ title: 'Shares', headerBackTitle: 'Settings' }}
+        />
+        <Stack.Screen
           name="player"
           options={{
             headerShown: false,
@@ -174,6 +179,9 @@ export default function RootLayout() {
 
       {/* Global more-options bottom sheet driven by moreOptionsStore */}
       <MoreOptionsSheet />
+
+      {/* Global create-share bottom sheet driven by createShareStore */}
+      <CreateShareSheet />
 
       {/* Animated splash renders as an overlay on top of the Stack so the
           navigator is always mounted and ready for auth-based navigation. */}

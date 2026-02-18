@@ -9,6 +9,7 @@ import SubsonicAPI, {
   type Playlist,
   type PlaylistWithSongs,
   type ScanStatus,
+  type Share,
 } from 'subsonic-api';
 
 import { authStore } from '../store/authStore';
@@ -103,7 +104,7 @@ export function clearApiCache(): void {
   cachedCoverArtToken = null;
 }
 
-export type { AlbumID3, AlbumWithSongsID3, ArtistID3, ArtistInfo2, ArtistWithAlbumsID3, Child, Playlist, PlaylistWithSongs, ScanStatus };
+export type { AlbumID3, AlbumWithSongsID3, ArtistID3, ArtistInfo2, ArtistWithAlbumsID3, Child, Playlist, PlaylistWithSongs, ScanStatus, Share };
 
 export async function ensureCoverArtAuth(): Promise<void> {
   const { isLoggedIn, serverUrl, username, password } = authStore.getState();
@@ -543,5 +544,121 @@ export async function startScan(fullScan?: boolean): Promise<ScanStatusResult | 
     };
   } catch {
     return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Shares                                                             */
+/* ------------------------------------------------------------------ */
+
+export async function getShares(): Promise<Share[] | null> {
+  const api = getApi();
+  if (!api) return null;
+  try {
+    const response = await api.getShares();
+    return response.shares?.share ?? [];
+  } catch {
+    return null;
+  }
+}
+
+export async function createShare(
+  id: string,
+  description?: string,
+  expires?: number,
+): Promise<Share | null> {
+  const api = getApi();
+  if (!api) return null;
+  try {
+    const args: { id: string; description?: string; expires?: number } = { id };
+    if (description) args.description = description;
+    if (expires != null) args.expires = expires;
+    const response = await api.createShare(args);
+    const shares = response.shares?.share ?? [];
+    return shares[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a share with multiple song IDs (e.g. for sharing a queue).
+ * The subsonic-api library only supports a single `id`, so we build the
+ * request manually using repeated `id` query parameters.
+ */
+export async function createShareMultiple(
+  ids: string[],
+  description?: string,
+  expires?: number,
+): Promise<Share | null> {
+  if (ids.length === 0) return null;
+  if (ids.length === 1) return createShare(ids[0], description, expires);
+
+  const { isLoggedIn, serverUrl, username, password } = authStore.getState();
+  if (!isLoggedIn || !serverUrl || !username || !password) return null;
+
+  try {
+    const base = normalizeServerUrl(serverUrl);
+    const bytes = await getRandomBytesAsync(16);
+    const salt = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const token = await digestStringAsync(
+      CryptoDigestAlgorithm.MD5,
+      password + salt,
+      { encoding: CryptoEncoding.HEX },
+    );
+
+    const params = new URLSearchParams({
+      v: '1.16.1',
+      c: 'substreamer',
+      f: 'json',
+      u: username,
+      t: token,
+      s: salt,
+    });
+    if (description) params.set('description', description);
+    if (expires != null) params.set('expires', String(expires));
+
+    const idParams = ids.map((i) => `id=${encodeURIComponent(i)}`).join('&');
+    const url = `${base}/rest/createShare.view?${params.toString()}&${idParams}`;
+
+    const response = await fetch(url);
+    const json = await response.json();
+    const root = json['subsonic-response'];
+    if (root?.status !== 'ok') return null;
+    const shares: Share[] = root.shares?.share ?? [];
+    return shares[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateShare(
+  id: string,
+  description?: string,
+  expires?: number,
+): Promise<boolean> {
+  const api = getApi();
+  if (!api) return false;
+  try {
+    const args: { id: string; description?: string; expires?: number } = { id };
+    if (description !== undefined) args.description = description;
+    if (expires !== undefined) args.expires = expires;
+    await api.updateShare(args);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteShare(id: string): Promise<boolean> {
+  const api = getApi();
+  if (!api) return false;
+  try {
+    await api.deleteShare({ id });
+    return true;
+  } catch {
+    return false;
   }
 }

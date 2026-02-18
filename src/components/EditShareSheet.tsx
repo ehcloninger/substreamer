@@ -1,0 +1,332 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useTheme } from '../hooks/useTheme';
+import { updateShare } from '../services/subsonicService';
+import { editShareStore } from '../store/editShareStore';
+import { sharesStore } from '../store/sharesStore';
+
+const EXPIRATION_OPTIONS = [
+  { label: 'Never', days: null },
+  { label: '1 day', days: 1 },
+  { label: '7 days', days: 7 },
+  { label: '30 days', days: 30 },
+  { label: '90 days', days: 90 },
+  { label: '1 year', days: 365 },
+] as const;
+
+type ExpirationDays = (typeof EXPIRATION_OPTIONS)[number]['days'];
+
+function expirationToTimestamp(days: ExpirationDays): number | undefined {
+  if (days == null) return undefined;
+  return Date.now() + days * 24 * 60 * 60 * 1000;
+}
+
+function closestExpirationOption(expires: Date | string | undefined): ExpirationDays {
+  if (!expires) return null;
+  const d = typeof expires === 'string' ? new Date(expires) : expires;
+  if (isNaN(d.getTime())) return null;
+  const diff = d.getTime() - Date.now();
+  if (diff <= 0) return null;
+  const days = diff / (24 * 60 * 60 * 1000);
+  if (days <= 1.5) return 1;
+  if (days <= 10) return 7;
+  if (days <= 60) return 30;
+  if (days <= 180) return 90;
+  return 365;
+}
+
+export function EditShareSheet() {
+  const visible = editShareStore((s) => s.visible);
+  const share = editShareStore((s) => s.share);
+  const hide = editShareStore((s) => s.hide);
+
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const [description, setDescription] = useState('');
+  const [selectedExpiration, setSelectedExpiration] = useState<ExpirationDays>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (share) {
+      setDescription(share.description ?? '');
+      setSelectedExpiration(closestExpirationOption(share.expires));
+      setError(null);
+    }
+  }, [share]);
+
+  const handleClose = useCallback(() => {
+    hide();
+    setDescription('');
+    setSelectedExpiration(null);
+    setSaving(false);
+    setError(null);
+  }, [hide]);
+
+  const handleSave = useCallback(async () => {
+    if (!share) return;
+    setSaving(true);
+    setError(null);
+
+    const expires = expirationToTimestamp(selectedExpiration);
+    const desc = description.trim();
+
+    const success = await updateShare(share.id, desc, expires);
+    setSaving(false);
+
+    if (success) {
+      sharesStore.getState().fetchShares();
+      handleClose();
+    } else {
+      setError('Failed to update share.');
+    }
+  }, [share, description, selectedExpiration, handleClose]);
+
+  const dynamicStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        sheet: {
+          backgroundColor: colors.card,
+          paddingBottom: Math.max(insets.bottom, 16),
+        },
+        handle: { backgroundColor: colors.border },
+        title: { color: colors.textPrimary },
+        subtitle: { color: colors.textSecondary },
+        label: { color: colors.textSecondary },
+        input: {
+          backgroundColor: colors.inputBg,
+          color: colors.textPrimary,
+          borderColor: colors.border,
+        },
+        chipSelected: { backgroundColor: colors.primary },
+        chipDefault: {
+          backgroundColor: colors.inputBg,
+          borderColor: colors.border,
+        },
+        chipTextSelected: { color: '#fff' },
+        chipTextDefault: { color: colors.textPrimary },
+        saveButton: { backgroundColor: colors.primary },
+        errorText: { color: colors.red },
+      }),
+    [colors, insets.bottom],
+  );
+
+  const shareTitle = useMemo(() => {
+    if (!share) return '';
+    if (share.description) return share.description;
+    const entries = share.entry ?? [];
+    if (entries.length > 0) {
+      const first = entries[0].title ?? entries[0].album ?? 'Shared items';
+      return entries.length > 1 ? `${first} + ${entries.length - 1} more` : first;
+    }
+    return 'Share';
+  }, [share]);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleClose}
+    >
+      <Pressable style={styles.backdrop} onPress={handleClose} />
+
+      <View style={[styles.sheet, dynamicStyles.sheet]}>
+        <View style={[styles.handle, dynamicStyles.handle]} />
+
+        <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
+          Edit Share
+        </Text>
+        <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
+          {shareTitle}
+        </Text>
+
+        <View style={styles.formSection}>
+          <Text style={[styles.label, dynamicStyles.label]}>Description</Text>
+          <TextInput
+            style={[styles.input, dynamicStyles.input]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Add a note..."
+            placeholderTextColor={colors.textSecondary}
+            returnKeyType="done"
+            editable={!saving}
+          />
+
+          <Text style={[styles.label, dynamicStyles.label, styles.expirationLabel]}>
+            Expires
+          </Text>
+          <View style={styles.chipRow}>
+            {EXPIRATION_OPTIONS.map((opt) => {
+              const selected = selectedExpiration === opt.days;
+              return (
+                <Pressable
+                  key={opt.label}
+                  onPress={() => setSelectedExpiration(opt.days)}
+                  disabled={saving}
+                  style={[
+                    styles.chip,
+                    selected ? dynamicStyles.chipSelected : dynamicStyles.chipDefault,
+                    !selected && styles.chipBorder,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      selected ? dynamicStyles.chipTextSelected : dynamicStyles.chipTextDefault,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {error && (
+            <Text style={[styles.errorText, dynamicStyles.errorText]}>{error}</Text>
+          )}
+
+          <Pressable
+            onPress={handleSave}
+            disabled={saving}
+            style={({ pressed }) => [
+              styles.saveButton,
+              dynamicStyles.saveButton,
+              pressed && styles.buttonPressed,
+              saving && styles.buttonDisabled,
+            ]}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={18} color="#fff" />
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable onPress={handleClose} style={styles.cancelButton}>
+            <Text style={[styles.cancelButtonText, { color: colors.primary }]}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  sheet: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 2,
+    paddingHorizontal: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  formSection: {
+    paddingHorizontal: 4,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  expirationLabel: {
+    marginTop: 16,
+  },
+  input: {
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  chipBorder: {
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 14,
+    marginTop: 12,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonPressed: {
+    opacity: 0.8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  cancelButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 4,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+});

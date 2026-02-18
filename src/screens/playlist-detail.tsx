@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
+import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { closeOpenRow } from '../components/SwipeableRow';
 import { TrackRow } from '../components/TrackRow';
 import { useColorExtraction } from '../hooks/useColorExtraction';
@@ -24,6 +25,7 @@ import { useTransitionComplete } from '../hooks/useTransitionComplete';
 import { refreshCachedImage } from '../services/imageCacheService';
 import { minDelay } from '../utils/stringHelpers';
 import { playTrack } from '../services/playerService';
+import { moreOptionsStore } from '../store/moreOptionsStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
 import { formatCompactDuration } from '../utils/formatters';
 
@@ -36,6 +38,7 @@ const HEADER_BAR_HEIGHT = 44;
 export function PlaylistDetailScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const cachedEntry = playlistDetailStore((s) => (id ? s.playlists[id] : undefined));
   const [playlist, setPlaylist] = useState<PlaylistWithSongs | null>(cachedEntry?.playlist ?? null);
@@ -48,6 +51,21 @@ export function PlaylistDetailScreen() {
     playlist?.coverArt,
     colors.background,
   );
+
+  /* ---- Header right: more options button ---- */
+  useEffect(() => {
+    if (!playlist) return;
+    navigation.setOptions({
+      headerRight: () => (
+        <MoreOptionsButton
+          onPress={() =>
+            moreOptionsStore.getState().show({ type: 'playlist', item: playlist })
+          }
+          color={colors.textPrimary}
+        />
+      ),
+    });
+  }, [playlist, navigation, colors.textPrimary]);
 
   /* ---- Data fetching ---- */
   const { fetchPlaylist } = playlistDetailStore.getState();

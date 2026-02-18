@@ -26,6 +26,7 @@ const SETTINGS_LINKS: {
   { route: '/settings-media-formats', label: 'Media Formats', subtitle: 'Bitrate, streaming format, transcoding, caching format', icon: 'musical-notes-outline' },
   { route: '/settings-connectivity', label: 'Connectivity', subtitle: 'Trusted SSL certificates', icon: 'globe-outline' },
   { route: '/settings-storage', label: 'Storage & Data', subtitle: 'Image cache, metadata cache, scrobbles', icon: 'folder-outline' },
+  { route: '/settings-shares', label: 'Shares', subtitle: 'Manage shared links, alternate URL', icon: 'share-social-outline' },
 ];
 
 export function SettingsScreen() {
