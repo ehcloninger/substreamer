@@ -7,8 +7,9 @@
  */
 
 import Constants from 'expo-constants';
-import { useEffect, useRef, useState } from 'react';
-import { Animated, InteractionManager } from 'react-native';
+import { useEffect, useState } from 'react';
+import { InteractionManager } from 'react-native';
+import { useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import { useCachedCoverArt } from './useCachedCoverArt';
 import { type ExtractedColors, getProminentColor } from '../utils/colors';
@@ -17,7 +18,7 @@ interface ColorExtractionResult {
   /** The extracted prominent color, or null if not available. */
   coverBackgroundColor: string | null;
   /** Animated opacity value for the gradient overlay (0 → 1 on color change). */
-  gradientOpacity: Animated.Value;
+  gradientOpacity: SharedValue<number>;
 }
 
 /**
@@ -32,7 +33,7 @@ export function useColorExtraction(
 ): ColorExtractionResult {
   const cachedUri = useCachedCoverArt(coverArtId, 50);
   const [coverBackgroundColor, setCoverBackgroundColor] = useState<string | null>(null);
-  const gradientOpacity = useRef(new Animated.Value(0)).current;
+  const gradientOpacity = useSharedValue(0);
 
   // Extract prominent color from cover art. Skip in Expo Go (native module required).
   useEffect(() => {
@@ -77,20 +78,12 @@ export function useColorExtraction(
   // Animate gradient opacity when color changes.
   useEffect(() => {
     if (coverBackgroundColor) {
-      gradientOpacity.setValue(0);
-      Animated.timing(gradientOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
+      gradientOpacity.value = 0;
+      gradientOpacity.value = withTiming(1, { duration: 400 });
     } else {
-      Animated.timing(gradientOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      gradientOpacity.value = withTiming(0, { duration: 300 });
     }
-  }, [coverBackgroundColor]);
+  }, [coverBackgroundColor, gradientOpacity]);
 
   return { coverBackgroundColor, gradientOpacity };
 }

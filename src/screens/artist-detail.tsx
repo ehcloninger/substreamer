@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Animated,
   ActivityIndicator,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumRow } from '../components/AlbumRow';
@@ -139,6 +139,10 @@ export function ArtistDetailScreen() {
   const gradientStart = coverBackgroundColor ?? colors.background;
   const gradientEnd = colors.background;
 
+  const gradientAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: gradientOpacity.value,
+  }));
+
   const albums = artist?.album ?? [];
   const similarArtists = artistInfo?.similarArtist ?? [];
 
@@ -181,7 +185,7 @@ export function ArtistDetailScreen() {
       {/* Background layers */}
       <View style={[gradientFillStyle, { backgroundColor: colors.background }]} />
       <Animated.View
-        style={[gradientFillStyle, { opacity: gradientOpacity }]}
+        style={[gradientFillStyle, gradientAnimatedStyle]}
         pointerEvents="none"
       >
         <LinearGradient

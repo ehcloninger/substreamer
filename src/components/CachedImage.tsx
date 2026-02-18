@@ -12,7 +12,6 @@
 
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  Animated,
   type ImageProps,
   type ImageStyle,
   type LayoutChangeEvent,
@@ -20,6 +19,13 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import WaveformLogo from './WaveformLogo';
 import {
@@ -91,7 +97,7 @@ export const CachedImage = memo(function CachedImage({
   );
   const [showPlaceholder, setShowPlaceholder] = useState(!hasInitialImage);
 
-  const fadeAnim = useRef(new Animated.Value(hasInitialImage ? 1 : 0)).current;
+  const fadeAnim = useSharedValue(hasInitialImage ? 1 : 0);
   const currentIdRef = useRef(coverArtId);
 
   /* ---- measure actual rendered size for placeholder logo ---- */
@@ -111,26 +117,23 @@ export const CachedImage = memo(function CachedImage({
     const cached = coverArtId ? getCachedImageUri(coverArtId, size) : null;
 
     if (cached) {
-      // Cache hit: show immediately, no placeholder.
       setUri(cached);
-      fadeAnim.stopAnimation();
-      fadeAnim.setValue(1);
+      cancelAnimation(fadeAnim);
+      fadeAnim.value = 1;
       setShowPlaceholder(false);
       return;
     }
 
     if (!coverArtId) {
-      // No cover art ID: use fallback or show placeholder.
       setUri(fallbackUri);
-      fadeAnim.stopAnimation();
-      fadeAnim.setValue(fallbackUri ? 1 : 0);
+      cancelAnimation(fadeAnim);
+      fadeAnim.value = fallbackUri ? 1 : 0;
       setShowPlaceholder(!fallbackUri);
       return;
     }
 
-    // Cache miss: reset to placeholder state, clear any stale URI.
-    fadeAnim.stopAnimation();
-    fadeAnim.setValue(0);
+    cancelAnimation(fadeAnim);
+    fadeAnim.value = 0;
     setShowPlaceholder(true);
     setUri(undefined);
   }, [coverArtId, size, fallbackUri, fadeAnim]);
@@ -139,7 +142,6 @@ export const CachedImage = memo(function CachedImage({
   useEffect(() => {
     if (!coverArtId) return;
 
-    // If already cached, the layout effect already handled it.
     const cached = getCachedImageUri(coverArtId, size);
     if (cached) return;
 
@@ -148,11 +150,9 @@ export const CachedImage = memo(function CachedImage({
     const timer = setTimeout(() => {
       if (cancelled || currentIdRef.current !== coverArtId) return;
 
-      // Set the remote URL so the Image component starts loading.
       const remoteUrl = getCoverArtUrl(coverArtId, size) ?? fallbackUri;
       if (remoteUrl) setUri(remoteUrl);
 
-      // Trigger disk caching for future visits.
       cacheAllSizes(coverArtId)
         .then(() => {
           if (cancelled || currentIdRef.current !== coverArtId) return;
@@ -170,14 +170,14 @@ export const CachedImage = memo(function CachedImage({
 
   /* ---- fade-in animation on image load ---- */
   const handleImageLoad = useCallback(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: FADE_DURATION_MS,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) setShowPlaceholder(false);
+    fadeAnim.value = withTiming(1, { duration: FADE_DURATION_MS }, (finished) => {
+      if (finished) runOnJS(setShowPlaceholder)(false);
     });
   }, [fadeAnim]);
+
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnim.value,
+  }));
 
   /* ---- derive logo size from measured layout (or style fallback) ---- */
   const flatStyle = StyleSheet.flatten(style) as (ImageStyle & ViewStyle) | undefined;
@@ -200,7 +200,7 @@ export const CachedImage = memo(function CachedImage({
         <Animated.Image
           {...imageProps}
           source={{ uri }}
-          style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}
+          style={[StyleSheet.absoluteFill, fadeStyle]}
           onLoad={handleImageLoad}
         />
       )}

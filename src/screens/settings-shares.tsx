@@ -1,11 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
-  Easing,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,6 +12,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { EditShareSheet } from '../components/EditShareSheet';
 import { useTheme } from '../hooks/useTheme';
@@ -86,7 +93,14 @@ export function SettingsSharesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const deleteAnim = useRef(new Animated.Value(0)).current;
+  const deleteAnim = useSharedValue(0);
+
+  const deleteAnimStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: interpolate(deleteAnim.value, [0, 0.3, 0.5, 0.7, 1], [0, -6, 0, -3, 0]) },
+      { rotate: `${interpolate(deleteAnim.value, [0, 0.15, 0.3, 0.45, 0.6, 1], [0, 12, -10, 6, -4, 0])}deg` },
+    ],
+  }));
 
   useEffect(() => {
     sharesStore.getState().fetchShares();
@@ -135,19 +149,15 @@ export function SettingsSharesScreen() {
           style: 'destructive',
           onPress: async () => {
             setDeletingId(share.id);
-            deleteAnim.setValue(0);
-            Animated.loop(
-              Animated.timing(deleteAnim, {
-                toValue: 1,
-                duration: 1200,
-                easing: Easing.linear,
-                useNativeDriver: true,
-              }),
-            ).start();
+            deleteAnim.value = 0;
+            deleteAnim.value = withRepeat(
+              withTiming(1, { duration: 1200, easing: Easing.linear }),
+              -1,
+            );
 
             const success = await sharesStore.getState().removeShare(share.id);
 
-            deleteAnim.stopAnimation();
+            cancelAnimation(deleteAnim);
             setDeletingId(null);
             if (!success) {
               Alert.alert('Error', 'Failed to delete share.');
@@ -344,24 +354,7 @@ export function SettingsSharesScreen() {
                   </View>
                   {deletingId === share.id ? (
                     <View style={styles.shareActions}>
-                      <Animated.View
-                        style={{
-                          transform: [
-                            {
-                              translateY: deleteAnim.interpolate({
-                                inputRange: [0, 0.3, 0.5, 0.7, 1],
-                                outputRange: [0, -6, 0, -3, 0],
-                              }),
-                            },
-                            {
-                              rotate: deleteAnim.interpolate({
-                                inputRange: [0, 0.15, 0.3, 0.45, 0.6, 1],
-                                outputRange: ['0deg', '12deg', '-10deg', '6deg', '-4deg', '0deg'],
-                              }),
-                            },
-                          ],
-                        }}
-                      >
+                      <Animated.View style={deleteAnimStyle}>
                         <Ionicons name="trash" size={22} color={colors.red} />
                       </Animated.View>
                     </View>

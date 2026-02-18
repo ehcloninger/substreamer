@@ -16,6 +16,7 @@ Substreamer is a React Native music streaming client for Subsonic-compatible ser
 - **Audio:** `react-native-track-player` (RNTP) for streaming and background playback
 - **Lists:** `@shopify/flash-list` v2 (FlashList) for all performant lists – replaces React Native FlatList
 - **Image caching:** Custom disk cache via `expo-file-system`
+- **Animations:** `react-native-reanimated` (v4) for all animations – never use React Native's built-in `Animated` API
 - **Styling:** `StyleSheet.create` + inline theme colors (no CSS-in-JS libraries)
 - **Path alias:** `@/*` maps to `./src/*`
 

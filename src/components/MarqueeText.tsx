@@ -7,15 +7,23 @@
  * full content with pauses at each end.
  */
 
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import {
-  Animated,
   type LayoutChangeEvent,
   StyleSheet,
   Text,
   type TextProps,
   View,
 } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 export interface MarqueeTextProps extends TextProps {
   /** Scroll speed in pixels per second. @default 40 */
@@ -36,8 +44,7 @@ export const MarqueeText = memo(function MarqueeText({
 }: MarqueeTextProps) {
   const [containerWidth, setContainerWidth] = useState(0);
   const [textWidth, setTextWidth] = useState(0);
-  const translateX = useRef(new Animated.Value(0)).current;
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const translateX = useSharedValue(0);
 
   const shouldScroll = textWidth > 0 && containerWidth > 0 && textWidth > containerWidth;
   const scrollDistance = shouldScroll ? textWidth - containerWidth : 0;
@@ -54,55 +61,45 @@ export const MarqueeText = memo(function MarqueeText({
   const childrenKey = typeof children === 'string' ? children : JSON.stringify(children);
 
   // Snap back to the start position when content changes.
-  // NOTE: do NOT reset textWidth here – onLayout fires before this
-  // effect and would be clobbered, preventing the animation from
-  // ever starting on subsequent tracks.
   useEffect(() => {
-    translateX.setValue(0);
+    translateX.value = 0;
   }, [childrenKey, translateX]);
 
   // Run the ping-pong animation.
-  // Include childrenKey so the animation restarts for every new track,
-  // even if shouldScroll / scrollDistance happen to be identical.
   useEffect(() => {
     if (!shouldScroll) {
-      translateX.setValue(0);
+      cancelAnimation(translateX);
+      translateX.value = 0;
       return;
     }
 
     const scrollDuration = (scrollDistance / speed) * 1000;
 
-    const loop = Animated.loop(
-      Animated.sequence([
-        // Initial pause
-        Animated.delay(initialDelay),
-        // Scroll left to reveal end
-        Animated.timing(translateX, {
-          toValue: -scrollDistance,
-          duration: scrollDuration,
-          useNativeDriver: true,
-        }),
-        // Pause at the end
-        Animated.delay(pauseDuration),
-        // Scroll back to start
-        Animated.timing(translateX, {
-          toValue: 0,
-          duration: scrollDuration,
-          useNativeDriver: true,
-        }),
-        // Pause at the start before repeating
-        Animated.delay(pauseDuration),
-      ]),
+    translateX.value = withDelay(
+      initialDelay,
+      withRepeat(
+        withSequence(
+          withTiming(-scrollDistance, { duration: scrollDuration }),
+          withDelay(
+            pauseDuration,
+            withSequence(
+              withTiming(0, { duration: scrollDuration }),
+              withDelay(pauseDuration, withTiming(0, { duration: 0 })),
+            ),
+          ),
+        ),
+        -1,
+      ),
     );
 
-    animationRef.current = loop;
-    loop.start();
-
     return () => {
-      loop.stop();
-      animationRef.current = null;
+      cancelAnimation(translateX);
     };
   }, [shouldScroll, scrollDistance, speed, pauseDuration, initialDelay, translateX, childrenKey]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   // Use measured text width when available, otherwise a large value
   // so the text never wraps. This avoids a flash of "..." truncation
@@ -119,7 +116,7 @@ export const MarqueeText = memo(function MarqueeText({
       <Animated.View
         style={[
           { width: innerWidth },
-          shouldScroll ? { transform: [{ translateX }] } : undefined,
+          shouldScroll ? animatedStyle : undefined,
         ]}
       >
         <Text {...rest} style={style}>
@@ -154,15 +151,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    // Very large width so the text never wraps – allows onLayout to
-    // report the true single-line width of the text content.
     width: 10000,
     opacity: 0,
   },
   hiddenText: {
-    // Prevent the text from stretching to fill the wide wrapper.
-    // alignSelf: 'flex-start' makes it size to its actual content
-    // width so onLayout reports the true text measurement.
     alignSelf: 'flex-start',
   },
 });

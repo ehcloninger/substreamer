@@ -2,12 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
-  Easing,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import BootSplash from 'react-native-bootsplash';
 
 import AnimatedWaveformLogo from './AnimatedWaveformLogo';
@@ -30,12 +36,12 @@ type Props = {
 };
 
 export default function AnimatedSplashScreen({ onFinish }: Props) {
-  const containerOpacity = useRef(new Animated.Value(1)).current;
-  const logoImageOpacity = useRef(new Animated.Value(1)).current;
-  const animatedLogoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(1)).current;
-  const logoTranslateY = useRef(new Animated.Value(0)).current;
-  const migrationOpacity = useRef(new Animated.Value(0)).current;
+  const containerOpacity = useSharedValue(1);
+  const logoImageOpacity = useSharedValue(1);
+  const animatedLogoOpacity = useSharedValue(0);
+  const logoScale = useSharedValue(1);
+  const logoTranslateY = useSharedValue(0);
+  const migrationOpacity = useSharedValue(0);
 
   const onFinishRef = useRef(onFinish);
   const didFinish = useRef(false);
@@ -50,15 +56,28 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
     }
   }, []);
 
-  const fadeOut = useCallback(
-    () =>
-      Animated.timing(containerOpacity, {
-        toValue: 0,
-        duration: 500,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    [containerOpacity],
+  const fadeOut = useCallback(() => {
+    containerOpacity.value = withTiming(
+      0,
+      { duration: 500, easing: Easing.out(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(complete)();
+      },
+    );
+  }, [containerOpacity, complete]);
+
+  const startMigrations = useCallback(
+    (completedVersion: number) => {
+      runMigrations(completedVersion).then((finalVersion) => {
+        migrationStore.getState().setCompletedVersion(finalVersion);
+        setMigrationPhase('done');
+
+        setTimeout(() => {
+          fadeOut();
+        }, 1200);
+      });
+    },
+    [fadeOut],
   );
 
   const handleRippleComplete = useCallback(() => {
@@ -66,43 +85,19 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
     const pending = getPendingTasks(completedVersion);
 
     if (pending.length === 0) {
-      fadeOut().start(() => complete());
+      fadeOut();
       return;
     }
 
     setMigrationPhase('running');
 
-    Animated.parallel([
-      Animated.spring(logoScale, {
-        toValue: 0.6,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 60,
-      }),
-      Animated.spring(logoTranslateY, {
-        toValue: -60,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 60,
-      }),
-      Animated.timing(migrationOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished: transitionFinished }) => {
-      if (!transitionFinished) return;
-
-      runMigrations(completedVersion).then((finalVersion) => {
-        migrationStore.getState().setCompletedVersion(finalVersion);
-        setMigrationPhase('done');
-
-        setTimeout(() => {
-          fadeOut().start(() => complete());
-        }, 1200);
-      });
+    // Parallel: assign all three concurrently
+    logoScale.value = withSpring(0.6);
+    logoTranslateY.value = withSpring(-60);
+    migrationOpacity.value = withTiming(1, { duration: 400 }, (finished) => {
+      if (finished) runOnJS(startMigrations)(completedVersion);
     });
-  }, [complete, fadeOut, logoScale, logoTranslateY, migrationOpacity]);
+  }, [fadeOut, logoScale, logoTranslateY, migrationOpacity, startMigrations]);
 
   // The useHideAnimation hook provides container + logo props that
   // exactly replicate the native splash layout. When it determines
@@ -114,9 +109,8 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
     navigationBarTranslucent: true,
 
     animate: () => {
-      // Swap: hide the static logo Image, show the animated bars, start ripple.
-      logoImageOpacity.setValue(0);
-      animatedLogoOpacity.setValue(1);
+      logoImageOpacity.value = 0;
+      animatedLogoOpacity.value = 1;
       setRippling(true);
     },
   });
@@ -127,30 +121,45 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
     return () => clearTimeout(timeout);
   }, [complete]);
 
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: containerOpacity.value,
+  }));
+
+  const logoWrapStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: logoScale.value },
+      { translateY: logoTranslateY.value },
+    ],
+  }));
+
+  const logoImageStyle = useAnimatedStyle(() => ({
+    opacity: logoImageOpacity.value,
+  }));
+
+  const animatedLogoStyle = useAnimatedStyle(() => ({
+    opacity: animatedLogoOpacity.value,
+  }));
+
+  const migrationStyle = useAnimatedStyle(() => ({
+    opacity: migrationOpacity.value,
+  }));
+
   return (
     <Animated.View
       {...container}
-      style={[container.style, { opacity: containerOpacity }]}
+      style={[container.style, containerStyle]}
     >
       <Animated.View
-        style={[
-          styles.logoWrap,
-          {
-            transform: [
-              { scale: logoScale },
-              { translateY: logoTranslateY },
-            ],
-          },
-        ]}
+        style={[styles.logoWrap, logoWrapStyle]}
       >
         {/* Static bootsplash logo Image – visible until animate() fires */}
         <Animated.Image
           {...logo}
-          style={[logo.style, { opacity: logoImageOpacity, position: 'absolute' }]}
+          style={[logo.style, { position: 'absolute' as const }, logoImageStyle]}
         />
 
         {/* Animated waveform bars – hidden until animate() swaps them in */}
-        <Animated.View style={{ opacity: animatedLogoOpacity }}>
+        <Animated.View style={animatedLogoStyle}>
           <AnimatedWaveformLogo
             size={130}
             color="#FFFFFF"
@@ -161,7 +170,7 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
 
       {/* Migration status */}
       <Animated.View
-        style={[styles.migrationWrap, { opacity: migrationOpacity }]}
+        style={[styles.migrationWrap, migrationStyle]}
         pointerEvents="none"
       >
         {migrationPhase === 'done' ? (

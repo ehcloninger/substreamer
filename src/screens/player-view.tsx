@@ -9,16 +9,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
@@ -122,43 +131,42 @@ export function PlayerView({ onClose }: PlayerViewProps) {
 
   // --- Shuffle overlay state ---
   const [shuffling, setShuffling] = useState(false);
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const spinAnim = useRef(new Animated.Value(0)).current;
+  const overlayOpacity = useSharedValue(0);
+  const spinAnim = useSharedValue(0);
+
+  const gradientAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: gradientOpacity.value,
+  }));
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  const spinStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${interpolate(spinAnim.value, [0, 1], [0, 360])}deg` }],
+  }));
 
   const handleShuffle = useCallback(async () => {
     if (shuffling) return;
     setShuffling(true);
-    spinAnim.setValue(0);
+    spinAnim.value = 0;
 
-    // Fade in overlay + start spinning icon
-    Animated.timing(overlayOpacity, {
-      toValue: 1,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
+    overlayOpacity.value = withTiming(1, { duration: 250 });
+    spinAnim.value = withRepeat(
+      withTiming(1, { duration: 800, easing: Easing.linear }),
+      -1,
+    );
 
-    Animated.loop(
-      Animated.timing(spinAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ).start();
-
-    // Run shuffle + enforce minimum display time in parallel
     const MIN_DISPLAY = 1200;
     await Promise.all([
       shuffleQueue(),
       new Promise<void>((r) => setTimeout(r, MIN_DISPLAY)),
     ]);
 
-    // Stop spin, fade out overlay
-    spinAnim.stopAnimation();
-    Animated.timing(overlayOpacity, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => setShuffling(false));
+    cancelAnimation(spinAnim);
+    overlayOpacity.value = withTiming(0, { duration: 300 }, (finished) => {
+      if (finished) runOnJS(setShuffling)(false);
+    });
   }, [shuffling, overlayOpacity, spinAnim]);
 
   const handleShareQueue = useCallback(() => {
@@ -241,7 +249,7 @@ export function PlayerView({ onClose }: PlayerViewProps) {
       {/* Gradient background */}
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.background }]} />
       <Animated.View
-        style={[StyleSheet.absoluteFillObject, { opacity: gradientOpacity }]}
+        style={[StyleSheet.absoluteFillObject, gradientAnimatedStyle]}
         pointerEvents="none"
       >
         <LinearGradient
@@ -265,22 +273,11 @@ export function PlayerView({ onClose }: PlayerViewProps) {
       {/* Shuffle overlay */}
       {shuffling && (
         <Animated.View
-          style={[styles.shuffleOverlay, { opacity: overlayOpacity }]}
+          style={[styles.shuffleOverlay, overlayAnimatedStyle]}
           pointerEvents="auto"
         >
           <View style={[styles.shuffleCard, { backgroundColor: colors.card }]}>
-            <Animated.View
-              style={{
-                transform: [
-                  {
-                    rotate: spinAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0deg', '360deg'],
-                    }),
-                  },
-                ],
-              }}
-            >
+            <Animated.View style={spinStyle}>
               <Ionicons name="shuffle" size={32} color={colors.primary} />
             </Animated.View>
             <Text style={[styles.shuffleText, { color: colors.textPrimary }]}>
@@ -398,7 +395,7 @@ const PlayerListHeader = memo(function PlayerListHeader({
             color={colors.textPrimary}
           />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           Now Playing
         </Text>
         <MoreOptionsButton

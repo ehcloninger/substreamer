@@ -7,13 +7,17 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Animated,
   PanResponder,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { type ThemeColors } from '../constants/theme';
 import { formatTrackDuration } from '../utils/formatters';
@@ -66,7 +70,11 @@ export function PlayerProgressBar({
   const [pendingSeekFraction, setPendingSeekFraction] = useState<number | null>(
     null,
   );
-  const thumbScale = useRef(new Animated.Value(1)).current;
+  const thumbScale = useSharedValue(1);
+
+  const thumbAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: thumbScale.value }],
+  }));
 
   // Refs to hold the latest values for the PanResponder closure
   const dragFractionRef = useRef(dragFraction);
@@ -75,6 +83,8 @@ export function PlayerProgressBar({
   durationRef.current = duration;
   const onSeekRef = useRef(onSeek);
   onSeekRef.current = onSeek;
+  const thumbScaleRef = useRef(thumbScale);
+  thumbScaleRef.current = thumbScale;
 
   /** Convert an absolute screen pageX to a 0–1 fraction across the track. */
   const fractionFromPageX = (pageX: number) =>
@@ -84,21 +94,13 @@ export function PlayerProgressBar({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      // Prevent parent ScrollView from stealing the gesture mid-drag.
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (_evt, gestureState) => {
-        // Use gestureState.x0 (absolute screen X of the initial touch)
-        // instead of evt.nativeEvent.locationX which is relative to whichever
-        // child element the finger landed on (e.g. the thumb).
         const frac = fractionFromPageX(gestureState.x0);
         setDragFraction(frac);
         setIsDragging(true);
         setPendingSeekFraction(null);
-        Animated.spring(thumbScale, {
-          toValue: ACTIVE_THUMB_SIZE / THUMB_SIZE,
-          useNativeDriver: true,
-          friction: 7,
-        }).start();
+        thumbScaleRef.current.value = withSpring(ACTIVE_THUMB_SIZE / THUMB_SIZE);
       },
       onPanResponderMove: (_evt, gestureState) => {
         const frac = fractionFromPageX(gestureState.moveX);
@@ -108,23 +110,14 @@ export function PlayerProgressBar({
         const currentDragFraction = dragFractionRef.current;
         const currentDuration = durationRef.current;
         const seekPosition = currentDragFraction * currentDuration;
-        // Hold the visual position at the seek target until the store catches up.
         setPendingSeekFraction(currentDragFraction);
         setIsDragging(false);
         onSeekRef.current(seekPosition);
-        Animated.spring(thumbScale, {
-          toValue: 1,
-          useNativeDriver: true,
-          friction: 7,
-        }).start();
+        thumbScaleRef.current.value = withSpring(1);
       },
       onPanResponderTerminate: () => {
         setIsDragging(false);
-        Animated.spring(thumbScale, {
-          toValue: 1,
-          useNativeDriver: true,
-          friction: 7,
-        }).start();
+        thumbScaleRef.current.value = withSpring(1);
       },
     }),
   ).current;
@@ -132,8 +125,6 @@ export function PlayerProgressBar({
   const handleLayout = useCallback(
     (e: { nativeEvent: { layout: { width: number } } }) => {
       trackWidth.current = e.nativeEvent.layout.width;
-      // Measure the absolute screen position of the track container so we
-      // can convert pageX touch coordinates into track-relative fractions.
       trackRef.current?.measureInWindow((x) => {
         if (x != null) trackPageX.current = x;
       });
@@ -220,8 +211,8 @@ export function PlayerProgressBar({
             {
               backgroundColor: colors.textPrimary,
               left: `${fraction * 100}%`,
-              transform: [{ scale: thumbScale }],
             },
+            thumbAnimStyle,
           ]}
         />
       </View>

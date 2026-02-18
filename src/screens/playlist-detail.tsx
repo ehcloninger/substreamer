@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Animated,
   ActivityIndicator,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
@@ -192,6 +192,10 @@ export function PlaylistDetailScreen() {
 
   const gradientStart = coverBackgroundColor ?? colors.background;
 
+  const gradientAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: gradientOpacity.value,
+  }));
+
   if (loading || !transitionComplete) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -221,7 +225,7 @@ export function PlaylistDetailScreen() {
     <View style={styles.container}>
       <View style={[gradientFillStyle, { backgroundColor: colors.background }]} />
       <Animated.View
-        style={[gradientFillStyle, { opacity: gradientOpacity }]}
+        style={[gradientFillStyle, gradientAnimatedStyle]}
         pointerEvents="none"
       >
         <LinearGradient

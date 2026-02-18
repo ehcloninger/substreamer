@@ -1,5 +1,17 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 
 /**
  * Bar height proportions – identical to WaveformLogo.tsx so the animated
@@ -15,12 +27,16 @@ const RIPPLE_PEAK = 1.4;
 
 /** Duration (ms) for one bar's up-then-down cycle. */
 const BAR_CYCLE_MS = 400;
+const HALF_CYCLE = BAR_CYCLE_MS / 2;
 
 /** Stagger delay (ms) between consecutive bars in one sweep direction. */
 const STAGGER_MS = 70;
 
 /** Number of full left-right-left cycles before calling onComplete. */
 const CYCLE_COUNT = 3;
+
+const UP_EASING = Easing.out(Easing.sin);
+const DOWN_EASING = Easing.in(Easing.sin);
 
 type Props = {
   /** Overall size (dp) – the tallest bar will be this height. */
@@ -31,6 +47,49 @@ type Props = {
   onComplete?: () => void;
 };
 
+/* ------------------------------------------------------------------ */
+/*  Individual bar component                                           */
+/* ------------------------------------------------------------------ */
+
+const BarView = memo(function BarView({
+  scale,
+  barWidth,
+  barHeight,
+  pillRadius,
+  color,
+  marginLeft,
+}: {
+  scale: SharedValue<number>;
+  barWidth: number;
+  barHeight: number;
+  pillRadius: number;
+  color: string;
+  marginLeft: number;
+}) {
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: scale.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: barWidth,
+          height: barHeight,
+          borderRadius: pillRadius,
+          backgroundColor: color,
+          marginLeft,
+        },
+        animStyle,
+      ]}
+    />
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/*  Main component                                                     */
+/* ------------------------------------------------------------------ */
+
 export default function AnimatedWaveformLogo({
   size = 130,
   color = '#FFFFFF',
@@ -40,83 +99,89 @@ export default function AnimatedWaveformLogo({
   const gap = barWidth * GAP_RATIO;
   const pillRadius = barWidth / 2;
 
-  const scales = useRef(BAR_HEIGHTS.map(() => new Animated.Value(1))).current;
+  const s0 = useSharedValue(1);
+  const s1 = useSharedValue(1);
+  const s2 = useSharedValue(1);
+  const s3 = useSharedValue(1);
+  const s4 = useSharedValue(1);
+  const s5 = useSharedValue(1);
+  const s6 = useSharedValue(1);
+  const s7 = useSharedValue(1);
+  const s8 = useSharedValue(1);
+  const scales = useMemo(() => [s0, s1, s2, s3, s4, s5, s6, s7, s8], [s0, s1, s2, s3, s4, s5, s6, s7, s8]);
+
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
+  // Stable JS-thread callback that reads the ref at call time.
+  // Passed to runOnJS so the ref is never serialized into a worklet.
+  const fireComplete = useCallback(() => {
+    onCompleteRef.current?.();
+  }, []);
+
   useEffect(() => {
-    const buildSweep = (reverse: boolean): Animated.CompositeAnimation => {
-      const order = reverse
-        ? [...Array(BAR_COUNT).keys()].reverse()
-        : [...Array(BAR_COUNT).keys()];
+    const buildCycleForBar = (i: number) => {
+      const fwdDelay = i * STAGGER_MS;
+      const gapDelay = 2 * (BAR_COUNT - 1 - i) * STAGGER_MS;
+      const endDelay = i * STAGGER_MS;
 
-      const barAnims = order.map((barIdx, seqPos) => {
-        const delay = seqPos * STAGGER_MS;
-        return Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(scales[barIdx], {
-            toValue: RIPPLE_PEAK,
-            duration: BAR_CYCLE_MS / 2,
-            easing: Easing.out(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(scales[barIdx], {
-            toValue: 1,
-            duration: BAR_CYCLE_MS / 2,
-            easing: Easing.in(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ]);
-      });
+      const parts: ReturnType<typeof withTiming>[] = [];
 
-      return Animated.parallel(barAnims);
+      // Forward sweep
+      const fwdUp = withTiming(RIPPLE_PEAK, { duration: HALF_CYCLE, easing: UP_EASING });
+      parts.push(fwdDelay > 0 ? withDelay(fwdDelay, fwdUp) : fwdUp);
+      parts.push(withTiming(1, { duration: HALF_CYCLE, easing: DOWN_EASING }));
+
+      // Reverse sweep
+      const revUp = withTiming(RIPPLE_PEAK, { duration: HALF_CYCLE, easing: UP_EASING });
+      parts.push(gapDelay > 0 ? withDelay(gapDelay, revUp) : revUp);
+      parts.push(withTiming(1, { duration: HALF_CYCLE, easing: DOWN_EASING }));
+
+      // End-of-cycle alignment so all bars have equal cycle duration
+      if (endDelay > 0) {
+        parts.push(withDelay(endDelay, withTiming(1, { duration: 0 })));
+      }
+
+      return withSequence(...parts);
     };
 
-    const oneCycle = Animated.sequence([
-      buildSweep(false),
-      buildSweep(true),
-    ]);
+    scales.forEach((scale, i) => {
+      const cycle = buildCycleForBar(i);
 
-    let completed = 0;
-
-    const runCycle = () => {
-      oneCycle.start(({ finished }) => {
-        if (!finished) return;
-        completed += 1;
-        if (completed < CYCLE_COUNT) {
-          runCycle();
-        } else {
-          onCompleteRef.current?.();
-        }
-      });
-    };
-
-    runCycle();
+      if (i === 0) {
+        // Bar 0 finishes last in reverse sweep; fire onComplete after all cycles
+        scale.value = withSequence(
+          withRepeat(cycle, CYCLE_COUNT),
+          withTiming(1, { duration: 0 }, (finished) => {
+            if (finished) {
+              runOnJS(fireComplete)();
+            }
+          }),
+        ) as number;
+      } else {
+        scale.value = withRepeat(cycle, CYCLE_COUNT) as number;
+      }
+    });
 
     return () => {
-      scales.forEach((s) => s.stopAnimation());
+      scales.forEach((s) => cancelAnimation(s));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <View style={styles.wrap}>
-      {BAR_HEIGHTS.map((h, i) => {
-        const barHeight = size * h;
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              width: barWidth,
-              height: barHeight,
-              borderRadius: pillRadius,
-              backgroundColor: color,
-              marginLeft: i === 0 ? 0 : gap,
-              transform: [{ scaleY: scales[i] }],
-            }}
-          />
-        );
-      })}
+      {BAR_HEIGHTS.map((h, i) => (
+        <BarView
+          key={i}
+          scale={scales[i]}
+          barWidth={barWidth}
+          barHeight={size * h}
+          pillRadius={pillRadius}
+          color={color}
+          marginLeft={i === 0 ? 0 : gap}
+        />
+      ))}
     </View>
   );
 }

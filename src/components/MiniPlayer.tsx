@@ -10,8 +10,15 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { CachedImage } from './CachedImage';
 import { MarqueeText } from './MarqueeText';
@@ -38,14 +45,10 @@ export function MiniPlayer() {
   const marqueeScrolling = layoutPreferencesStore((s) => s.marqueeScrolling);
 
   const progress = duration > 0 ? position / duration : 0;
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useSharedValue(0);
 
   useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: progress,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
+    progressAnim.value = withTiming(progress, { duration: 300 });
   }, [progress, progressAnim]);
 
   const error = playerStore((s) => s.error);
@@ -55,7 +58,7 @@ export function MiniPlayer() {
   // --- Colour extraction ---
   const cachedUri = useCachedCoverArt(currentTrack?.coverArt, 50);
   const [bgColor, setBgColor] = useState<string | null>(null);
-  const gradientOpacity = useRef(new Animated.Value(0)).current;
+  const gradientOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (!currentTrack?.coverArt) {
@@ -93,20 +96,20 @@ export function MiniPlayer() {
 
   useEffect(() => {
     if (bgColor) {
-      gradientOpacity.setValue(0);
-      Animated.timing(gradientOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
+      gradientOpacity.value = 0;
+      gradientOpacity.value = withTiming(1, { duration: 400 });
     } else {
-      Animated.timing(gradientOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      gradientOpacity.value = withTiming(0, { duration: 300 });
     }
   }, [bgColor, gradientOpacity]);
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${interpolate(progressAnim.value, [0, 1], [0, 100], Extrapolation.CLAMP)}%`,
+  }));
+
+  const gradientAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: gradientOpacity.value,
+  }));
 
   // --- Full player navigation ---
   const router = useRouter();
@@ -130,21 +133,14 @@ export function MiniPlayer() {
         <Animated.View
           style={[
             styles.progressFill,
-            {
-              width: progressAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: ['0%', '100%'],
-                extrapolate: 'clamp',
-              }),
-              backgroundColor: colors.primary,
-              opacity: 0.65,
-            },
+            { backgroundColor: colors.primary, opacity: 0.65 },
+            progressStyle,
           ]}
         />
       </View>
 
       {/* Gradient overlay */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: gradientOpacity }]} pointerEvents="none">
+      <Animated.View style={[StyleSheet.absoluteFillObject, gradientAnimatedStyle]} pointerEvents="none">
         <LinearGradient
           colors={[withAlpha(gradientStart, 0.65), withAlpha(gradientEnd, 0.65)]}
           start={{ x: 0.5, y: 0 }}
