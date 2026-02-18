@@ -32,7 +32,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
 import { MarqueeText } from '../components/MarqueeText';
-import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { PlaybackRateButton } from '../components/PlaybackRateButton';
 import { PlayerProgressBar } from '../components/PlayerProgressBar';
 import { RepeatButton } from '../components/RepeatButton';
@@ -363,25 +362,35 @@ const PlayerListHeader = memo(function PlayerListHeader({
           onPress={onClose}
           hitSlop={12}
           style={({ pressed }) => [
-            styles.closeButton,
+            styles.glassButton,
             pressed && styles.pressed,
           ]}
         >
           <Ionicons
             name="chevron-down"
-            size={28}
+            size={22}
             color={colors.textPrimary}
           />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           Now Playing
         </Text>
-        <MoreOptionsButton
+        <Pressable
           onPress={() =>
             moreOptionsStore.getState().show({ type: 'song', item: currentTrack })
           }
-          color={colors.textPrimary}
-        />
+          hitSlop={12}
+          style={({ pressed }) => [
+            styles.glassButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={20}
+            color={colors.textPrimary}
+          />
+        </Pressable>
       </View>
 
       {queueLoading ? (
@@ -577,11 +586,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 48,
   },
-  closeButton: {
-    width: 36,
-    height: 36,
+  glassButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(120, 120, 128, 0.24)',
   },
   headerTitle: {
     fontSize: 13,
