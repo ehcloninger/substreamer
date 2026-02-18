@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { CachedImage } from './CachedImage';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { addSongToQueue, toggleStar } from '../services/moreOptionsService';
@@ -21,6 +22,8 @@ import { formatTrackDuration } from '../utils/formatters';
 import type { ThemeColors } from '../constants/theme';
 import type { Child } from '../services/subsonicService';
 
+const COVER_SIZE = 300;
+
 export interface TrackRowProps {
   track: Child;
   /** Formatted track number label, e.g. "3. " or "1. ". Omit to hide the number. */
@@ -28,9 +31,13 @@ export interface TrackRowProps {
   colors: ThemeColors;
   /** Called when the row is tapped to start playback. */
   onPress?: () => void;
+  /** Show the album cover art thumbnail at the left of the row. */
+  showCoverArt?: boolean;
+  /** Show the album name with a disc icon below the artist name. */
+  showAlbumName?: boolean;
 }
 
-export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onPress }: TrackRowProps) {
+export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onPress, showCoverArt, showAlbumName }: TrackRowProps) {
   const duration = track.duration != null ? formatTrackDuration(track.duration) : '—';
   const starred = useIsStarred('song', track.id);
   const rating = track.userRating;
@@ -86,6 +93,14 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
               {trackNumber}
             </Text>
           )}
+          {showCoverArt && (
+            <CachedImage
+              coverArtId={track.coverArt}
+              size={COVER_SIZE}
+              style={styles.cover}
+              resizeMode="cover"
+            />
+          )}
           <View style={styles.trackInfo}>
             <Text style={[styles.trackTitle, { color: colors.textPrimary }]} numberOfLines={1}>
               {track.title}
@@ -93,6 +108,19 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
             <Text style={[styles.trackArtist, { color: colors.textSecondary }]} numberOfLines={1}>
               {track.artist ?? 'Unknown Artist'}
             </Text>
+            {showAlbumName && (
+              <View style={styles.metaAlbum}>
+                <Ionicons name="disc-outline" size={14} color={colors.primary} />
+                <View style={styles.albumTextWrapper}>
+                  <Text
+                    style={[styles.albumText, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {track.album ?? 'Unknown Album'}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
         <View style={styles.trackRight}>
@@ -133,6 +161,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minWidth: 28,
   },
+  cover: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    backgroundColor: 'rgba(128,128,128,0.12)',
+    marginRight: 12,
+  },
   trackInfo: {
     flex: 1,
     minWidth: 0,
@@ -144,6 +179,19 @@ const styles = StyleSheet.create({
   trackArtist: {
     fontSize: 14,
     marginTop: 2,
+  },
+  metaAlbum: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+    minWidth: 0,
+  },
+  albumTextWrapper: {
+    flex: 1,
+    marginLeft: 3,
+  },
+  albumText: {
+    fontSize: 13,
   },
   trackRight: {
     flexDirection: 'row',

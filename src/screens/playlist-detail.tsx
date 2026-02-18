@@ -111,6 +111,8 @@ export function PlaylistDetailScreen() {
           trackNumber={`${index + 1}. `}
           colors={colors}
           onPress={() => playTrack(item, tracks)}
+          showCoverArt
+          showAlbumName
         />
       </View>
     ),
