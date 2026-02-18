@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 
 import { useTheme } from '../hooks/useTheme';
 
@@ -51,8 +52,8 @@ export const MoreOptionsButton = memo(function MoreOptionsButton({
 
 const styles = StyleSheet.create({
   button: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },

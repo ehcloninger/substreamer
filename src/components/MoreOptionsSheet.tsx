@@ -123,6 +123,7 @@ export function MoreOptionsSheet() {
 
   const [busy, setBusy] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
+  const [detailsAlbum, setDetailsAlbum] = useState<AlbumID3 | null>(null);
 
   const handleClose = useCallback(() => {
     hide();
@@ -188,9 +189,12 @@ export function MoreOptionsSheet() {
   }, [entity, handleClose, router]);
 
   const handleShowDetails = useCallback(() => {
+    if (entity?.type === 'album') {
+      setDetailsAlbum(entity.item as AlbumID3);
+    }
     handleClose();
     setTimeout(() => setDetailsVisible(true), 300);
-  }, [handleClose]);
+  }, [entity, handleClose]);
 
   const handleShare = useCallback(() => {
     if (!entity) return;
@@ -210,6 +214,16 @@ export function MoreOptionsSheet() {
         <Modal visible={false} transparent>
           <View />
         </Modal>
+        {detailsAlbum && (
+          <AlbumDetailsModal
+            album={detailsAlbum}
+            visible={detailsVisible}
+            onClose={() => {
+              setDetailsVisible(false);
+              setDetailsAlbum(null);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -396,12 +410,14 @@ export function MoreOptionsSheet() {
         </View>
       </Modal>
 
-      {/* Album Details Modal (re-used from existing component) */}
-      {entity.type === 'album' && (
+      {detailsAlbum && (
         <AlbumDetailsModal
-          album={entity.item as AlbumID3}
+          album={detailsAlbum}
           visible={detailsVisible}
-          onClose={() => setDetailsVisible(false)}
+          onClose={() => {
+            setDetailsVisible(false);
+            setDetailsAlbum(null);
+          }}
         />
       )}
     </>
