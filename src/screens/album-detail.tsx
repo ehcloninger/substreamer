@@ -16,6 +16,8 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
+import { DownloadButton } from '../components/DownloadButton';
+import { MarqueeText } from '../components/MarqueeText';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { closeOpenRow } from '../components/SwipeableRow';
 import { TrackRow } from '../components/TrackRow';
@@ -71,20 +73,23 @@ export function AlbumDetailScreen() {
     colors.background,
   );
 
-  /* ---- Header right: more options button ---- */
+  /* ---- Header right: download button + more options ---- */
   useEffect(() => {
-    if (!album) return;
+    if (!album || !id) return;
     navigation.setOptions({
       headerRight: () => (
-        <MoreOptionsButton
-          onPress={() =>
-            moreOptionsStore.getState().show({ type: 'album', item: album })
-          }
-          color={colors.textPrimary}
-        />
+        <View style={styles.headerRight}>
+          <DownloadButton itemId={id} type="album" />
+          <MoreOptionsButton
+            onPress={() =>
+              moreOptionsStore.getState().show({ type: 'album', item: album })
+            }
+            color={colors.textPrimary}
+          />
+        </View>
       ),
     });
-  }, [album, navigation, colors.textPrimary]);
+  }, [album, id, navigation, colors.textPrimary]);
 
   /* ---- Data fetching ---- */
   const { fetchAlbum } = albumDetailStore.getState();
@@ -191,9 +196,9 @@ export function AlbumDetailScreen() {
         </View>
         <View style={styles.info}>
           <View style={styles.infoText}>
-            <Text style={[styles.albumName, { color: colors.textPrimary }]}>
+            <MarqueeText style={[styles.albumName, { color: colors.textPrimary }]}>
               {album.name}
-            </Text>
+            </MarqueeText>
             <Text style={[styles.artistName, { color: colors.textSecondary }]}>
               {album.artist ?? album.displayArtist ?? 'Unknown Artist'}
             </Text>
@@ -340,6 +345,10 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   playAllButton: {
     width: 52,
     height: 52,
@@ -383,7 +392,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   trackListSpacer: {
-    height: 16,
+    height: 8,
   },
   discTitle: {
     fontSize: 15,

@@ -123,3 +123,11 @@ export async function addPlaylistToQueue(playlist: Playlist): Promise<void> {
 export async function removeItemFromQueue(index: number): Promise<void> {
   await removeFromQueue(index);
 }
+
+/* ------------------------------------------------------------------ */
+/*  Download management                                                */
+/* ------------------------------------------------------------------ */
+
+export { enqueueAlbumDownload, enqueuePlaylistDownload } from './musicCacheService';
+
+export { deleteCachedItem as removeDownload, cancelDownload } from './musicCacheService';

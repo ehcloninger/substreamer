@@ -25,11 +25,18 @@ export interface PlaybackSettingsState {
   /** Playback speed multiplier (1 = normal). */
   playbackRate: PlaybackRate;
 
+  /** Maximum bitrate for offline downloads. */
+  downloadMaxBitRate: MaxBitRate;
+  /** Format for offline downloads. */
+  downloadFormat: StreamFormat;
+
   setMaxBitRate: (bitRate: MaxBitRate) => void;
   setStreamFormat: (format: StreamFormat) => void;
   setEstimateContentLength: (enabled: boolean) => void;
   setRepeatMode: (mode: RepeatModeSetting) => void;
   setPlaybackRate: (rate: PlaybackRate) => void;
+  setDownloadMaxBitRate: (bitRate: MaxBitRate) => void;
+  setDownloadFormat: (format: StreamFormat) => void;
 }
 
 const PERSIST_KEY = 'substreamer-playback-settings';
@@ -42,12 +49,16 @@ export const playbackSettingsStore = create<PlaybackSettingsState>()(
       estimateContentLength: false,
       repeatMode: 'off',
       playbackRate: 1,
+      downloadMaxBitRate: 320,
+      downloadFormat: 'mp3',
 
       setMaxBitRate: (maxBitRate) => set({ maxBitRate }),
       setStreamFormat: (streamFormat) => set({ streamFormat }),
       setEstimateContentLength: (estimateContentLength) => set({ estimateContentLength }),
       setRepeatMode: (repeatMode) => set({ repeatMode }),
       setPlaybackRate: (playbackRate) => set({ playbackRate }),
+      setDownloadMaxBitRate: (downloadMaxBitRate) => set({ downloadMaxBitRate }),
+      setDownloadFormat: (downloadFormat) => set({ downloadFormat }),
     }),
     {
       name: PERSIST_KEY,
@@ -58,6 +69,8 @@ export const playbackSettingsStore = create<PlaybackSettingsState>()(
         estimateContentLength: state.estimateContentLength,
         repeatMode: state.repeatMode,
         playbackRate: state.playbackRate,
+        downloadMaxBitRate: state.downloadMaxBitRate,
+        downloadFormat: state.downloadFormat,
       }),
     }
   )

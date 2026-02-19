@@ -21,6 +21,8 @@ import {
 import { playerStore, type PlaybackStatus } from '../store/playerStore';
 import { serverInfoStore } from '../store/serverInfoStore';
 import { addCompletedScrobble, sendNowPlaying } from './scrobbleService';
+import { getCachedImageUri } from './imageCacheService';
+import { getLocalTrackUri } from './musicCacheService';
 import {
   ensureCoverArtAuth,
   getCoverArtUrl,
@@ -63,16 +65,35 @@ function mapState(state: State): PlaybackStatus {
   }
 }
 
+const EXT_TO_MIME: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  flac: 'audio/flac',
+  ogg: 'audio/ogg',
+  opus: 'audio/opus',
+  aac: 'audio/aac',
+  m4a: 'audio/mp4',
+  wav: 'audio/wav',
+};
+
+function mimeFromUri(uri: string): string | undefined {
+  const ext = uri.split('.').pop()?.toLowerCase();
+  return ext ? EXT_TO_MIME[ext] : undefined;
+}
+
 /** Convert a Child (Subsonic song) to an RNTP Track object. */
 function childToTrack(child: Child): Track {
+  const localUri = getLocalTrackUri(child.id);
+  const cachedArt = getCachedImageUri(child.coverArt ?? '', 600);
+  const contentType = localUri ? mimeFromUri(localUri) : undefined;
   return {
     id: child.id,
-    url: getStreamUrl(child.id) ?? '',
+    url: localUri ?? getStreamUrl(child.id) ?? '',
     title: child.title,
     artist: child.artist ?? 'Unknown Artist',
     album: child.album ?? undefined,
-    artwork: getCoverArtUrl(child.coverArt ?? '', 600) ?? undefined,
+    artwork: cachedArt ?? getCoverArtUrl(child.coverArt ?? '', 600) ?? undefined,
     duration: child.duration ?? 0,
+    ...(contentType ? { contentType } : {}),
   };
 }
 

@@ -22,23 +22,31 @@ const FORMAT_OPTIONS: { value: StreamFormat; label: string }[] = [
   { value: 'mp3', label: 'MP3' },
 ];
 
-export function SettingsMediaFormatsScreen() {
+export function SettingsAudioQualityScreen() {
   const { colors } = useTheme();
   const [bitrateOpen, setBitrateOpen] = useState(false);
   const [formatOpen, setFormatOpen] = useState(false);
+  const [dlBitrateOpen, setDlBitrateOpen] = useState(false);
+  const [dlFormatOpen, setDlFormatOpen] = useState(false);
   const maxBitRate = playbackSettingsStore((s) => s.maxBitRate);
   const streamFormat = playbackSettingsStore((s) => s.streamFormat);
   const estimateContentLength = playbackSettingsStore((s) => s.estimateContentLength);
+  const downloadMaxBitRate = playbackSettingsStore((s) => s.downloadMaxBitRate);
+  const downloadFormat = playbackSettingsStore((s) => s.downloadFormat);
   const setMaxBitRate = playbackSettingsStore((s) => s.setMaxBitRate);
   const setStreamFormat = playbackSettingsStore((s) => s.setStreamFormat);
   const setEstimateContentLength = playbackSettingsStore((s) => s.setEstimateContentLength);
+  const setDownloadMaxBitRate = playbackSettingsStore((s) => s.setDownloadMaxBitRate);
+  const setDownloadFormat = playbackSettingsStore((s) => s.setDownloadFormat);
 
-  const isDefault = maxBitRate === null && streamFormat === 'raw' && !estimateContentLength;
+  const isStreamingDefault = maxBitRate === null && streamFormat === 'raw' && !estimateContentLength;
+  const isDownloadDefault = downloadMaxBitRate === 320 && downloadFormat === 'mp3';
+  const isDefault = isStreamingDefault && isDownloadDefault;
 
   const handleResetDefaults = useCallback(() => {
     Alert.alert(
       'Reset to Defaults',
-      'This will reset all media format settings to their default values. Continue?',
+      'This will reset all audio quality settings to their default values. Continue?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -48,13 +56,17 @@ export function SettingsMediaFormatsScreen() {
             setMaxBitRate(null);
             setStreamFormat('raw');
             setEstimateContentLength(false);
+            setDownloadMaxBitRate(320);
+            setDownloadFormat('mp3');
             setBitrateOpen(false);
             setFormatOpen(false);
+            setDlBitrateOpen(false);
+            setDlFormatOpen(false);
           },
         },
       ],
     );
-  }, [setMaxBitRate, setStreamFormat, setEstimateContentLength]);
+  }, [setMaxBitRate, setStreamFormat, setEstimateContentLength, setDownloadMaxBitRate, setDownloadFormat]);
 
   const dynamicStyles = useMemo(
     () =>
@@ -72,7 +84,7 @@ export function SettingsMediaFormatsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Playback</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Streaming</Text>
         <View style={[styles.dropdown, { backgroundColor: colors.card }]}>
           {/* Max bitrate dropdown */}
           <Pressable
@@ -190,6 +202,110 @@ export function SettingsMediaFormatsScreen() {
               trackColor={{ false: colors.border, true: colors.primary }}
             />
           </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Downloading</Text>
+        <View style={[styles.dropdown, { backgroundColor: colors.card }]}>
+          {/* Download max bitrate dropdown */}
+          <Pressable
+            onPress={() => setDlBitrateOpen((prev) => !prev)}
+            style={({ pressed }) => [
+              styles.dropdownHeader,
+              { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Max bitrate</Text>
+            <View style={styles.dropdownRight}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {BITRATE_OPTIONS.find((o) => o.value === downloadMaxBitRate)?.label ?? 'No limit'}
+              </Text>
+              <Ionicons
+                name={dlBitrateOpen ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </View>
+          </Pressable>
+          {dlBitrateOpen && (
+            <View style={[styles.optionList, { borderTopColor: colors.border }]}>
+              {BITRATE_OPTIONS.map((opt) => {
+                const isActive = downloadMaxBitRate === opt.value;
+                return (
+                  <Pressable
+                    key={String(opt.value)}
+                    onPress={() => {
+                      setDownloadMaxBitRate(opt.value);
+                      setDlBitrateOpen(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.option,
+                      { borderBottomColor: colors.border },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.label, { color: colors.textPrimary }]}>
+                      {opt.label}
+                    </Text>
+                    {isActive && (
+                      <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Download format dropdown */}
+          <Pressable
+            onPress={() => setDlFormatOpen((prev) => !prev)}
+            style={({ pressed }) => [
+              styles.dropdownHeader,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.label, { color: colors.textPrimary }]}>Format</Text>
+            <View style={styles.dropdownRight}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {FORMAT_OPTIONS.find((o) => o.value === downloadFormat)?.label ?? 'Original'}
+              </Text>
+              <Ionicons
+                name={dlFormatOpen ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </View>
+          </Pressable>
+          {dlFormatOpen && (
+            <View style={[styles.optionList, { borderTopColor: colors.border }]}>
+              {FORMAT_OPTIONS.map((opt) => {
+                const isActive = downloadFormat === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => {
+                      setDownloadFormat(opt.value);
+                      setDlFormatOpen(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.option,
+                      { borderBottomColor: colors.border },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.label, { color: colors.textPrimary }]}>
+                      {opt.label}
+                    </Text>
+                    {isActive && (
+                      <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
       </View>
 

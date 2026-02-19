@@ -8,6 +8,7 @@ import { CreateShareSheet } from '../components/CreateShareSheet';
 import { MoreOptionsSheet } from '../components/MoreOptionsSheet';
 import { useTheme } from '../hooks/useTheme';
 import { getImageCacheStats, initImageCache } from '../services/imageCacheService';
+import { getMusicCacheStats, initMusicCache } from '../services/musicCacheService';
 import { initPlayer } from '../services/playerService';
 import { fetchScanStatus } from '../services/scanService';
 import { startMonitoring, stopMonitoring } from '../services/connectivityService';
@@ -15,6 +16,7 @@ import { initScrobbleService } from '../services/scrobbleService';
 import { initSslTrustStore } from '../services/sslTrustService';
 import { albumListsStore } from '../store/albumListsStore';
 import { imageCacheStore } from '../store/imageCacheStore';
+import { musicCacheStore } from '../store/musicCacheStore';
 import { authStore, clearPersistedData } from '../store/authStore';
 import { favoritesStore } from '../store/favoritesStore';
 import { fetchServerInfo } from '../services/subsonicService';
@@ -24,8 +26,9 @@ import { serverInfoStore } from '../store/serverInfoStore';
 // until BootSplash.hide() is called. AnimatedSplashScreen handles the
 // hide via useHideAnimation for a seamless native → JS transition.
 
-// Initialise the on-disk image cache directory at module load.
+// Initialise the on-disk cache directories at module load.
 initImageCache();
+initMusicCache();
 
 // Initialise the SSL trust store so the custom TrustManager / URLSession
 // delegate is installed before any network requests are made.
@@ -33,6 +36,7 @@ initSslTrustStore();
 
 // Reconcile persisted cache stats with the actual filesystem.
 imageCacheStore.getState().recalculate(getImageCacheStats());
+musicCacheStore.getState().recalculate(getMusicCacheStats());
 
 export default function RootLayout() {
   const [splashVisible, setSplashVisible] = useState(true);
@@ -148,6 +152,14 @@ export default function RootLayout() {
           options={{ title: 'Metadata Cache', headerBackTitle: 'Back' }}
         />
         <Stack.Screen
+          name="music-cache-browser"
+          options={{ title: 'Downloaded Music', headerBackTitle: 'Back' }}
+        />
+        <Stack.Screen
+          name="download-queue"
+          options={{ title: 'Download Queue', headerBackTitle: 'Back' }}
+        />
+        <Stack.Screen
           name="settings-server"
           options={{ title: 'Server Management', headerBackTitle: 'Settings' }}
         />
@@ -175,8 +187,8 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="settings-media-formats"
-          options={{ title: 'Media Formats', headerBackTitle: 'Settings' }}
+          name="settings-audio-quality"
+          options={{ title: 'Audio Quality', headerBackTitle: 'Settings' }}
         />
       </Stack>
 

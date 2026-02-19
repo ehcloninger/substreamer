@@ -24,12 +24,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumDetailsModal } from './AlbumDetailsModal';
+import { useDownloadStatus, type DownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { useTheme } from '../hooks/useTheme';
 import {
   addAlbumToQueue,
   addPlaylistToQueue,
   addSongToQueue,
+  cancelDownload,
+  enqueueAlbumDownload,
+  enqueuePlaylistDownload,
+  removeDownload,
   toggleStar,
 } from '../services/moreOptionsService';
 import {
@@ -37,6 +42,7 @@ import {
   type Child,
   type Playlist,
 } from '../services/subsonicService';
+import { musicCacheStore } from '../store/musicCacheStore';
 import { createShareStore } from '../store/createShareStore';
 import {
   moreOptionsStore,
@@ -104,6 +110,10 @@ function canShare(entity: MoreOptionsEntity): boolean {
   return entity.type === 'album' || entity.type === 'playlist';
 }
 
+function canDownload(entity: MoreOptionsEntity): boolean {
+  return entity.type === 'album' || entity.type === 'playlist';
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -116,6 +126,13 @@ export function MoreOptionsSheet() {
   const starType: 'song' | 'album' | 'artist' =
     entity?.type === 'album' || entity?.type === 'artist' ? entity.type : 'song';
   const starred = useIsStarred(starType, entity?.item.id ?? '');
+
+  const downloadType: 'album' | 'playlist' =
+    entity?.type === 'playlist' ? 'playlist' : 'album';
+  const downloadStatus: DownloadStatus = useDownloadStatus(
+    downloadType,
+    entity && canDownload(entity) ? entity.item.id : '',
+  );
 
   const { colors } = useTheme();
   const router = useRouter();
@@ -196,6 +213,29 @@ export function MoreOptionsSheet() {
     setTimeout(() => setDetailsVisible(true), 300);
   }, [entity, handleClose]);
 
+  const handleDownload = useCallback(async () => {
+    if (!entity || !canDownload(entity)) return;
+    handleClose();
+    try {
+      if (downloadStatus === 'complete') {
+        removeDownload(entity.item.id);
+      } else if (downloadStatus === 'queued' || downloadStatus === 'downloading') {
+        const queueItem = musicCacheStore.getState().downloadQueue.find(
+          (q) => q.itemId === entity.item.id,
+        );
+        if (queueItem) cancelDownload(queueItem.queueId);
+      } else {
+        if (entity.type === 'album') {
+          await enqueueAlbumDownload(entity.item.id);
+        } else {
+          await enqueuePlaylistDownload(entity.item.id);
+        }
+      }
+    } catch {
+      /* best-effort */
+    }
+  }, [entity, downloadStatus, handleClose]);
+
   const handleShare = useCallback(() => {
     if (!entity) return;
     handleClose();
@@ -234,6 +274,7 @@ export function MoreOptionsSheet() {
   const showAddToQueue = canAddToQueue(entity);
   const showDetails = hasAlbumDetails(entity);
   const showShare = canShare(entity);
+  const showDownload = canDownload(entity);
 
   return (
     <>
@@ -320,6 +361,42 @@ export function MoreOptionsSheet() {
               />
               <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                 Add to Queue
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Download / Remove Download */}
+          {showDownload && (
+            <Pressable
+              onPress={handleDownload}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Ionicons
+                name={
+                  downloadStatus === 'complete'
+                    ? 'trash-outline'
+                    : downloadStatus === 'queued' || downloadStatus === 'downloading'
+                      ? 'close-circle-outline'
+                      : 'arrow-down-circle-outline'
+                }
+                size={22}
+                color={downloadStatus === 'complete' ? colors.red : colors.textPrimary}
+                style={styles.optionIcon}
+              />
+              <Text
+                style={[
+                  styles.optionLabel,
+                  { color: downloadStatus === 'complete' ? colors.red : colors.textPrimary },
+                ]}
+              >
+                {downloadStatus === 'complete'
+                  ? 'Remove Download'
+                  : downloadStatus === 'queued' || downloadStatus === 'downloading'
+                    ? 'Cancel Download'
+                    : 'Download'}
               </Text>
             </Pressable>
           )}

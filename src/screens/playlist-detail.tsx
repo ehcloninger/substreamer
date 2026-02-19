@@ -16,6 +16,8 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
+import { DownloadButton } from '../components/DownloadButton';
+import { MarqueeText } from '../components/MarqueeText';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { closeOpenRow } from '../components/SwipeableRow';
 import { TrackRow } from '../components/TrackRow';
@@ -52,20 +54,23 @@ export function PlaylistDetailScreen() {
     colors.background,
   );
 
-  /* ---- Header right: more options button ---- */
+  /* ---- Header right: download button + more options ---- */
   useEffect(() => {
-    if (!playlist) return;
+    if (!playlist || !id) return;
     navigation.setOptions({
       headerRight: () => (
-        <MoreOptionsButton
-          onPress={() =>
-            moreOptionsStore.getState().show({ type: 'playlist', item: playlist })
-          }
-          color={colors.textPrimary}
-        />
+        <View style={styles.headerRight}>
+          <DownloadButton itemId={id} type="playlist" />
+          <MoreOptionsButton
+            onPress={() =>
+              moreOptionsStore.getState().show({ type: 'playlist', item: playlist })
+            }
+            color={colors.textPrimary}
+          />
+        </View>
       ),
     });
-  }, [playlist, navigation, colors.textPrimary]);
+  }, [playlist, id, navigation, colors.textPrimary]);
 
   /* ---- Data fetching ---- */
   const { fetchPlaylist } = playlistDetailStore.getState();
@@ -140,9 +145,9 @@ export function PlaylistDetailScreen() {
         </View>
         <View style={styles.info}>
           <View style={styles.infoText}>
-            <Text style={[styles.playlistName, { color: colors.textPrimary }]}>
+            <MarqueeText style={[styles.playlistName, { color: colors.textPrimary }]}>
               {playlist.name}
-            </Text>
+            </MarqueeText>
             {playlist.owner && (
               <Text style={[styles.ownerName, { color: colors.textSecondary }]}>
                 by {playlist.owner}
@@ -301,6 +306,10 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   playAllButton: {
     width: 52,
     height: 52,
@@ -344,7 +353,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   trackListSpacer: {
-    height: 16,
+    height: 8,
   },
   emptyTracks: {
     fontSize: 16,

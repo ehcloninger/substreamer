@@ -185,6 +185,39 @@ export function getStreamUrl(
   return `${base}?${params.toString()}`;
 }
 
+/**
+ * Build an authenticated stream URL for downloading a track.
+ * Uses the separate download quality settings (downloadMaxBitRate,
+ * downloadFormat) and always sets estimateContentLength=true for
+ * accurate progress tracking.
+ */
+export function getDownloadStreamUrl(trackId: string): string | null {
+  const { isLoggedIn, serverUrl, username } = authStore.getState();
+  if (!trackId || !isLoggedIn || !serverUrl || !username) return null;
+  if (cachedCoverArtKey === null || !cachedCoverArtSalt || !cachedCoverArtToken) return null;
+  const base = `${normalizeServerUrl(serverUrl)}/rest/stream.view`;
+  const params = new URLSearchParams({
+    id: trackId,
+    v: '1.16.1',
+    c: 'substreamer',
+    u: username,
+    t: cachedCoverArtToken,
+    s: cachedCoverArtSalt,
+    estimateContentLength: 'true',
+  });
+
+  const { downloadMaxBitRate, downloadFormat } =
+    playbackSettingsStore.getState();
+  if (downloadMaxBitRate != null) {
+    params.set('maxBitRate', String(downloadMaxBitRate));
+  }
+  if (downloadFormat === 'mp3') {
+    params.set('format', 'mp3');
+  }
+
+  return `${base}?${params.toString()}`;
+}
+
 export async function getRecentlyAddedAlbums(size?: number): Promise<AlbumID3[]> {
   const api = getApi();
   if (!api) return [];

@@ -14,6 +14,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
+import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { addSongToQueue, toggleStar } from '../services/moreOptionsService';
 import { moreOptionsStore } from '../store/moreOptionsStore';
@@ -40,6 +41,7 @@ export interface TrackRowProps {
 export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onPress, showCoverArt, showAlbumName }: TrackRowProps) {
   const duration = track.duration != null ? formatTrackDuration(track.duration) : '—';
   const starred = useIsStarred('song', track.id);
+  const downloaded = useDownloadStatus('song', track.id) === 'complete';
   const rating = track.userRating;
 
   const handleAddToQueue = useCallback(() => {
@@ -124,6 +126,9 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
           </View>
         </View>
         <View style={styles.trackRight}>
+          {downloaded && (
+            <Ionicons name="arrow-down-circle" size={14} color={colors.primary} />
+          )}
           {starred && (
             <Ionicons name="heart" size={14} color={colors.red} />
           )}

@@ -5,13 +5,20 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { useTheme } from '../hooks/useTheme';
 import { clearImageCache } from '../services/imageCacheService';
+import { clearMusicCache } from '../services/musicCacheService';
 import { imageCacheStore, getImageCount } from '../store/imageCacheStore';
 import { albumDetailStore } from '../store/albumDetailStore';
 import { artistDetailStore } from '../store/artistDetailStore';
+import {
+  musicCacheStore,
+  type MaxConcurrentDownloads,
+} from '../store/musicCacheStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
 import { completedScrobbleStore } from '../store/completedScrobbleStore';
 import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
 import { formatBytes } from '../utils/formatters';
+
+const CONCURRENT_OPTIONS: MaxConcurrentDownloads[] = [1, 3, 5];
 
 export function SettingsStorageScreen() {
   const router = useRouter();
@@ -26,6 +33,12 @@ export function SettingsStorageScreen() {
   const totalMetadataCount = cachedAlbumCount + cachedArtistCount + cachedPlaylistCount;
   const pendingScrobbleCount = pendingScrobbleStore((s) => s.pendingScrobbles.length);
   const completedScrobbleCount = completedScrobbleStore((s) => s.completedScrobbles.length);
+
+  const musicCacheBytes = musicCacheStore((s) => s.totalBytes);
+  const musicCachedItemCount = musicCacheStore((s) => Object.keys(s.cachedItems).length);
+  const musicFileCount = musicCacheStore((s) => s.totalFiles);
+  const musicQueueCount = musicCacheStore((s) => s.downloadQueue.length);
+  const maxConcurrentDownloads = musicCacheStore((s) => s.maxConcurrentDownloads);
 
   const handleClearCache = useCallback(() => {
     Alert.alert(
@@ -62,6 +75,27 @@ export function SettingsStorageScreen() {
       ],
     );
   }, [totalMetadataCount]);
+
+  const handleClearMusicCache = useCallback(() => {
+    Alert.alert(
+      'Clear Downloaded Music',
+      `This will remove ${formatBytes(musicCacheBytes)} of downloaded music. Continue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => { clearMusicCache(); },
+        },
+      ],
+    );
+  }, [musicCacheBytes]);
+
+  const handleCycleConcurrentDownloads = useCallback(() => {
+    const currentIndex = CONCURRENT_OPTIONS.indexOf(maxConcurrentDownloads);
+    const nextIndex = (currentIndex + 1) % CONCURRENT_OPTIONS.length;
+    musicCacheStore.getState().setMaxConcurrentDownloads(CONCURRENT_OPTIONS[nextIndex]);
+  }, [maxConcurrentDownloads]);
 
   const dynamicStyles = useMemo(
     () =>
@@ -118,6 +152,85 @@ export function SettingsStorageScreen() {
             <Ionicons name="trash-outline" size={18} color={colors.red} />
             <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Image Cache</Text>
           </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Downloaded music</Text>
+        <View style={[styles.card, dynamicStyles.card]}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Downloaded items</Text>
+            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+              {musicCachedItemCount} {musicCachedItemCount === 1 ? 'item' : 'items'}
+            </Text>
+          </View>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Downloaded files</Text>
+            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+              {musicFileCount} {musicFileCount === 1 ? 'file' : 'files'}
+            </Text>
+          </View>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Disk usage</Text>
+            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+              {formatBytes(musicCacheBytes)}
+            </Text>
+          </View>
+          <Pressable
+            onPress={handleCycleConcurrentDownloads}
+            style={({ pressed }) => [
+              styles.infoRow,
+              { borderBottomColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Concurrent downloads</Text>
+            <Text style={[styles.infoValue, { color: colors.primary }]}>
+              {maxConcurrentDownloads}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/music-cache-browser')}
+            style={({ pressed }) => [
+              styles.browseCacheButton,
+              { borderTopColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.browseCacheLeft}>
+              <Ionicons name="musical-notes-outline" size={18} color={colors.textPrimary} />
+              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>Browse Downloaded Music</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/download-queue')}
+            style={({ pressed }) => [
+              styles.browseCacheButton,
+              { borderTopColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.browseCacheLeft}>
+              <Ionicons name="cloud-download-outline" size={18} color={colors.textPrimary} />
+              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
+                Download Queue{musicQueueCount > 0 ? ` (${musicQueueCount})` : ''}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+          {musicCachedItemCount > 0 && (
+            <Pressable
+              onPress={handleClearMusicCache}
+              style={({ pressed }) => [
+                styles.clearCacheButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.red} />
+              <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Downloaded Music</Text>
+            </Pressable>
+          )}
         </View>
       </View>
 

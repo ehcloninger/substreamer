@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
+import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { removeItemFromQueue, toggleStar } from '../services/moreOptionsService';
 import { type Child } from '../services/subsonicService';
@@ -54,6 +55,7 @@ export const QueueItemRow = memo(function QueueItemRow({
   }, [onLongPress, track]);
 
   const starred = useIsStarred('song', track.id);
+  const downloaded = useDownloadStatus('song', track.id) === 'complete';
 
   const handleRemove = useCallback(() => {
     removeItemFromQueue(index);
@@ -123,8 +125,11 @@ export const QueueItemRow = memo(function QueueItemRow({
           )}
         </View>
 
-        {/* Starred indicator + Duration */}
+        {/* Downloaded + Starred indicators + Duration */}
         <View style={styles.trailing}>
+          {downloaded && (
+            <Ionicons name="arrow-down-circle" size={14} color={colors.primary} />
+          )}
           {starred && (
             <Ionicons name="heart" size={14} color={colors.red} />
           )}
