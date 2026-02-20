@@ -13,6 +13,7 @@ import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { DownloadedIcon } from './DownloadedIcon';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
@@ -127,7 +128,7 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
         </View>
         <View style={styles.trackRight}>
           {downloaded && (
-            <Ionicons name="arrow-down-circle" size={14} color={colors.primary} />
+            <DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" />
           )}
           {starred && (
             <Ionicons name="heart" size={14} color={colors.red} />

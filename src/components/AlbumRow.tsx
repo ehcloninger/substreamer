@@ -4,6 +4,7 @@ import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { DownloadedIcon } from './DownloadedIcon';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
@@ -96,7 +97,7 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
               </Text>
             </View>
             {starred && <Ionicons name="heart" size={14} color={colors.red} style={styles.indicator} />}
-            {downloaded && <Ionicons name="arrow-down-circle" size={14} color={colors.primary} style={styles.indicator} />}
+            {downloaded && <View style={styles.indicator}><DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" /></View>}
             <View style={styles.metaRight}>
               <Ionicons name="time-outline" size={14} color={colors.primary} />
               <Text style={[styles.metaText, { color: colors.textSecondary }]}>

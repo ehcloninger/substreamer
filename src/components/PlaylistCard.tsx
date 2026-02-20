@@ -4,6 +4,7 @@ import { memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { DownloadedIcon } from './DownloadedIcon';
 import { LongPressable } from './LongPressable';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useTheme } from '../hooks/useTheme';
@@ -45,7 +46,7 @@ export const PlaylistCard = memo(function PlaylistCard({
           />
           {downloaded && (
             <View style={styles.indicators}>
-              <Ionicons name="arrow-down-circle" size={14} color={colors.primary} />
+              <DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" />
             </View>
           )}
         </View>

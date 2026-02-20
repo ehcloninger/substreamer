@@ -4,6 +4,7 @@ import { memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { DownloadedIcon } from './DownloadedIcon';
 import { LongPressable } from './LongPressable';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
@@ -46,7 +47,7 @@ export const AlbumCard = memo(function AlbumCard({
           />
           {(downloaded || starred) && (
             <View style={styles.indicators}>
-              {downloaded && <Ionicons name="arrow-down-circle" size={14} color={colors.primary} />}
+              {downloaded && <DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" />}
               {starred && <Ionicons name="heart" size={14} color={colors.red} />}
             </View>
           )}

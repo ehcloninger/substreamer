@@ -13,6 +13,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { CircularProgress } from './CircularProgress';
+import { DownloadedIcon } from './DownloadedIcon';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useTheme } from '../hooks/useTheme';
 import {
@@ -99,15 +100,13 @@ export const DownloadButton = memo(function DownloadButton({
           trackColor={colors.border}
           onComplete={handleRingComplete}
         />
+      ) : downloadStatus === 'complete' ? (
+        <DownloadedIcon size={size} circleColor={colors.primary} arrowColor="#fff" />
       ) : (
         <Ionicons
-          name={downloadStatus === 'complete' ? 'arrow-down-circle' : 'arrow-down-circle-outline'}
+          name="arrow-down-circle-outline"
           size={size}
-          color={
-            downloadStatus === 'complete' || downloadStatus === 'queued'
-              ? colors.primary
-              : colors.textPrimary
-          }
+          color={colors.textPrimary}
         />
       )}
     </Pressable>
