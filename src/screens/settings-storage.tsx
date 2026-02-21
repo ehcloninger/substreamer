@@ -271,6 +271,22 @@ export function SettingsStorageScreen() {
             </Text>
           </View>
           <Pressable
+            onPress={() => router.push('/scrobble-browser')}
+            style={({ pressed }) => [
+              styles.browseCacheButton,
+              { borderTopColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.browseCacheLeft}>
+              <Ionicons name="list-outline" size={18} color={colors.textPrimary} />
+              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
+                Browse Scrobbles
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
             onPress={() => router.push('/playback-history')}
             style={({ pressed }) => [
               styles.browseCacheButton,
@@ -281,7 +297,7 @@ export function SettingsStorageScreen() {
             <View style={styles.browseCacheLeft}>
               <Ionicons name="analytics-outline" size={18} color={colors.textPrimary} />
               <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                Playback History
+                My Listening
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />

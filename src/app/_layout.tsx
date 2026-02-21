@@ -224,8 +224,12 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="scrobble-browser"
+          options={{ title: 'Scrobbles', headerBackTitle: 'Back' }}
+        />
+        <Stack.Screen
           name="playback-history"
-          options={{ title: 'Playback History', headerBackTitle: 'Back' }}
+          options={{ title: 'My Listening', headerBackTitle: 'Back' }}
         />
         <Stack.Screen
           name="settings-audio-quality"
