@@ -5,8 +5,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AlbumListView } from '../components/AlbumListView';
 import { ArtistListView } from '../components/ArtistListView';
+import { DownloadButton } from '../components/DownloadButton';
 import { SongListView } from '../components/SongListView';
 import { useTheme } from '../hooks/useTheme';
+import {
+  STARRED_SONGS_ITEM_ID,
+  enqueueStarredSongsDownload,
+  deleteStarredSongsDownload,
+} from '../services/musicCacheService';
 import { minDelay } from '../utils/stringHelpers';
 import {
   layoutPreferencesStore,
@@ -112,7 +118,15 @@ export function FavoritesScreen() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ---- Header right layout toggle ---- */
+  /* ---- Header right: download + layout toggle ---- */
+  const handleDownloadStarred = useCallback(() => {
+    enqueueStarredSongsDownload();
+  }, []);
+
+  const handleDeleteStarred = useCallback(() => {
+    deleteStarredSongsDownload();
+  }, []);
+
   useEffect(() => {
     const layoutMap: Record<Segment, { layout: ItemLayout; toggle: () => void }> = {
       songs: { layout: favSongLayout, toggle: toggleSongLayout },
@@ -121,32 +135,48 @@ export function FavoritesScreen() {
     };
 
     const current = layoutMap[activeSegment];
+    const showDownloadButton = activeSegment === 'songs' && songs.length > 0;
+
     navigation.setOptions({
       headerRight: () => (
-        <Pressable
-          onPress={current.toggle}
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.headerButtonPressed,
-          ]}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={current.layout === 'list' ? 'grid-outline' : 'list-outline'}
-            size={22}
-            color={colors.textPrimary}
-          />
-        </Pressable>
+        <View style={styles.headerRight}>
+          {showDownloadButton && (
+            <DownloadButton
+              itemId={STARRED_SONGS_ITEM_ID}
+              type="playlist"
+              size={22}
+              onDownload={handleDownloadStarred}
+              onDelete={handleDeleteStarred}
+            />
+          )}
+          <Pressable
+            onPress={current.toggle}
+            style={({ pressed }) => [
+              styles.headerButton,
+              pressed && styles.headerButtonPressed,
+            ]}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={current.layout === 'list' ? 'grid-outline' : 'list-outline'}
+              size={22}
+              color={colors.textPrimary}
+            />
+          </Pressable>
+        </View>
       ),
     });
   }, [
     activeSegment,
+    songs.length,
     favSongLayout,
     favAlbumLayout,
     favArtistLayout,
     toggleSongLayout,
     toggleAlbumLayout,
     toggleArtistLayout,
+    handleDownloadStarred,
+    handleDeleteStarred,
     navigation,
     colors.textPrimary,
   ]);
@@ -245,6 +275,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerButton: {
     padding: 4,

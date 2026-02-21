@@ -18,6 +18,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 
 import { checkStorageLimit } from './storageService';
 import { albumDetailStore } from '../store/albumDetailStore';
+import { favoritesStore } from '../store/favoritesStore';
 import { storageLimitStore } from '../store/storageLimitStore';
 import {
   musicCacheStore,
@@ -38,6 +39,9 @@ import { cacheAllSizes } from './imageCacheService';
 /* ------------------------------------------------------------------ */
 
 const CACHE_DIR_NAME = 'music-cache';
+
+/** Well-known itemId for the starred-songs virtual playlist. */
+export const STARRED_SONGS_ITEM_ID = '__starred__';
 
 const MIME_TO_AUDIO_EXT: Record<string, string> = {
   'audio/mpeg': 'mp3',
@@ -713,6 +717,58 @@ export function syncCachedPlaylistTracks(
 }
 
 /**
+ * Full sync for a cached item: removes tracks no longer present and
+ * re-enqueues through the download queue when new tracks are detected.
+ * Going through the queue lets the DownloadBanner show progress and
+ * reuses the standard downloadItem() pipeline (which skips tracks
+ * already on disk via trackUriMap).
+ *
+ * Byte accounting: removals are handled by syncCachedPlaylistTracks
+ * (decrements totalBytes). For additions we splice the item out of
+ * cachedItems *without* adjusting totalBytes (the bytes are still on
+ * disk) and enqueue it -- downloadItem() only calls addBytes() for
+ * genuinely new tracks, keeping the running total correct.
+ */
+export function syncCachedItemTracks(
+  itemId: string,
+  newTracks: Child[],
+): void {
+  const state = musicCacheStore.getState();
+  const cached = state.cachedItems[itemId];
+  if (!cached) return;
+  if (state.downloadQueue.some((q) => q.itemId === itemId)) return;
+
+  const newTrackIds = newTracks.map((t) => t.id);
+  const cachedTrackIds = new Set(cached.tracks.map((t) => t.id));
+
+  syncCachedPlaylistTracks(itemId, newTrackIds);
+
+  const hasNewTracks = newTracks.some((t) => !cachedTrackIds.has(t.id));
+  if (!hasNewTracks) return;
+
+  // Re-read state after removals
+  const updated = musicCacheStore.getState();
+  const updatedCached = updated.cachedItems[itemId];
+  if (!updatedCached) return;
+
+  // Move from cachedItems to queue without adjusting byte/file totals
+  const { [itemId]: _, ...restCachedItems } = updated.cachedItems;
+  musicCacheStore.setState({ cachedItems: restCachedItems });
+
+  musicCacheStore.getState().enqueue({
+    itemId,
+    type: updatedCached.type,
+    name: updatedCached.name,
+    artist: updatedCached.artist,
+    coverArtId: updatedCached.coverArtId,
+    totalTracks: newTracks.length,
+    tracks: newTracks,
+  });
+
+  processQueue();
+}
+
+/**
  * Cancel a queued or in-progress download and remove its partial files.
  */
 export function cancelDownload(queueId: string): void {
@@ -822,6 +878,66 @@ export function resumeIfSpaceAvailable(): void {
     processQueue();
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Starred songs (virtual playlist)                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Download all currently starred songs as a virtual playlist.
+ * Follows the enqueuePlaylistDownload pattern but sources tracks
+ * from favoritesStore instead of fetching a Subsonic playlist.
+ */
+export async function enqueueStarredSongsDownload(): Promise<void> {
+  const state = musicCacheStore.getState();
+  if (STARRED_SONGS_ITEM_ID in state.cachedItems) return;
+  if (state.downloadQueue.some((q) => q.itemId === STARRED_SONGS_ITEM_ID)) return;
+
+  const { songs } = favoritesStore.getState();
+  if (songs.length === 0) return;
+
+  await ensureCoverArtAuth();
+
+  musicCacheStore.getState().enqueue({
+    itemId: STARRED_SONGS_ITEM_ID,
+    type: 'playlist',
+    name: 'Favorite Songs',
+    totalTracks: songs.length,
+    tracks: songs,
+  });
+
+  processQueue();
+}
+
+/** Remove the starred-songs download and delete its cached files. */
+export function deleteStarredSongsDownload(): void {
+  deleteCachedItem(STARRED_SONGS_ITEM_ID);
+}
+
+/**
+ * Keep the starred-songs cache in sync with the current favorites.
+ * Removes tracks that were unstarred and enqueues downloads for
+ * newly starred tracks via the generic syncCachedItemTracks.
+ */
+function syncStarredSongsDownload(): void {
+  const { songs } = favoritesStore.getState();
+  const state = musicCacheStore.getState();
+
+  if (songs.length === 0) {
+    if (STARRED_SONGS_ITEM_ID in state.cachedItems) {
+      deleteCachedItem(STARRED_SONGS_ITEM_ID);
+    }
+    return;
+  }
+
+  syncCachedItemTracks(STARRED_SONGS_ITEM_ID, songs);
+}
+
+// Auto-sync starred songs whenever the favorites song list changes.
+favoritesStore.subscribe((state, prev) => {
+  if (state.songs === prev.songs) return;
+  syncStarredSongsDownload();
+});
 
 storageLimitStore.subscribe((state, prev) => {
   const settingsChanged =

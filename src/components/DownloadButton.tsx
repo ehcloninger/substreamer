@@ -28,12 +28,18 @@ interface DownloadButtonProps {
   itemId: string;
   type: 'album' | 'playlist';
   size?: number;
+  /** Override the default enqueue action (e.g. for starred songs). */
+  onDownload?: () => void;
+  /** Override the default delete action (e.g. for starred songs). */
+  onDelete?: () => void;
 }
 
 export const DownloadButton = memo(function DownloadButton({
   itemId,
   type,
   size = 24,
+  onDownload,
+  onDelete,
 }: DownloadButtonProps) {
   const { colors } = useTheme();
   const downloadStatus = useDownloadStatus(type, itemId);
@@ -65,17 +71,19 @@ export const DownloadButton = memo(function DownloadButton({
   const handlePress = useCallback(() => {
     if (!itemId) return;
     if (downloadStatus === 'complete') {
-      deleteCachedItem(itemId);
+      if (onDelete) onDelete();
+      else deleteCachedItem(itemId);
     } else if (downloadStatus === 'queued' || downloadStatus === 'downloading') {
       const queueItem = musicCacheStore.getState().downloadQueue.find(
         (q) => q.itemId === itemId,
       );
       if (queueItem) cancelDownload(queueItem.queueId);
     } else {
-      if (type === 'album') enqueueAlbumDownload(itemId);
+      if (onDownload) onDownload();
+      else if (type === 'album') enqueueAlbumDownload(itemId);
       else enqueuePlaylistDownload(itemId);
     }
-  }, [itemId, type, downloadStatus]);
+  }, [itemId, type, downloadStatus, onDownload, onDelete]);
 
   const showCircular = downloadStatus === 'downloading' || (downloadStatus === 'complete' && showingRing);
   const progressSize = Math.round(size * 0.9);
