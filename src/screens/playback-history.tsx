@@ -13,6 +13,7 @@ import { usePlaybackAnalytics, type TimePeriod } from '../hooks/usePlaybackAnaly
 import { useTheme } from '../hooks/useTheme';
 import { useTransitionComplete } from '../hooks/useTransitionComplete';
 import { completedScrobbleStore } from '../store/completedScrobbleStore';
+import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
 import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
 
 const PERIODS: { key: TimePeriod; label: string }[] = [
@@ -23,8 +24,8 @@ const PERIODS: { key: TimePeriod; label: string }[] = [
 ];
 
 const HOUR_LABELS = [
-  '12a', '', '', '3a', '', '', '6a', '', '', '9a', '', '',
-  '12p', '', '', '3p', '', '', '6p', '', '', '9p', '', '',
+  '12am', '', '', '3am', '', '', '6am', '', '', '9am', '', '',
+  '12pm', '', '', '3pm', '', '', '6pm', '', '', '9pm', '', '',
 ];
 
 function formatDuration(seconds: number): string {
@@ -61,6 +62,7 @@ export function PlaybackHistoryScreen() {
 
   const completedScrobbles = completedScrobbleStore((s) => s.completedScrobbles);
   const pendingScrobbles = pendingScrobbleStore((s) => s.pendingScrobbles);
+  const dateFormat = layoutPreferencesStore((s) => s.dateFormat);
 
   const analytics = usePlaybackAnalytics(completedScrobbles, period);
 
@@ -95,10 +97,13 @@ export function PlaybackHistoryScreen() {
     );
   }
 
-  const dailyBarData = analytics.dailyActivity.map((d) => ({
-    value: d.count,
-    label: d.date.substring(5).replace('-', '/'),
-  }));
+  const dailyBarData = analytics.dailyActivity.map((d) => {
+    const [, mm, dd] = d.date.split('-');
+    return {
+      value: d.count,
+      label: dateFormat === 'yyyy/dd/mm' ? `${dd}/${mm}` : `${mm}/${dd}`,
+    };
+  });
 
   const hourlyBarData = analytics.hourlyDistribution.map((count, i) => ({
     value: count,

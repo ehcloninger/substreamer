@@ -9,6 +9,7 @@ import {
   layoutPreferencesStore,
   type AlbumSortOrder,
   type ArtistAlbumSortOrder,
+  type DateFormat,
   type ItemLayout,
 } from '../store/layoutPreferencesStore';
 
@@ -40,6 +41,11 @@ const ARTIST_ALBUM_SORT_OPTIONS: { value: ArtistAlbumSortOrder; label: string }[
   { value: 'oldest', label: 'Oldest first' },
 ];
 
+const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string; example: string }[] = [
+  { value: 'yyyy/mm/dd', label: 'Month/Day', example: '02/21' },
+  { value: 'yyyy/dd/mm', label: 'Day/Month', example: '21/02' },
+];
+
 const ACCENT_COLORS: { label: string; hex: string }[] = [
   { label: 'Default', hex: '#1D9BF0' },
   { label: 'Red', hex: '#E91429' },
@@ -57,6 +63,7 @@ export function SettingsAppearanceScreen() {
   const [accentOpen, setAccentOpen] = useState(false);
   const [sortOrderOpen, setSortOrderOpen] = useState(false);
   const [artistAlbumSortOpen, setArtistAlbumSortOpen] = useState(false);
+  const [dateFormatOpen, setDateFormatOpen] = useState(false);
   const activeAccentLabel = ACCENT_COLORS.find((c) => c.hex === activePrimary)?.label ?? 'Custom';
 
   const handleAccentSelect = useCallback(
@@ -89,6 +96,9 @@ export function SettingsAppearanceScreen() {
 
   const marqueeScrolling = layoutPreferencesStore((s) => s.marqueeScrolling);
   const setMarqueeScrolling = layoutPreferencesStore((s) => s.setMarqueeScrolling);
+
+  const dateFormat = layoutPreferencesStore((s) => s.dateFormat);
+  const setDateFormat = layoutPreferencesStore((s) => s.setDateFormat);
 
   const layoutValues: Record<string, ItemLayout> = {
     albumLayout,
@@ -340,6 +350,60 @@ export function SettingsAppearanceScreen() {
                   >
                     <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
                       {opt.label}
+                    </Text>
+                    {isActive && (
+                      <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Date format</Text>
+        <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
+          <Pressable
+            onPress={() => setDateFormatOpen((prev) => !prev)}
+            style={({ pressed }) => [
+              styles.accentHeader,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
+              {DATE_FORMAT_OPTIONS.find((o) => o.value === dateFormat)!.label}{' '}
+              <Text style={{ color: colors.textSecondary }}>
+                ({DATE_FORMAT_OPTIONS.find((o) => o.value === dateFormat)!.example})
+              </Text>
+            </Text>
+            <Ionicons
+              name={dateFormatOpen ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+          {dateFormatOpen && (
+            <View style={[styles.accentList, { borderTopColor: colors.border }]}>
+              {DATE_FORMAT_OPTIONS.map((opt) => {
+                const isActive = dateFormat === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => {
+                      setDateFormat(opt.value);
+                      setDateFormatOpen(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.accentOption,
+                      { borderBottomColor: colors.border },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
+                      {opt.label}{' '}
+                      <Text style={{ color: colors.textSecondary }}>({opt.example})</Text>
                     </Text>
                     {isActive && (
                       <Ionicons name="checkmark" size={20} color={colors.primary} />

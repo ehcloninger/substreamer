@@ -100,6 +100,7 @@ export const MiniBarChart = memo(function MiniBarChart({
   // Show labels for a subset to avoid crowding
   const labelInterval = barCount <= 10 ? 1 : barCount <= 20 ? 3 : Math.ceil(barCount / 8);
   const hasLabels = data.some((d) => d.label);
+  const lastHasLabel = !!data[data.length - 1]?.label;
 
   return (
     <View style={styles.container}>
@@ -130,7 +131,7 @@ export const MiniBarChart = memo(function MiniBarChart({
       {hasLabels && (
         <View style={[styles.labelRow, { width: '100%' }]}>
           {data.map((d, i) =>
-            i % labelInterval === 0 || i === data.length - 1 ? (
+            (i % labelInterval === 0 && (!lastHasLabel || data.length - 1 - i >= labelInterval)) || (i === data.length - 1 && lastHasLabel) ? (
               <Text
                 key={i}
                 style={[

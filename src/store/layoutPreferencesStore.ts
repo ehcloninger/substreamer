@@ -6,6 +6,7 @@ import { sqliteStorage } from './sqliteStorage';
 export type ItemLayout = 'list' | 'grid';
 export type AlbumSortOrder = 'artist' | 'title';
 export type ArtistAlbumSortOrder = 'newest' | 'oldest';
+export type DateFormat = 'yyyy/mm/dd' | 'yyyy/dd/mm';
 
 export interface LayoutPreferencesState {
   albumLayout: ItemLayout;
@@ -17,6 +18,7 @@ export interface LayoutPreferencesState {
   albumSortOrder: AlbumSortOrder;
   artistAlbumSortOrder: ArtistAlbumSortOrder;
   marqueeScrolling: boolean;
+  dateFormat: DateFormat;
   setAlbumLayout: (layout: ItemLayout) => void;
   setArtistLayout: (layout: ItemLayout) => void;
   setPlaylistLayout: (layout: ItemLayout) => void;
@@ -26,6 +28,7 @@ export interface LayoutPreferencesState {
   setAlbumSortOrder: (order: AlbumSortOrder) => void;
   setArtistAlbumSortOrder: (order: ArtistAlbumSortOrder) => void;
   setMarqueeScrolling: (enabled: boolean) => void;
+  setDateFormat: (format: DateFormat) => void;
 }
 
 const PERSIST_KEY = 'substreamer-layout-preferences';
@@ -42,6 +45,7 @@ export const layoutPreferencesStore = create<LayoutPreferencesState>()(
       albumSortOrder: 'artist',
       artistAlbumSortOrder: 'newest',
       marqueeScrolling: true,
+      dateFormat: 'yyyy/mm/dd',
       setAlbumLayout: (albumLayout) => set({ albumLayout }),
       setArtistLayout: (artistLayout) => set({ artistLayout }),
       setPlaylistLayout: (playlistLayout) => set({ playlistLayout }),
@@ -52,6 +56,7 @@ export const layoutPreferencesStore = create<LayoutPreferencesState>()(
       setArtistAlbumSortOrder: (artistAlbumSortOrder) =>
         set({ artistAlbumSortOrder }),
       setMarqueeScrolling: (marqueeScrolling) => set({ marqueeScrolling }),
+      setDateFormat: (dateFormat) => set({ dateFormat }),
     }),
     {
       name: PERSIST_KEY,
@@ -66,6 +71,7 @@ export const layoutPreferencesStore = create<LayoutPreferencesState>()(
         albumSortOrder: state.albumSortOrder,
         artistAlbumSortOrder: state.artistAlbumSortOrder,
         marqueeScrolling: state.marqueeScrolling,
+        dateFormat: state.dateFormat,
       }),
     }
   )
