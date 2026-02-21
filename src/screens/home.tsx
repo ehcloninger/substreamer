@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { AlbumCard } from '../components/AlbumCard';
+import { DownloadedIcon } from '../components/DownloadedIcon';
 import { PlaylistCard } from '../components/PlaylistCard';
 import { useTheme } from '../hooks/useTheme';
 import type { AlbumID3, Playlist } from '../services/subsonicService';
@@ -277,32 +278,52 @@ export function HomeScreen() {
     return allPlaylists.filter((p) => p.id in cachedItems);
   }, [downloadedOnly, allPlaylists, cachedItems]);
 
+  const offlineEmpty = useMemo(() => {
+    if (!downloadedOnly) return false;
+    if (downloadedAlbums.length > 0 || downloadedPlaylists.length > 0) return false;
+    return SECTION_ORDER.every((key) => filteredSections[key].length === 0);
+  }, [downloadedOnly, downloadedAlbums, downloadedPlaylists, filteredSections]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {downloadedOnly && (
-          <>
-            <DownloadedAlbumSection albums={downloadedAlbums} colors={colors} />
-            <PlaylistSection playlists={downloadedPlaylists} colors={colors} />
-          </>
-        )}
-        {SECTION_ORDER.map((key) => {
-          const sectionAlbums = filteredSections[key];
-          if (hasAnyFilters && sectionAlbums.length === 0) return null;
-          return (
-            <AlbumSection
-              key={key}
-              listType={key}
-              albums={sectionAlbums}
-              colors={colors}
-            />
-          );
-        })}
-      </ScrollView>
+      {offlineEmpty ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="cloud-offline-outline" size={56} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+            No downloaded music
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            Tap the{' '}
+            <DownloadedIcon size={15} circleColor={colors.primary} arrowColor="#fff" />
+            {' '}button on an album, playlist, or your favorite songs list to download it for offline listening
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {downloadedOnly && (
+            <>
+              <DownloadedAlbumSection albums={downloadedAlbums} colors={colors} />
+              <PlaylistSection playlists={downloadedPlaylists} colors={colors} />
+            </>
+          )}
+          {SECTION_ORDER.map((key) => {
+            const sectionAlbums = filteredSections[key];
+            if (hasAnyFilters && sectionAlbums.length === 0) return null;
+            return (
+              <AlbumSection
+                key={key}
+                listType={key}
+                albums={sectionAlbums}
+                colors={colors}
+              />
+            );
+          })}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -341,6 +362,22 @@ const styles = StyleSheet.create({
   },
   iconButtonPressed: {
     opacity: 0.6,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 16,

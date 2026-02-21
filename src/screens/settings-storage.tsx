@@ -9,6 +9,7 @@ import { StorageUsageBar } from '../components/StorageUsageBar';
 import { useTheme } from '../hooks/useTheme';
 import { clearImageCache } from '../services/imageCacheService';
 import { clearMusicCache } from '../services/musicCacheService';
+import { clearQueue } from '../services/playerService';
 import { checkStorageLimit, getFreeDiskSpace } from '../services/storageService';
 import { imageCacheStore, getImageCount } from '../store/imageCacheStore';
 import { albumDetailStore } from '../store/albumDetailStore';
@@ -84,7 +85,7 @@ export function SettingsStorageScreen() {
   const handleClearCache = useCallback(() => {
     Alert.alert(
       'Clear Image Cache',
-      `This will remove ${formatBytes(totalBytes)} of cached images. Continue?`,
+      `This will remove ${formatBytes(totalBytes)} of cached images. Continue?\n\nThis may affect offline access to your music.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -102,7 +103,7 @@ export function SettingsStorageScreen() {
   const handleClearMetadataCache = useCallback(() => {
     Alert.alert(
       'Clear Metadata Cache',
-      `This will remove ${totalMetadataCount} cached ${totalMetadataCount === 1 ? 'item' : 'items'}. Continue?`,
+      `This will remove ${totalMetadataCount} cached ${totalMetadataCount === 1 ? 'item' : 'items'}. Continue?\n\nThis may affect offline access to your music.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -121,13 +122,14 @@ export function SettingsStorageScreen() {
   const handleClearMusicCache = useCallback(() => {
     Alert.alert(
       'Clear Downloaded Music',
-      `This will remove ${formatBytes(musicCacheBytes)} of downloaded music. Continue?`,
+      `This will remove ${formatBytes(musicCacheBytes)} of downloaded music. Continue?\n\nThis will stop playback and clear the current queue, as any downloaded items in the queue would fail to play. This will also break offline access to your music.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Clear',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await clearQueue();
             clearMusicCache();
             checkStorageLimit();
           },
@@ -263,17 +265,19 @@ export function SettingsStorageScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
-          <Pressable
-            onPress={handleClearCache}
-            style={({ pressed }) => [
-              styles.clearCacheButton,
-              { borderColor: colors.red },
-              pressed && styles.pressed,
-            ]}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.red} />
-            <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Image Cache</Text>
-          </Pressable>
+          {imageCount > 0 && (
+            <Pressable
+              onPress={handleClearCache}
+              style={({ pressed }) => [
+                styles.clearCacheButton,
+                { borderColor: colors.red },
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.red} />
+              <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Image Cache</Text>
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -392,17 +396,19 @@ export function SettingsStorageScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
-          <Pressable
-            onPress={handleClearMetadataCache}
-            style={({ pressed }) => [
-              styles.clearCacheButton,
-              { borderColor: colors.red },
-              pressed && styles.pressed,
-            ]}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.red} />
-            <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Metadata Cache</Text>
-          </Pressable>
+          {totalMetadataCount > 0 && (
+            <Pressable
+              onPress={handleClearMetadataCache}
+              style={({ pressed }) => [
+                styles.clearCacheButton,
+                { borderColor: colors.red },
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.red} />
+              <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Metadata Cache</Text>
+            </Pressable>
+          )}
         </View>
       </View>
 

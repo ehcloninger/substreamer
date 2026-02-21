@@ -200,7 +200,7 @@ export function MusicCacheBrowserScreen() {
     if (!item) return;
     Alert.alert(
       'Remove Download',
-      `Delete "${item.name}" and free ${formatBytes(item.totalBytes)}?`,
+      `Delete "${item.name}" and free ${formatBytes(item.totalBytes)}?\n\nThis may affect offline access to your music.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

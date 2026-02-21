@@ -183,7 +183,7 @@ export function ImageCacheBrowserScreen() {
     (coverArtId: string) => {
       Alert.alert(
         'Delete Cached Image',
-        'Remove all cached variants for this image?',
+        'Remove all cached variants for this image?\n\nThis may affect offline access to your music.',
         [
           { text: 'Cancel', style: 'cancel' },
           {

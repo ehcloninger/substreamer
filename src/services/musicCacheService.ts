@@ -32,7 +32,7 @@ import {
   getDownloadStreamUrl,
   type Child,
 } from './subsonicService';
-import { cacheAllSizes } from './imageCacheService';
+import { cacheAllSizes, getCachedImageUri } from './imageCacheService';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -236,6 +236,18 @@ export function getTrackQueueStatus(trackId: string): 'queued' | 'downloading' |
 /*  Enqueue downloads                                                  */
 /* ------------------------------------------------------------------ */
 
+function cacheTrackCoverArt(tracks: Child[]): void {
+  const seen = new Set<string>();
+  for (const track of tracks) {
+    if (track.coverArt && !seen.has(track.coverArt)) {
+      seen.add(track.coverArt);
+      if (!getCachedImageUri(track.coverArt, 300)) {
+        cacheAllSizes(track.coverArt).catch(() => { /* non-critical */ });
+      }
+    }
+  }
+}
+
 /**
  * Fetch album metadata, cache its cover art, and add it to the
  * download queue. Triggers queue processing immediately.
@@ -252,6 +264,7 @@ export async function enqueueAlbumDownload(albumId: string): Promise<void> {
   if (album.coverArt) {
     cacheAllSizes(album.coverArt).catch(() => { /* non-critical */ });
   }
+  cacheTrackCoverArt(album.song);
 
   musicCacheStore.getState().enqueue({
     itemId: albumId,
@@ -282,6 +295,7 @@ export async function enqueuePlaylistDownload(playlistId: string): Promise<void>
   if (playlist.coverArt) {
     cacheAllSizes(playlist.coverArt).catch(() => { /* non-critical */ });
   }
+  cacheTrackCoverArt(playlist.entry);
 
   musicCacheStore.getState().enqueue({
     itemId: playlistId,
@@ -900,6 +914,7 @@ export async function enqueueStarredSongsDownload(): Promise<void> {
   if (songs.length === 0) return;
 
   await ensureCoverArtAuth();
+  cacheTrackCoverArt(songs);
 
   musicCacheStore.getState().enqueue({
     itemId: STARRED_SONGS_ITEM_ID,

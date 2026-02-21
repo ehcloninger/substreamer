@@ -7,9 +7,12 @@ import {
   type ArtistID3,
   type Child,
 } from '../services/subsonicService';
+import { albumDetailStore } from './albumDetailStore';
 import { albumLibraryStore } from './albumLibraryStore';
+import { favoritesStore } from './favoritesStore';
 import { musicCacheStore } from './musicCacheStore';
 import { offlineModeStore } from './offlineModeStore';
+import { playlistDetailStore } from './playlistDetailStore';
 import { playlistLibraryStore } from './playlistLibraryStore';
 
 export interface SearchResults {
@@ -58,13 +61,31 @@ function performOfflineSearch(query: string): SearchResults {
     created: p.created,
   }));
 
+  const trackCoverArt = new Map<string, string>();
+  for (const entry of Object.values(playlistDetailStore.getState().playlists)) {
+    for (const song of entry.playlist.entry ?? []) {
+      if (song.coverArt) trackCoverArt.set(song.id, song.coverArt);
+    }
+  }
+  for (const entry of Object.values(albumDetailStore.getState().albums)) {
+    for (const song of entry.album.song ?? []) {
+      if (song.coverArt) trackCoverArt.set(song.id, song.coverArt);
+    }
+  }
+  for (const song of favoritesStore.getState().songs) {
+    if (song.coverArt) trackCoverArt.set(song.id, song.coverArt);
+  }
+
   const songs: Child[] = [];
+  const seenSongIds = new Set<string>();
   for (const item of Object.values(cachedItems)) {
     for (const track of item.tracks) {
+      if (seenSongIds.has(track.id)) continue;
       if (
         track.title.toLowerCase().includes(q) ||
         track.artist.toLowerCase().includes(q)
       ) {
+        seenSongIds.add(track.id);
         songs.push({
           id: track.id,
           title: track.title,
@@ -72,7 +93,7 @@ function performOfflineSearch(query: string): SearchResults {
           album: item.name,
           duration: track.duration,
           isDir: false,
-          coverArt: item.coverArtId,
+          coverArt: trackCoverArt.get(track.id) ?? item.coverArtId,
         });
       }
     }

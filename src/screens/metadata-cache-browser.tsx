@@ -252,7 +252,7 @@ export function MetadataCacheBrowserScreen() {
     (entry: MetadataEntry) => {
       Alert.alert(
         'Delete Cached Metadata',
-        `Remove cached data for "${entry.name}"?`,
+        `Remove cached data for "${entry.name}"?\n\nThis may affect offline access to your music.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {

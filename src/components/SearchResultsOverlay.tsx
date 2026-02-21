@@ -265,9 +265,9 @@ export function SearchResultsOverlay() {
                 <Text style={[styles.sectionTitle, { color: colors.label }]}>
                   Songs
                 </Text>
-                {results.songs.slice(0, slots.songs).map((song) => (
+                {results.songs.slice(0, slots.songs).map((song, index) => (
                   <CompactSongRow
-                    key={song.id}
+                    key={`${song.id}-${index}`}
                     song={song}
                     colors={colors}
                     onPress={() => playTrack(song, results.songs)}

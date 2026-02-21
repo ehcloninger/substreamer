@@ -36,6 +36,7 @@ import {
 } from '../services/imageCacheService';
 import { STARRED_COVER_ART_ID } from '../services/musicCacheService';
 import { getCoverArtUrl } from '../services/subsonicService';
+import { offlineModeStore } from '../store/offlineModeStore';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -159,6 +160,8 @@ export const CachedImage = memo(function CachedImage({
     const cached = getCachedImageUri(coverArtId, size);
     if (cached) return;
 
+    if (offlineModeStore.getState().offlineMode) return;
+
     let cancelled = false;
 
     const timer = setTimeout(() => {
@@ -201,6 +204,8 @@ export const CachedImage = memo(function CachedImage({
       setUri(freshCached);
       return;
     }
+
+    if (offlineModeStore.getState().offlineMode) return;
 
     const remoteUrl = getCoverArtUrl(coverArtId, size);
     if (remoteUrl) setUri(remoteUrl);
