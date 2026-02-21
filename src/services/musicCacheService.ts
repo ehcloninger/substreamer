@@ -43,6 +43,9 @@ const CACHE_DIR_NAME = 'music-cache';
 /** Well-known itemId for the starred-songs virtual playlist. */
 export const STARRED_SONGS_ITEM_ID = '__starred__';
 
+/** Sentinel coverArtId so CachedImage renders a branded placeholder. */
+export const STARRED_COVER_ART_ID = '__starred_cover__';
+
 const MIME_TO_AUDIO_EXT: Record<string, string> = {
   'audio/mpeg': 'mp3',
   'audio/flac': 'flac',
@@ -902,6 +905,7 @@ export async function enqueueStarredSongsDownload(): Promise<void> {
     itemId: STARRED_SONGS_ITEM_ID,
     type: 'playlist',
     name: 'Favorite Songs',
+    coverArtId: STARRED_COVER_ART_ID,
     totalTracks: songs.length,
     tracks: songs,
   });

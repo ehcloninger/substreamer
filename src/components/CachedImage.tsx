@@ -12,6 +12,7 @@
 
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
+  Image as RNImage,
   type ImageProps,
   type ImageStyle,
   type LayoutChangeEvent,
@@ -33,6 +34,7 @@ import {
   evictUriCacheEntry,
   getCachedImageUri,
 } from '../services/imageCacheService';
+import { STARRED_COVER_ART_ID } from '../services/musicCacheService';
 import { getCoverArtUrl } from '../services/subsonicService';
 
 /* ------------------------------------------------------------------ */
@@ -51,6 +53,11 @@ const MAX_LOGO_SIZE = 80;
 const LOGO_SCALE = 0.4;
 /** Default colour for the placeholder waveform bars. */
 const PLACEHOLDER_COLOR = 'rgba(150,150,150,0.25)';
+
+/** Resolved URI for the bundled starred-songs cover art. */
+const STARRED_COVER_URI = RNImage.resolveAssetSource(
+  require('../assets/starred-cover.jpg'),
+).uri;
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -82,13 +89,17 @@ function computeLogoSize(w: number | undefined, h: number | undefined): number {
 /* ------------------------------------------------------------------ */
 
 export const CachedImage = memo(function CachedImage({
-  coverArtId,
+  coverArtId: rawCoverArtId,
   size,
-  fallbackUri,
+  fallbackUri: rawFallbackUri,
   style,
   placeholderColor,
   ...imageProps
 }: CachedImageProps) {
+  /* ---- resolve starred-songs sentinel to bundled asset ---- */
+  const coverArtId = rawCoverArtId === STARRED_COVER_ART_ID ? undefined : rawCoverArtId;
+  const fallbackUri = rawCoverArtId === STARRED_COVER_ART_ID ? STARRED_COVER_URI : rawFallbackUri;
+
   /* ---- initial synchronous cache check ---- */
   const initialCached = coverArtId ? getCachedImageUri(coverArtId, size) : null;
   const hasInitialImage = !!initialCached || (!coverArtId && !!fallbackUri);

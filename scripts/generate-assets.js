@@ -102,6 +102,13 @@ async function generate() {
     .toFile(path.join(ASSETS_DIR, 'favicon.png'));
   console.log('✔  favicon.png (48×48)');
 
+  // 5. Starred-songs cover – 600×600, blue bg, white bars, JPEG
+  const starredSvg = buildSvg(600, PRIMARY, WHITE, 0.50, 0);
+  await sharp(Buffer.from(starredSvg))
+    .jpeg({ quality: 90 })
+    .toFile(path.join(ASSETS_DIR, 'starred-cover.jpg'));
+  console.log('✔  starred-cover.jpg (600×600)');
+
   console.log('\nAll source assets generated in src/assets/');
   console.log('Run "npx expo prebuild --clean" to sync into native ios/ and android/ directories.');
 }
