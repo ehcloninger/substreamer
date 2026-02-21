@@ -426,12 +426,6 @@ export async function initPlayer(): Promise<void> {
       return;
     }
 
-    // Scrobble: if the previous track finished naturally (not a user skip
-    // and not a queue setup operation), record it as a completed scrobble.
-    if (previousActiveChild && !isUserSkipping && !isSettingQueue) {
-      addCompletedScrobble(previousActiveChild);
-    }
-
     maxBufferedSeen = 0;
     isFullyBuffered = false;
 
