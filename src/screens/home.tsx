@@ -21,6 +21,7 @@ import {
   albumListsStore,
   type AlbumListType,
 } from '../store/albumListsStore';
+import { completedScrobbleStore } from '../store/completedScrobbleStore';
 import { favoritesStore } from '../store/favoritesStore';
 import { filterBarStore } from '../store/filterBarStore';
 import { musicCacheStore } from '../store/musicCacheStore';
@@ -214,12 +215,25 @@ const SECTION_ORDER: AlbumListType[] = [
 
 export function HomeScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const isFocused = useIsFocused();
 
   const recentlyAdded = albumListsStore((s) => s.recentlyAdded);
   const recentlyPlayed = albumListsStore((s) => s.recentlyPlayed);
   const frequentlyPlayed = albumListsStore((s) => s.frequentlyPlayed);
   const randomSelection = albumListsStore((s) => s.randomSelection);
+
+  const totalPlays = completedScrobbleStore((s) => s.stats.totalPlays);
+  const totalSeconds = completedScrobbleStore((s) => s.stats.totalListeningSeconds);
+  const uniqueArtistCount = completedScrobbleStore(
+    (s) => Object.keys(s.stats.uniqueArtists).length
+  );
+  const listeningStats = useMemo(() => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const time = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    return { total: totalPlays, time, artists: uniqueArtistCount };
+  }, [totalPlays, totalSeconds, uniqueArtistCount]);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -304,6 +318,31 @@ export function HomeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <Pressable
+            onPress={() => router.push('/playback-history')}
+            style={({ pressed }) => [
+              styles.listeningCard,
+              { backgroundColor: colors.card },
+              pressed && styles.listeningCardPressed,
+            ]}
+          >
+            <View style={styles.listeningLeft}>
+              <View style={[styles.listeningIconCircle, { backgroundColor: colors.primary + '18' }]}>
+                <Ionicons name="analytics" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.listeningTextWrap}>
+                <Text style={[styles.listeningTitle, { color: colors.textPrimary }]}>
+                  My Listening
+                </Text>
+                <Text style={[styles.listeningSubtitle, { color: colors.textSecondary }]}>
+                  {listeningStats.total > 0
+                    ? `${listeningStats.total.toLocaleString()} plays · ${listeningStats.time} · ${listeningStats.artists} artists`
+                    : 'Listen to some music to see your stats here'}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </Pressable>
           {downloadedOnly && (
             <>
               <DownloadedAlbumSection albums={downloadedAlbums} colors={colors} />
@@ -384,5 +423,41 @@ const styles = StyleSheet.create({
   },
   horizontalList: {
     paddingRight: 16,
+  },
+  listeningCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 24,
+  },
+  listeningCardPressed: {
+    opacity: 0.7,
+  },
+  listeningLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  listeningTextWrap: {
+    flex: 1,
+  },
+  listeningIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listeningTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  listeningSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
   },
 });

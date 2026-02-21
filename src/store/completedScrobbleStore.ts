@@ -14,30 +14,85 @@ export interface CompletedScrobble {
   time: number;
 }
 
+export interface ListeningStats {
+  totalPlays: number;
+  totalListeningSeconds: number;
+  uniqueArtists: Record<string, true>;
+}
+
+const EMPTY_STATS: ListeningStats = {
+  totalPlays: 0,
+  totalListeningSeconds: 0,
+  uniqueArtists: {},
+};
+
 export interface CompletedScrobbleState {
   completedScrobbles: CompletedScrobble[];
+  stats: ListeningStats;
 
   addCompleted: (scrobble: CompletedScrobble) => void;
+  rebuildStats: () => void;
+}
+
+function buildStats(scrobbles: CompletedScrobble[]): ListeningStats {
+  let totalListeningSeconds = 0;
+  const uniqueArtists: Record<string, true> = {};
+  for (const s of scrobbles) {
+    if (s.song.duration) totalListeningSeconds += s.song.duration;
+    if (s.song.artist) uniqueArtists[s.song.artist] = true;
+  }
+  return { totalPlays: scrobbles.length, totalListeningSeconds, uniqueArtists };
 }
 
 const PERSIST_KEY = 'substreamer-completed-scrobbles';
 
 export const completedScrobbleStore = create<CompletedScrobbleState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       completedScrobbles: [],
+      stats: { ...EMPTY_STATS },
 
       addCompleted: (scrobble) =>
-        set((state) => ({
-          completedScrobbles: [...state.completedScrobbles, scrobble],
-        })),
+        set((state) => {
+          const artist = scrobble.song.artist;
+          const newArtists =
+            artist && !(artist in state.stats.uniqueArtists)
+              ? { ...state.stats.uniqueArtists, [artist]: true as const }
+              : state.stats.uniqueArtists;
+
+          return {
+            completedScrobbles: [...state.completedScrobbles, scrobble],
+            stats: {
+              totalPlays: state.stats.totalPlays + 1,
+              totalListeningSeconds:
+                state.stats.totalListeningSeconds + (scrobble.song.duration ?? 0),
+              uniqueArtists: newArtists,
+            },
+          };
+        }),
+
+      rebuildStats: () => {
+        const { completedScrobbles } = get();
+        set({ stats: buildStats(completedScrobbles) });
+      },
     }),
     {
       name: PERSIST_KEY,
       storage: createJSONStorage(() => sqliteStorage),
       partialize: (state) => ({
         completedScrobbles: state.completedScrobbles,
+        stats: state.stats,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // Backfill stats for users who have scrobbles from before this feature
+        if (
+          state.stats.totalPlays === 0 &&
+          state.completedScrobbles.length > 0
+        ) {
+          state.rebuildStats();
+        }
+      },
     }
   )
 );

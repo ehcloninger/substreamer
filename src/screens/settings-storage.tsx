@@ -264,12 +264,28 @@ export function SettingsStorageScreen() {
               {pendingScrobbleCount}
             </Text>
           </View>
-          <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Completed scrobbles</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {completedScrobbleCount}
             </Text>
           </View>
+          <Pressable
+            onPress={() => router.push('/playback-history')}
+            style={({ pressed }) => [
+              styles.browseCacheButton,
+              { borderTopColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.browseCacheLeft}>
+              <Ionicons name="analytics-outline" size={18} color={colors.textPrimary} />
+              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
+                Playback History
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
         </View>
       </View>
 

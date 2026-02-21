@@ -224,6 +224,10 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="playback-history"
+          options={{ title: 'Playback History', headerBackTitle: 'Back' }}
+        />
+        <Stack.Screen
           name="settings-audio-quality"
           options={{ title: 'Audio Quality', headerBackTitle: 'Settings' }}
         />
