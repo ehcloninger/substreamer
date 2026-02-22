@@ -188,7 +188,7 @@ console.log('  ✓ Pushed to origin');
 const notesFile = path.join(ROOT, '.release-notes-tmp');
 fs.writeFileSync(notesFile, entry);
 try {
-  run(`gh release create ${tag} --title "${tag}" --notes-file "${notesFile}"`, { stdio: 'inherit' });
+  run(`gh release create ${tag} --title "${tag}" --notes-file "${notesFile}" --target master`, { stdio: 'inherit' });
   console.log(`  ✓ Created GitHub release ${tag}`);
 } finally {
   fs.unlinkSync(notesFile);
