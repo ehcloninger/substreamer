@@ -18,6 +18,7 @@ import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { addSongToQueue, toggleStar } from '../services/moreOptionsService';
+import { addToPlaylistStore } from '../store/addToPlaylistStore';
 import { moreOptionsStore } from '../store/moreOptionsStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { formatTrackDuration } from '../utils/formatters';
@@ -55,6 +56,10 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
     toggleStar('song', track.id);
   }, [track.id]);
 
+  const handleAddToPlaylist = useCallback(() => {
+    addToPlaylistStore.getState().showSong(track);
+  }, [track]);
+
   const handleLongPress = useCallback(() => {
     moreOptionsStore.getState().show({ type: 'song', item: track });
   }, [track]);
@@ -70,13 +75,19 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
         ? []
         : [
             {
+              icon: 'add-outline',
+              color: colors.primary,
+              label: 'Playlist',
+              onPress: handleAddToPlaylist,
+            },
+            {
               icon: starred ? 'heart' : 'heart-outline',
               color: colors.red,
               label: starred ? 'Remove' : 'Add',
               onPress: handleToggleStar,
             },
           ],
-    [starred, colors.red, handleToggleStar, offlineMode],
+    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode],
   );
 
   return (

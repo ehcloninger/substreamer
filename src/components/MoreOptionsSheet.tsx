@@ -2,7 +2,7 @@
  * MoreOptionsSheet – unified bottom sheet for all entity types.
  *
  * Reads from `moreOptionsStore` and renders entity-specific options:
- *   - Song/Track: Favorite, Add to Queue, Go to Album, Go to Artist
+ *   - Song/Track: Favorite, Add to Playlist, Add to Queue, Go to Album, Go to Artist
  *   - Album: Favorite, Add to Queue, Go to Artist, Album Details
  *   - Artist: Favorite
  *   - Playlist: Add to Queue
@@ -45,6 +45,7 @@ import {
   type Child,
   type Playlist,
 } from '../services/subsonicService';
+import { addToPlaylistStore } from '../store/addToPlaylistStore';
 import { createShareStore } from '../store/createShareStore';
 import { musicCacheStore } from '../store/musicCacheStore';
 import {
@@ -52,6 +53,7 @@ import {
   type MoreOptionsEntity,
 } from '../store/moreOptionsStore';
 import { offlineModeStore } from '../store/offlineModeStore';
+import { playerStore } from '../store/playerStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
 import { playlistLibraryStore } from '../store/playlistLibraryStore';
 import { processingOverlayStore } from '../store/processingOverlayStore';
@@ -121,6 +123,10 @@ function canDownload(entity: MoreOptionsEntity): boolean {
   return entity.type === 'album' || entity.type === 'playlist';
 }
 
+function canAddToPlaylist(entity: MoreOptionsEntity): boolean {
+  return entity.type === 'song' || entity.type === 'album';
+}
+
 function canDeletePlaylist(entity: MoreOptionsEntity): boolean {
   return entity.type === 'playlist';
 }
@@ -174,6 +180,26 @@ export function MoreOptionsSheet() {
       handleClose();
     }
   }, [entity, busy, handleClose]);
+
+  const handleAddToPlaylist = useCallback(() => {
+    if (!entity) return;
+    handleClose();
+    setTimeout(() => {
+      if (entity.type === 'song') {
+        addToPlaylistStore.getState().showSong(entity.item as Child);
+      } else if (entity.type === 'album') {
+        addToPlaylistStore.getState().showAlbum(entity.item as AlbumID3);
+      }
+    }, 300);
+  }, [entity, handleClose]);
+
+  const handleAddQueueToPlaylist = useCallback(() => {
+    handleClose();
+    const queue = playerStore.getState().queue;
+    setTimeout(() => {
+      addToPlaylistStore.getState().showQueue(queue);
+    }, 300);
+  }, [handleClose]);
 
   const handleAddToQueue = useCallback(async () => {
     if (!entity) return;
@@ -330,6 +356,8 @@ export function MoreOptionsSheet() {
   const showAlbumLink = hasAlbumLink(entity) &&
     (!offline || (entity.type === 'song' && entity.item.albumId != null &&
       entity.item.albumId in musicCacheStore.getState().cachedItems));
+  const showAddToPlaylist = !offline && canAddToPlaylist(entity);
+  const showAddQueueToPlaylist = !offline && source === 'player';
   const showAddToQueue = source !== 'player' && canAddToQueue(entity);
   const showDetails = hasAlbumDetails(entity);
   const showShare = !offline && canShare(entity);
@@ -337,8 +365,9 @@ export function MoreOptionsSheet() {
   const showDelete = !offline && canDeletePlaylist(entity);
 
   const hasAnyOption =
-    starrable || showAddToQueue || showDownload || showAlbumLink ||
-    showArtistLink || showShare || showDetails || showDelete;
+    starrable || showAddToPlaylist || showAddQueueToPlaylist ||
+    showAddToQueue || showDownload ||
+    showAlbumLink || showArtistLink || showShare || showDetails || showDelete;
 
   return (
     <>
@@ -414,6 +443,48 @@ export function MoreOptionsSheet() {
               )}
               <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                 {starred ? 'Remove from Favorites' : 'Add to Favorites'}
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Add to Playlist */}
+          {showAddToPlaylist && (
+            <Pressable
+              onPress={handleAddToPlaylist}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Ionicons
+                name="add-outline"
+                size={22}
+                color={colors.textPrimary}
+                style={styles.optionIcon}
+              />
+              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                Add to Playlist
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Add Queue to Playlist (player only) */}
+          {showAddQueueToPlaylist && (
+            <Pressable
+              onPress={handleAddQueueToPlaylist}
+              style={({ pressed }) => [
+                styles.option,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Ionicons
+                name="albums-outline"
+                size={22}
+                color={colors.textPrimary}
+                style={styles.optionIcon}
+              />
+              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                Add Queue to Playlist
               </Text>
             </Pressable>
           )}

@@ -44,6 +44,7 @@ import { moreOptionsStore } from '../store/moreOptionsStore';
 import { musicCacheStore } from '../store/musicCacheStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
+import { processingOverlayStore } from '../store/processingOverlayStore';
 
 import { formatCompactDuration } from '../utils/formatters';
 
@@ -161,6 +162,7 @@ export function PlaylistDetailScreen() {
     }
 
     setSaving(true);
+    processingOverlayStore.getState().show('Saving…');
     try {
       const success = await updatePlaylistOrder(
         id,
@@ -168,7 +170,7 @@ export function PlaylistDetailScreen() {
         editedTracks.map((t) => t.id),
       );
       if (!success) {
-        Alert.alert('Error', 'Failed to update playlist.');
+        processingOverlayStore.getState().showError('Failed to save playlist');
         setSaving(false);
         return;
       }
@@ -185,8 +187,9 @@ export function PlaylistDetailScreen() {
 
       setEditing(false);
       setEditedTracks([]);
+      processingOverlayStore.getState().showSuccess('Playlist Saved');
     } catch {
-      Alert.alert('Error', 'Failed to save playlist changes.');
+      processingOverlayStore.getState().showError('Failed to save playlist');
     } finally {
       setSaving(false);
     }

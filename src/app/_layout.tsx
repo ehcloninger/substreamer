@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { AddToPlaylistSheet } from '../components/AddToPlaylistSheet';
 import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
 import { CreateShareSheet } from '../components/CreateShareSheet';
 import { MoreOptionsSheet } from '../components/MoreOptionsSheet';
@@ -242,6 +243,9 @@ export default function RootLayout() {
 
       {/* Global create-share bottom sheet driven by createShareStore */}
       <CreateShareSheet />
+
+      {/* Global add-to-playlist bottom sheet driven by addToPlaylistStore */}
+      <AddToPlaylistSheet />
 
       {/* Global processing overlay for async operations (delete, etc.) */}
       <ProcessingOverlay />

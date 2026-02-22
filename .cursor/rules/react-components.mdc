@@ -117,6 +117,28 @@ Use RN `Modal` with transparent backdrop for bottom sheets:
 
 Use `useSafeAreaInsets()` for bottom padding.
 
+## Swipe Action Ordering
+
+When a `SwipeableRow` has multiple actions on one side, the **primary / default action** must be placed at the **outside edge** (last in the array). Secondary or less-frequent actions go closer to the content (earlier in the array).
+
+This follows the iOS convention where the outermost button is the one a full swipe would trigger. Even when full-swipe is disabled (because multiple actions make auto-triggering ambiguous), the visual hierarchy must still place the most important action at the edge so users build consistent muscle memory.
+
+```tsx
+// Correct – primary action (Favorite) is last → outermost position
+const leftActions: SwipeAction[] = [
+  { icon: 'add-outline',   color: colors.primary, label: 'Playlist', onPress: handleAddToPlaylist },
+  { icon: 'heart-outline', color: colors.red,     label: 'Add',      onPress: handleToggleStar },
+];
+
+// Wrong – primary action is first → hidden behind secondary action
+const leftActions: SwipeAction[] = [
+  { icon: 'heart-outline', color: colors.red,     label: 'Add',      onPress: handleToggleStar },
+  { icon: 'add-outline',   color: colors.primary, label: 'Playlist', onPress: handleAddToPlaylist },
+];
+```
+
+`SwipeableRow` always triggers the **outermost** action on a full swipe: for swipe-right this is index 0 (left screen edge); for swipe-left this is the last index (right screen edge). This means `enableFullSwipeLeft` can remain enabled with multiple actions -- the outermost (primary) action will fire on a full swipe.
+
 ## Theming
 
 - Access theme via `useTheme()` which returns `{ theme, colors, preference, primaryColor }`.

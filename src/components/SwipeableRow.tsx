@@ -6,7 +6,9 @@
  * matching the iOS Mail style.
  *
  * Supports an optional "full swipe" mode (like Apple Mail) where swiping past
- * a threshold automatically triggers the first action without requiring a tap.
+ * a threshold automatically triggers the outermost action without requiring a tap.
+ * For swipe-right this is the first action (index 0, left edge); for swipe-left
+ * this is the last action (rightmost, screen edge).
  *
  * - Swipe physics, snap-back, and alignment handled by the library
  * - Long press and tap handled via a Pressable wrapper
@@ -74,7 +76,7 @@ export interface SwipeableRowProps {
   leftActions?: SwipeAction[];
   /** Full swipe right auto-triggers the first rightAction. */
   enableFullSwipeRight?: boolean;
-  /** Full swipe left auto-triggers the first leftAction. */
+  /** Full swipe left auto-triggers the outermost (last) leftAction. */
   enableFullSwipeLeft?: boolean;
   /** Override the action panel background color (defaults to theme background). */
   actionPanelBackground?: string;
@@ -170,7 +172,7 @@ export const SwipeableRow = memo(function SwipeableRow({
         fullSwipeLeftRef.current
       ) {
         fullSwipeLeftRef.current = false;
-        leftActions[0]?.onPress();
+        leftActions[leftActions.length - 1]?.onPress();
         pendingFullSwipeCloseRef.current = true;
         setTimeout(() => {
           if (pendingFullSwipeCloseRef.current) {
@@ -248,6 +250,7 @@ export const SwipeableRow = memo(function SwipeableRow({
   const panelBg = actionPanelBackground ?? colors.background;
 
   // renderLeftActions = shown when swiping RIGHT = our rightActions
+  // Outermost action is index 0 (left edge of screen).
   const renderLeftPanel = useCallback(
     (
       progress: SharedValue<number>,
@@ -260,6 +263,7 @@ export const SwipeableRow = memo(function SwipeableRow({
         bgColor={panelBg}
         methods={methods}
         enableFullSwipe={enableFullSwipeRight}
+        fullSwipeActionIndex={0}
         fullSwipeTriggered={fullSwipeRightTriggered}
         onFullSwipeChange={setFullSwipeRight}
       />
@@ -268,6 +272,7 @@ export const SwipeableRow = memo(function SwipeableRow({
   );
 
   // renderRightActions = shown when swiping LEFT = our leftActions
+  // Outermost action is the last index (right edge of screen).
   const renderRightPanel = useCallback(
     (
       progress: SharedValue<number>,
@@ -280,6 +285,7 @@ export const SwipeableRow = memo(function SwipeableRow({
         bgColor={panelBg}
         methods={methods}
         enableFullSwipe={enableFullSwipeLeft}
+        fullSwipeActionIndex={leftActions.length - 1}
         fullSwipeTriggered={fullSwipeLeftTriggered}
         onFullSwipeChange={setFullSwipeLeft}
       />
@@ -328,6 +334,8 @@ interface ActionPanelProps {
   bgColor: string;
   methods: SwipeableMethods;
   enableFullSwipe: boolean;
+  /** Which action index receives the pop animation on full swipe. */
+  fullSwipeActionIndex: number;
   fullSwipeTriggered: SharedValue<boolean>;
   onFullSwipeChange: (triggered: boolean) => void;
 }
@@ -338,6 +346,7 @@ function ActionPanel({
   bgColor,
   methods,
   enableFullSwipe,
+  fullSwipeActionIndex,
   fullSwipeTriggered,
   onFullSwipeChange,
 }: ActionPanelProps) {
@@ -381,7 +390,7 @@ function ActionPanel({
           action={action}
           progress={progress}
           methods={methods}
-          popScale={enableFullSwipe && index === 0 ? iconPopScale : undefined}
+          popScale={enableFullSwipe && index === fullSwipeActionIndex ? iconPopScale : undefined}
         />
       ))}
     </View>

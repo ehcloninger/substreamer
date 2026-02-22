@@ -10,6 +10,7 @@ import { useIsStarred } from '../hooks/useIsStarred';
 import { useTheme } from '../hooks/useTheme';
 import { addSongToQueue, toggleStar } from '../services/moreOptionsService';
 import { type Child } from '../services/subsonicService';
+import { addToPlaylistStore } from '../store/addToPlaylistStore';
 import { moreOptionsStore } from '../store/moreOptionsStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { formatTrackDuration } from '../utils/formatters';
@@ -35,6 +36,10 @@ export const SongRow = memo(function SongRow({ song, onPress }: { song: Child; o
     toggleStar('song', song.id);
   }, [song.id]);
 
+  const handleAddToPlaylist = useCallback(() => {
+    addToPlaylistStore.getState().showSong(song);
+  }, [song]);
+
   const handleLongPress = useCallback(() => {
     moreOptionsStore.getState().show({ type: 'song', item: song });
   }, [song]);
@@ -50,13 +55,19 @@ export const SongRow = memo(function SongRow({ song, onPress }: { song: Child; o
         ? []
         : [
             {
+              icon: 'add-outline',
+              color: colors.primary,
+              label: 'Playlist',
+              onPress: handleAddToPlaylist,
+            },
+            {
               icon: starred ? 'heart' : 'heart-outline',
               color: colors.red,
               label: starred ? 'Remove' : 'Add',
               onPress: handleToggleStar,
             },
           ],
-    [starred, colors.red, handleToggleStar, offlineMode],
+    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode],
   );
 
   return (

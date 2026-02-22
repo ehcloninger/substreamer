@@ -11,6 +11,7 @@ import { useIsStarred } from '../hooks/useIsStarred';
 import { useTheme } from '../hooks/useTheme';
 import { addAlbumToQueue, toggleStar } from '../services/moreOptionsService';
 import { type AlbumID3 } from '../services/subsonicService';
+import { addToPlaylistStore } from '../store/addToPlaylistStore';
 import { moreOptionsStore } from '../store/moreOptionsStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { formatCompactDuration } from '../utils/formatters';
@@ -39,6 +40,10 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
     toggleStar('album', album.id);
   }, [album.id]);
 
+  const handleAddToPlaylist = useCallback(() => {
+    addToPlaylistStore.getState().showAlbum(album);
+  }, [album]);
+
   const handleLongPress = useCallback(() => {
     moreOptionsStore.getState().show({ type: 'album', item: album });
   }, [album]);
@@ -54,13 +59,19 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
         ? []
         : [
             {
+              icon: 'add-outline',
+              color: colors.primary,
+              label: 'Playlist',
+              onPress: handleAddToPlaylist,
+            },
+            {
               icon: starred ? 'heart' : 'heart-outline',
               color: colors.red,
               label: starred ? 'Remove' : 'Add',
               onPress: handleToggleStar,
             },
           ],
-    [starred, colors.red, handleToggleStar, offlineMode],
+    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode],
   );
 
   return (

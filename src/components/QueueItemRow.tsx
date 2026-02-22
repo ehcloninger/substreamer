@@ -9,6 +9,7 @@ import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { removeItemFromQueue, toggleStar } from '../services/moreOptionsService';
 import { type Child } from '../services/subsonicService';
+import { addToPlaylistStore } from '../store/addToPlaylistStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { formatTrackDuration } from '../utils/formatters';
 
@@ -68,6 +69,10 @@ export const QueueItemRow = memo(function QueueItemRow({
     toggleStar('song', track.id);
   }, [track.id]);
 
+  const handleAddToPlaylist = useCallback(() => {
+    addToPlaylistStore.getState().showSong(track);
+  }, [track]);
+
   const titleColor = isActive ? colors.primary : colors.textPrimary;
   const subtitleColor = isActive ? colors.primary : colors.textSecondary;
   const durationText =
@@ -92,13 +97,19 @@ export const QueueItemRow = memo(function QueueItemRow({
         ? []
         : [
             {
+              icon: 'add-outline',
+              color: colors.primary,
+              label: 'Playlist',
+              onPress: handleAddToPlaylist,
+            },
+            {
               icon: starred ? 'heart' : 'heart-outline',
               color: colors.red,
               label: starred ? 'Remove' : 'Add',
               onPress: handleToggleStar,
             },
           ],
-    [starred, colors.red, handleToggleStar, offlineMode],
+    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode],
   );
 
   return (

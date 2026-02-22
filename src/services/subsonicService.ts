@@ -418,6 +418,40 @@ export async function updatePlaylistOrder(
 }
 
 /**
+ * Create a new playlist with the given name and initial songs.
+ */
+export async function createNewPlaylist(
+  name: string,
+  songIds: string[],
+): Promise<boolean> {
+  const api = getApi();
+  if (!api) return false;
+  try {
+    await api.createPlaylist({ name, songId: songIds });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Add songs to an existing playlist by ID.
+ */
+export async function addToPlaylist(
+  playlistId: string,
+  songIds: string[],
+): Promise<boolean> {
+  const api = getApi();
+  if (!api) return false;
+  try {
+    await api.updatePlaylist({ playlistId, songIdToAdd: songIds });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Remove songs from a playlist by their zero-based indexes.
  */
 export async function removeFromPlaylist(
