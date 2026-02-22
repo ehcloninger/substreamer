@@ -163,8 +163,11 @@ updateChangelog(entry);
 console.log('  ✓ Updated CHANGELOG.md');
 
 appJson.expo.version = newVersion;
+const currentBuildNum = parseInt(appJson.expo.ios.buildNumber, 10);
+appJson.expo.ios.buildNumber = String(currentBuildNum + 1);
+appJson.expo.android.versionCode = currentBuildNum + 1;
 writeJSON(APP_JSON, appJson);
-console.log('  ✓ Updated app.json');
+console.log(`  ✓ Updated app.json (build ${currentBuildNum} → ${currentBuildNum + 1})`);
 
 const pkgJson = readJSON(PKG_JSON);
 pkgJson.version = newVersion;

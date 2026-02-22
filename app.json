@@ -4,14 +4,17 @@
     "slug": "substreamer",
     "version": "8.0.0",
     "scheme": "substreamer",
-    "platforms": ["android", "ios"],
+    "platforms": [
+      "android",
+      "ios"
+    ],
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.ghenry22.substream2",
-      "buildNumber": "80",
+      "buildNumber": "84",
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
@@ -30,7 +33,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "versionCode": 80,
+      "versionCode": 81,
       "package": "com.ghenry22.substream2"
     },
     "web": {
@@ -58,7 +61,15 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
-    ]
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b3c7e72f-f01c-4110-8a30-a669b1d9bf34"
+      }
+    },
+    "owner": "ghenry22"
   }
 }
