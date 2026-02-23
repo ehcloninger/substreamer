@@ -1,5 +1,8 @@
 # Changelog
 
+## [8.0.4] - 2026-02-23
+
+- updated migration paths
 ## [8.0.3] - 2026-02-23
 
 - legacy database migration migration logging for testing.
