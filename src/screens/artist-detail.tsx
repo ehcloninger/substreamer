@@ -5,11 +5,11 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -21,6 +21,7 @@ import { CachedImage } from '../components/CachedImage';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { SectionTitle } from '../components/SectionTitle';
 import { SongCard } from '../components/SongCard';
+import { closeOpenRow } from '../components/SwipeableRow';
 import { useColorExtraction } from '../hooks/useColorExtraction';
 import { useTheme } from '../hooks/useTheme';
 import { useTransitionComplete } from '../hooks/useTransitionComplete';
@@ -32,6 +33,7 @@ import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
 import { moreOptionsStore } from '../store/moreOptionsStore';
 
 import {
+  type AlbumID3,
   type ArtistInfo2,
   type ArtistWithAlbumsID3,
   type Child,
@@ -42,6 +44,7 @@ const HERO_IMAGE_SIZE = 180;
 const HERO_COVER_SIZE = 600;
 const HEADER_BAR_HEIGHT = 44;
 const CARD_WIDTH = 88;
+const HORIZONTAL_GAP = 10;
 
 /* ------------------------------------------------------------------ */
 /*  Main screen                                                       */
@@ -155,64 +158,49 @@ export function ArtistDetailScreen() {
     });
   }, [albums, albumSortDesc]);
 
-  /* ---- Loading state ---- */
-  if (loading) {
-    return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+  const renderAlbumItem = useCallback(
+    ({ item }: { item: AlbumID3 }) => (
+      <View style={styles.albumRowWrap}>
+        <AlbumRow album={item} />
       </View>
-    );
-  }
+    ),
+    [],
+  );
 
-  /* ---- Error state ---- */
-  if (error || !artist) {
+  const albumKeyExtractor = useCallback((item: AlbumID3) => item.id, []);
+
+  const topSongsRenderItem = useCallback(
+    ({ item, index }: { item: Child; index: number }) => (
+      <SongCard
+        song={item}
+        width={CARD_WIDTH}
+        onPress={() => playTrack(item, topSongs)}
+      />
+    ),
+    [topSongs],
+  );
+
+  const topSongsKeyExtractor = useCallback(
+    (item: Child, index: number) => `${item.id}-${index}`,
+    [],
+  );
+
+  const similarArtistsRenderItem = useCallback(
+    ({ item }: { item: (typeof similarArtists)[number] }) => (
+      <ArtistCard artist={item} width={CARD_WIDTH} />
+    ),
+    [],
+  );
+
+  const similarArtistsKeyExtractor = useCallback(
+    (item: (typeof similarArtists)[number]) => item.id,
+    [],
+  );
+
+  const listHeader = useMemo(() => {
+    if (!artist) return null;
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-          {error ?? 'Artist not found'}
-        </Text>
-      </View>
-    );
-  }
-
-  const gradientFillStyle = [
-    StyleSheet.absoluteFillObject,
-    { top: -insets.top, left: 0, right: 0, bottom: 0 },
-  ];
-
-  return (
-    <View style={styles.container}>
-      {/* Background layers */}
-      <View style={[gradientFillStyle, { backgroundColor: colors.background }]} />
-      <Animated.View
-        style={[gradientFillStyle, gradientAnimatedStyle]}
-        pointerEvents="none"
-      >
-        <LinearGradient
-          colors={[gradientStart, gradientEnd]}
-          locations={[0, 0.5]}
-          style={StyleSheet.absoluteFillObject}
-        />
-      </Animated.View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.content,
-          Platform.OS !== 'ios' && { paddingTop: insets.top + HEADER_BAR_HEIGHT },
-        ]}
-        contentInset={Platform.OS === 'ios' ? { top: insets.top + HEADER_BAR_HEIGHT } : undefined}
-        contentOffset={Platform.OS === 'ios' ? { x: 0, y: -(insets.top + HEADER_BAR_HEIGHT) } : undefined}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-            progressViewOffset={insets.top + HEADER_BAR_HEIGHT}
-          />
-        }
-      >
+      <>
         {/* ---- Hero ---- */}
         <View style={styles.hero}>
           <CachedImage
@@ -261,15 +249,17 @@ export function ArtistDetailScreen() {
             {topSongs.length > 0 && (
               <View style={styles.section}>
                 <SectionTitle title="Top Songs" color={colors.label} />
-                <ScrollView
+                <FlashList
+                  data={topSongs}
+                  renderItem={topSongsRenderItem}
+                  keyExtractor={topSongsKeyExtractor}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.horizontalList}
-                >
-                  {topSongs.map((song, index) => (
-                    <SongCard key={`${song.id}-${index}`} song={song} width={CARD_WIDTH} onPress={() => playTrack(song, topSongs)} />
-                  ))}
-                </ScrollView>
+                  ItemSeparatorComponent={() => (
+                    <View style={{ width: HORIZONTAL_GAP }} />
+                  )}
+                />
               </View>
             )}
 
@@ -277,19 +267,21 @@ export function ArtistDetailScreen() {
             {similarArtists.length > 0 && (
               <View style={styles.section}>
                 <SectionTitle title="Similar Artists" color={colors.label} />
-                <ScrollView
+                <FlashList
+                  data={similarArtists}
+                  renderItem={similarArtistsRenderItem}
+                  keyExtractor={similarArtistsKeyExtractor}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.horizontalList}
-                >
-                  {similarArtists.map((sa) => (
-                    <ArtistCard key={sa.id} artist={sa} width={CARD_WIDTH} />
-                  ))}
-                </ScrollView>
+                  ItemSeparatorComponent={() => (
+                    <View style={{ width: HORIZONTAL_GAP }} />
+                  )}
+                />
               </View>
             )}
 
-            {/* ---- Albums ---- */}
+            {/* ---- Albums section header (list items follow in FlashList) ---- */}
             {albums.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
@@ -312,16 +304,104 @@ export function ArtistDetailScreen() {
                     </Text>
                   </Pressable>
                 </View>
-                <View style={styles.albumList}>
-                  {sortedAlbums.map((album) => (
-                    <AlbumRow key={album.id} album={album} />
-                  ))}
-                </View>
               </View>
             )}
           </>
         )}
-      </ScrollView>
+      </>
+    );
+  }, [
+    artist,
+    artistInfo,
+    ready,
+    biography,
+    bioExpanded,
+    topSongs,
+    similarArtists,
+    albums.length,
+    albumSortDesc,
+    colors.textPrimary,
+    colors.textSecondary,
+    colors.label,
+    colors.primary,
+    topSongsRenderItem,
+    topSongsKeyExtractor,
+    similarArtistsRenderItem,
+    similarArtistsKeyExtractor,
+  ]);
+
+  /* ---- Loading state ---- */
+  if (loading) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  /* ---- Error state ---- */
+  if (error || !artist) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+          {error ?? 'Artist not found'}
+        </Text>
+      </View>
+    );
+  }
+
+  const gradientFillStyle = [
+    StyleSheet.absoluteFillObject,
+    { top: -insets.top, left: 0, right: 0, bottom: 0 },
+  ];
+
+  return (
+    <View style={styles.container}>
+      {/* Background layers */}
+      <View style={[gradientFillStyle, { backgroundColor: colors.background }]} />
+      <Animated.View
+        style={[gradientFillStyle, gradientAnimatedStyle]}
+        pointerEvents="none"
+      >
+        <LinearGradient
+          colors={[gradientStart, gradientEnd]}
+          locations={[0, 0.5]}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </Animated.View>
+
+      <FlashList
+        data={sortedAlbums}
+        renderItem={renderAlbumItem}
+        keyExtractor={albumKeyExtractor}
+        ListHeaderComponent={listHeader}
+        onScrollBeginDrag={closeOpenRow}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.content,
+          Platform.OS !== 'ios' && {
+            paddingTop: insets.top + HEADER_BAR_HEIGHT,
+          },
+        ]}
+        contentInset={
+          Platform.OS === 'ios'
+            ? { top: insets.top + HEADER_BAR_HEIGHT }
+            : undefined
+        }
+        contentOffset={
+          Platform.OS === 'ios'
+            ? { x: 0, y: -(insets.top + HEADER_BAR_HEIGHT) }
+            : undefined
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            progressViewOffset={insets.top + HEADER_BAR_HEIGHT}
+          />
+        }
+      />
     </View>
   );
 }
@@ -333,10 +413,6 @@ export function ArtistDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    backgroundColor: 'transparent',
   },
   content: {
     paddingBottom: 32,
@@ -417,13 +493,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  albumList: {
-    // AlbumRow handles its own spacing
+  albumRowWrap: {
+    paddingHorizontal: 16,
   },
 
   /* Horizontal card lists (Top Songs / Similar Artists) */
   horizontalList: {
     paddingRight: 16,
-    gap: 10,
   },
 });
