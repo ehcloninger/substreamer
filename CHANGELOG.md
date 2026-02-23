@@ -1,5 +1,19 @@
 # Changelog
 
+## [8.0.3] - 2026-02-23
+
+- legacy database migration migration logging for testing.
+- update migrations to capture potential storage locations from previous versions
+- make playlist card subtitle format consistent with other cards for grid view
+- implement flash list for artist detail lists.
+- make home screen section headers tappable instead of just the more icon as it is pretty small.
+- fix: always 100% opacity for header icons for readability
+- FIX: settings share list empty placeholder made consistent
+- fix: My Listening screen empty placeholder missed in earlier styling
+- fix: filter action bar has inconsistent height depending on content.  Fix the height to stop annoying shifting
+- update all empty screen and list placeholders for consistency fix a couple of typescript errors.
+- update project rules to stop trying to use estimatedItemSize with newer version of flashlist as it handles this automatically
+- temporary file explorer to troubleshoot old version cache migration
 ## [8.0.2] - 2026-02-22
 
 - fix eas workflow
