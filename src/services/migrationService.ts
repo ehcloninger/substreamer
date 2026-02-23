@@ -34,21 +34,31 @@ const MIGRATION_TASKS: MigrationTask[] = [
     id: 1,
     name: 'Legacy data migration',
     run: async (log) => {
-      const legacyDirs = ['imageCache', 'musicCache', 'podcastCache'];
+      // Cordova cache folder names used across app versions.
+      // 'music' and 'images' are from the earliest Substreamer releases;
+      // 'musicCache', 'imageCache', 'podcastCache' from later versions.
+      const legacyDirs = [
+        'imageCache',
+        'musicCache',
+        'podcastCache',
+        'images',
+        'music',
+      ];
 
-      // The previous Cordova app stored caches under cordova.file.dataDirectory
-      // which maps to different native paths depending on platform and config.
-      // We check all possible base directories so every historical location is
-      // cleaned regardless of which Cordova settings were active at the time.
+      // cordova.file.dataDirectory maps to different native paths per platform:
+      //   Android: getFilesDir()         → same as Expo Paths.document
+      //   iOS:     Library/NoCloud/       → NOT Documents/
+      // We also check the Cordova "internal" persistent root on Android
+      // (getFilesDir() + "/files/") in case the W3C persistent API was used.
       const bases: Directory[] = [Paths.document];
 
       if (Platform.OS === 'android') {
         // Cordova "internal" persistent root: getFilesDir() + "/files/"
         bases.push(new Directory(Paths.document, 'files'));
       } else if (Platform.OS === 'ios') {
-        // Cordova "library" mode: Library/files/
+        // cordova.file.dataDirectory on iOS: Library/NoCloud/
         bases.push(
-          new Directory(Paths.document.parentDirectory, 'Library', 'files'),
+          new Directory(Paths.document.parentDirectory, 'Library', 'NoCloud'),
         );
       }
 
