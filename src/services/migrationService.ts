@@ -10,6 +10,7 @@
  */
 
 import { Directory, Paths } from 'expo-file-system';
+import { Platform } from 'react-native';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -34,13 +35,32 @@ const MIGRATION_TASKS: MigrationTask[] = [
     name: 'Legacy data migration',
     run: async () => {
       const legacyDirs = ['imageCache', 'musicCache', 'podcastCache'];
-      for (const name of legacyDirs) {
-        const dir = new Directory(Paths.document, name);
-        if (dir.exists) {
-          try {
-            dir.delete();
-          } catch {
-            // Directory may have already been removed; ignore.
+
+      // The previous Cordova app stored caches under cordova.file.dataDirectory
+      // which maps to different native paths depending on platform and config.
+      // We check all possible base directories so every historical location is
+      // cleaned regardless of which Cordova settings were active at the time.
+      const bases: Directory[] = [Paths.document];
+
+      if (Platform.OS === 'android') {
+        // Cordova "internal" persistent root: getFilesDir() + "/files/"
+        bases.push(new Directory(Paths.document, 'files'));
+      } else if (Platform.OS === 'ios') {
+        // Cordova "library" mode: Library/files/
+        bases.push(
+          new Directory(Paths.document.parentDirectory, 'Library', 'files'),
+        );
+      }
+
+      for (const base of bases) {
+        for (const name of legacyDirs) {
+          const dir = new Directory(base, name);
+          if (dir.exists) {
+            try {
+              dir.delete();
+            } catch {
+              // Directory may have already been removed; ignore.
+            }
           }
         }
       }
