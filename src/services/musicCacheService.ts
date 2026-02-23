@@ -15,6 +15,7 @@
  */
 
 import { Directory, File, Paths } from 'expo-file-system';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import { checkStorageLimit } from './storageService';
 import { albumDetailStore } from '../store/albumDetailStore';
@@ -79,6 +80,7 @@ function getTrackFileExtension(track: Child): string {
 
 let cacheDir: Directory | null = null;
 let isProcessing = false;
+let appStateSubscription: { remove: () => void } | null = null;
 
 /**
  * In-memory map from trackId -> local file URI for O(1) lookups.
@@ -112,6 +114,14 @@ export function initMusicCache(): void {
 
   populateTrackMaps();
   recoverStalledDownloads();
+
+  if (!appStateSubscription) {
+    appStateSubscription = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'active') {
+        recoverStalledDownloads();
+      }
+    });
+  }
 }
 
 /**
