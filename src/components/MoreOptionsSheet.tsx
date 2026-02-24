@@ -4,7 +4,7 @@
  * Reads from `moreOptionsStore` and renders entity-specific options:
  *   - Song/Track: Favorite, Add to Playlist, Play more like this, Add to Queue, Go to Album, Go to Artist
  *   - Album: Favorite, Add to Queue, Go to Artist, Album Details
- *   - Artist: Favorite, Save Top Songs Playlist
+ *   - Artist: Favorite, Save Top Songs Playlist, Play mix of similar artists
  *   - Playlist: Add to Queue
  *
  * Rendered once at the root layout level.
@@ -36,6 +36,7 @@ import {
   enqueueAlbumDownload,
   enqueuePlaylistDownload,
   playMoreLikeThis,
+  playSimilarArtistsMix,
   removeDownload,
   saveArtistTopSongsPlaylist,
   toggleStar,
@@ -137,6 +138,10 @@ function canPlayMoreLikeThis(entity: MoreOptionsEntity): boolean {
   return entity.type === 'song';
 }
 
+function canPlaySimilarArtistsMix(entity: MoreOptionsEntity): boolean {
+  return entity.type === 'artist';
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -209,6 +214,12 @@ export function MoreOptionsSheet() {
     if (!entity || entity.type !== 'song') return;
     handleClose();
     playMoreLikeThis(entity.item as Child);
+  }, [entity, handleClose]);
+
+  const handlePlaySimilarArtistsMix = useCallback(() => {
+    if (!entity || entity.type !== 'artist') return;
+    handleClose();
+    playSimilarArtistsMix(entity.item);
   }, [entity, handleClose]);
 
   const handleAddQueueToPlaylist = useCallback(() => {
@@ -383,10 +394,11 @@ export function MoreOptionsSheet() {
   const showDownload = canDownload(entity);
   const showDelete = !offline && canDeletePlaylist(entity);
   const showSaveTopSongsPlaylist = !offline && entity?.type === 'artist';
+  const showPlaySimilarArtistsMix = !offline && canPlaySimilarArtistsMix(entity);
 
   const hasAnyOption =
     starrable || showAddToPlaylist || showAddQueueToPlaylist ||
-    showAddToQueue || showPlayMoreLikeThis || showDownload ||
+    showAddToQueue || showPlayMoreLikeThis || showPlaySimilarArtistsMix || showDownload ||
     showAlbumLink || showArtistLink || showShare || showDetails || showDelete ||
     showSaveTopSongsPlaylist;
 
@@ -505,6 +517,27 @@ export function MoreOptionsSheet() {
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                     Save Top Songs Playlist
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Play mix of similar artists (artist only) */}
+              {showPlaySimilarArtistsMix && (
+                <Pressable
+                  onPress={handlePlaySimilarArtistsMix}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="shuffle-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Play mix of similar artists
                   </Text>
                 </Pressable>
               )}
@@ -801,6 +834,27 @@ export function MoreOptionsSheet() {
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                     Save Top Songs Playlist
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Play mix of similar artists (artist only) */}
+              {showPlaySimilarArtistsMix && (
+                <Pressable
+                  onPress={handlePlaySimilarArtistsMix}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="shuffle-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Play mix of similar artists
                   </Text>
                 </Pressable>
               )}

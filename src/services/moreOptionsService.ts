@@ -15,6 +15,7 @@ import {
   getAlbum,
   getPlaylist,
   getSimilarSongs,
+  getSimilarSongs2,
   starAlbum,
   starArtist,
   starSong,
@@ -152,6 +153,31 @@ export async function playMoreLikeThis(song: Child): Promise<void> {
     processingOverlayStore.getState().showSuccess('Playing similar songs');
   } catch {
     processingOverlayStore.getState().showError('Failed to load similar songs');
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Play mix of similar artists                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Fetch similar songs for a given artist (mix of similar artists) and set them as the play queue.
+ * Uses processing overlay for progress, success, and error feedback.
+ */
+export async function playSimilarArtistsMix(artist: ArtistID3): Promise<void> {
+  processingOverlayStore.getState().show('Loading…');
+
+  try {
+    const tracks = await getSimilarSongs2(artist.id, 20);
+    if (tracks.length === 0) {
+      processingOverlayStore.getState().showError('No similar artists mix available');
+      return;
+    }
+
+    await playTrack(tracks[0], tracks);
+    processingOverlayStore.getState().showSuccess('Playing similar artists mix');
+  } catch {
+    processingOverlayStore.getState().showError('Failed to load similar artists mix');
   }
 }
 
