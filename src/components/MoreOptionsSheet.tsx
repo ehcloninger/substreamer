@@ -393,277 +393,532 @@ export function MoreOptionsSheet() {
           {/* Handle indicator */}
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
-          {/* Title / Subtitle */}
-          <Text
-            style={[styles.sheetTitle, { color: colors.textPrimary }]}
-            numberOfLines={1}
-          >
-            {getTitle(entity)}
-          </Text>
-          <Text
-            style={[styles.sheetSubtitle, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {getSubtitle(entity)}
-          </Text>
-
-          {/* Empty state when no options are available */}
-          {!hasAnyOption && (
-            <View style={styles.emptyOptions}>
-              <Ionicons name="cloud-offline-outline" size={32} color={colors.textSecondary} />
-              <Text style={[styles.emptyOptionsText, { color: colors.textSecondary }]}>
-                No additional options available in offline mode
+          {source === 'player' && showAddQueueToPlaylist ? (
+            <>
+              {/* Section 1: Player Queue */}
+              <Text
+                style={[styles.sheetTitle, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                Player Queue
               </Text>
-            </View>
-          )}
-
-          {/* Favorite / Unfavorite */}
-          {starrable && (
-            <Pressable
-              onPress={handleToggleStar}
-              disabled={busy}
-              style={({ pressed }) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              {busy ? (
-                <ActivityIndicator
-                  size="small"
-                  color={colors.primary}
-                  style={styles.optionIcon}
-                />
-              ) : (
+              <Pressable
+                onPress={handleAddQueueToPlaylist}
+                style={({ pressed }) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+              >
                 <Ionicons
-                  name={starred ? 'heart' : 'heart-outline'}
+                  name="albums-outline"
                   size={22}
-                  color={starred ? colors.red : colors.textPrimary}
+                  color={colors.textPrimary}
                   style={styles.optionIcon}
                 />
+                <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                  Add Queue to Playlist
+                </Text>
+              </Pressable>
+
+              {/* Section divider */}
+              <View style={styles.sectionDivider} />
+
+              {/* Section 2: Song header and options */}
+              <Text
+                style={[styles.sheetTitle, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                {getTitle(entity)}
+              </Text>
+              <Text
+                style={[styles.sheetSubtitle, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {getSubtitle(entity)}
+              </Text>
+
+              {/* Favorite / Unfavorite */}
+              {starrable && (
+                <Pressable
+                  onPress={handleToggleStar}
+                  disabled={busy}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  {busy ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.primary}
+                      style={styles.optionIcon}
+                    />
+                  ) : (
+                    <Ionicons
+                      name={starred ? 'heart' : 'heart-outline'}
+                      size={22}
+                      color={starred ? colors.red : colors.textPrimary}
+                      style={styles.optionIcon}
+                    />
+                  )}
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    {starred ? 'Remove from Favorites' : 'Add to Favorites'}
+                  </Text>
+                </Pressable>
               )}
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                {starred ? 'Remove from Favorites' : 'Add to Favorites'}
-              </Text>
-            </Pressable>
-          )}
 
-          {/* Add to Playlist */}
-          {showAddToPlaylist && (
-            <Pressable
-              onPress={handleAddToPlaylist}
-              style={({ pressed }) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="add-outline"
-                size={22}
-                color={colors.textPrimary}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                Add to Playlist
-              </Text>
-            </Pressable>
-          )}
+              {/* Add to Playlist */}
+              {showAddToPlaylist && (
+                <Pressable
+                  onPress={handleAddToPlaylist}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="add-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Add to Playlist
+                  </Text>
+                </Pressable>
+              )}
 
-          {/* Add Queue to Playlist (player only) */}
-          {showAddQueueToPlaylist && (
-            <Pressable
-              onPress={handleAddQueueToPlaylist}
-              style={({ pressed }) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="albums-outline"
-                size={22}
-                color={colors.textPrimary}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                Add Queue to Playlist
-              </Text>
-            </Pressable>
-          )}
+              {/* Add to Queue */}
+              {showAddToQueue && (
+                <Pressable
+                  onPress={handleAddToQueue}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="list-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Add to Queue
+                  </Text>
+                </Pressable>
+              )}
 
-          {/* Add to Queue */}
-          {showAddToQueue && (
-            <Pressable
-              onPress={handleAddToQueue}
-              style={({ pressed }) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="list-outline"
-                size={22}
-                color={colors.textPrimary}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                Add to Queue
-              </Text>
-            </Pressable>
-          )}
+              {/* Go to Album (songs only) */}
+              {showAlbumLink && (
+                <Pressable
+                  onPress={handleGoToAlbum}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="disc-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Go to Album
+                  </Text>
+                </Pressable>
+              )}
 
-          {/* Go to Album (songs only) */}
-          {showAlbumLink && (
-            <Pressable
-              onPress={handleGoToAlbum}
-              style={({ pressed }) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="disc-outline"
-                size={22}
-                color={colors.textPrimary}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                Go to Album
-              </Text>
-            </Pressable>
-          )}
+              {/* Go to Artist */}
+              {showArtistLink && (
+                <Pressable
+                  onPress={handleGoToArtist}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="person-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Go to Artist
+                  </Text>
+                </Pressable>
+              )}
 
-          {/* Go to Artist */}
-          {showArtistLink && (
-            <Pressable
-              onPress={handleGoToArtist}
-              style={({ pressed }) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="person-outline"
-                size={22}
-                color={colors.textPrimary}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                Go to Artist
-              </Text>
-            </Pressable>
-          )}
+              {/* Share */}
+              {showShare && (
+                <Pressable
+                  onPress={handleShare}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="share-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Share
+                  </Text>
+                </Pressable>
+              )}
 
-          {/* Share */}
-          {showShare && (
-            <Pressable
-              onPress={handleShare}
-              style={({ pressed }) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="share-outline"
-                size={22}
-                color={colors.textPrimary}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                Share
-              </Text>
-            </Pressable>
-          )}
+              {/* Album Details */}
+              {showDetails && (
+                <Pressable
+                  onPress={handleShowDetails}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Album Details
+                  </Text>
+                </Pressable>
+              )}
 
-          {/* Album Details */}
-          {showDetails && (
-            <Pressable
-              onPress={handleShowDetails}
-              style={({ pressed }) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="information-circle-outline"
-                size={22}
-                color={colors.textPrimary}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                Album Details
-              </Text>
-            </Pressable>
-          )}
+              {/* Download / Cancel Download */}
+              {showDownload && downloadStatus !== 'complete' && (
+                <Pressable
+                  onPress={handleDownload}
+                  style={({ pressed }) => [
+                    styles.option,
+                    styles.deleteOption,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      downloadStatus === 'queued' || downloadStatus === 'downloading'
+                        ? 'close-circle-outline'
+                        : 'arrow-down-circle-outline'
+                    }
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    {downloadStatus === 'queued' || downloadStatus === 'downloading'
+                      ? 'Cancel Download'
+                      : 'Download'}
+                  </Text>
+                </Pressable>
+              )}
 
-          {/* Download / Cancel Download */}
-          {showDownload && downloadStatus !== 'complete' && (
-            <Pressable
-              onPress={handleDownload}
-              style={({ pressed }) => [
-                styles.option,
-                styles.deleteOption,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name={
-                  downloadStatus === 'queued' || downloadStatus === 'downloading'
-                    ? 'close-circle-outline'
-                    : 'arrow-down-circle-outline'
-                }
-                size={22}
-                color={colors.textPrimary}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                {downloadStatus === 'queued' || downloadStatus === 'downloading'
-                  ? 'Cancel Download'
-                  : 'Download'}
-              </Text>
-            </Pressable>
-          )}
+              {/* Remove Download */}
+              {showDownload && downloadStatus === 'complete' && (
+                <Pressable
+                  onPress={handleDownload}
+                  style={({ pressed }) => [
+                    styles.option,
+                    styles.deleteOption,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={22}
+                    color={colors.red}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.red }]}>
+                    Remove Download
+                  </Text>
+                </Pressable>
+              )}
 
-          {/* Remove Download */}
-          {showDownload && downloadStatus === 'complete' && (
-            <Pressable
-              onPress={handleDownload}
-              style={({ pressed }) => [
-                styles.option,
-                styles.deleteOption,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="trash-outline"
-                size={22}
-                color={colors.red}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.red }]}>
-                Remove Download
+              {/* Delete Playlist */}
+              {showDelete && (
+                <Pressable
+                  onPress={handleDeletePlaylist}
+                  style={({ pressed }) => [
+                    styles.option,
+                    styles.deleteOption,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={22}
+                    color={colors.red}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.red }]}>
+                    Delete Playlist
+                  </Text>
+                </Pressable>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Title / Subtitle */}
+              <Text
+                style={[styles.sheetTitle, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                {getTitle(entity)}
               </Text>
-            </Pressable>
-          )}
+              <Text
+                style={[styles.sheetSubtitle, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {getSubtitle(entity)}
+              </Text>
 
-          {/* Delete Playlist */}
-          {showDelete && (
-            <Pressable
-              onPress={handleDeletePlaylist}
-              style={({ pressed }) => [
-                styles.option,
-                styles.deleteOption,
-                pressed && styles.optionPressed,
-              ]}
-            >
-              <Ionicons
-                name="trash-outline"
-                size={22}
-                color={colors.red}
-                style={styles.optionIcon}
-              />
-              <Text style={[styles.optionLabel, { color: colors.red }]}>
-                Delete Playlist
-              </Text>
-            </Pressable>
+              {/* Empty state when no options are available */}
+              {!hasAnyOption && (
+                <View style={styles.emptyOptions}>
+                  <Ionicons name="cloud-offline-outline" size={32} color={colors.textSecondary} />
+                  <Text style={[styles.emptyOptionsText, { color: colors.textSecondary }]}>
+                    No additional options available in offline mode
+                  </Text>
+                </View>
+              )}
+
+              {/* Favorite / Unfavorite */}
+              {starrable && (
+                <Pressable
+                  onPress={handleToggleStar}
+                  disabled={busy}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  {busy ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.primary}
+                      style={styles.optionIcon}
+                    />
+                  ) : (
+                    <Ionicons
+                      name={starred ? 'heart' : 'heart-outline'}
+                      size={22}
+                      color={starred ? colors.red : colors.textPrimary}
+                      style={styles.optionIcon}
+                    />
+                  )}
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    {starred ? 'Remove from Favorites' : 'Add to Favorites'}
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Add to Playlist */}
+              {showAddToPlaylist && (
+                <Pressable
+                  onPress={handleAddToPlaylist}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="add-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Add to Playlist
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Add to Queue */}
+              {showAddToQueue && (
+                <Pressable
+                  onPress={handleAddToQueue}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="list-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Add to Queue
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Go to Album (songs only) */}
+              {showAlbumLink && (
+                <Pressable
+                  onPress={handleGoToAlbum}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="disc-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Go to Album
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Go to Artist */}
+              {showArtistLink && (
+                <Pressable
+                  onPress={handleGoToArtist}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="person-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Go to Artist
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Share */}
+              {showShare && (
+                <Pressable
+                  onPress={handleShare}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="share-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Share
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Album Details */}
+              {showDetails && (
+                <Pressable
+                  onPress={handleShowDetails}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Album Details
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Download / Cancel Download */}
+              {showDownload && downloadStatus !== 'complete' && (
+                <Pressable
+                  onPress={handleDownload}
+                  style={({ pressed }) => [
+                    styles.option,
+                    styles.deleteOption,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      downloadStatus === 'queued' || downloadStatus === 'downloading'
+                        ? 'close-circle-outline'
+                        : 'arrow-down-circle-outline'
+                    }
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    {downloadStatus === 'queued' || downloadStatus === 'downloading'
+                      ? 'Cancel Download'
+                      : 'Download'}
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Remove Download */}
+              {showDownload && downloadStatus === 'complete' && (
+                <Pressable
+                  onPress={handleDownload}
+                  style={({ pressed }) => [
+                    styles.option,
+                    styles.deleteOption,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={22}
+                    color={colors.red}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.red }]}>
+                    Remove Download
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Delete Playlist */}
+              {showDelete && (
+                <Pressable
+                  onPress={handleDeletePlaylist}
+                  style={({ pressed }) => [
+                    styles.option,
+                    styles.deleteOption,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={22}
+                    color={colors.red}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.red }]}>
+                    Delete Playlist
+                  </Text>
+                </Pressable>
+              )}
+            </>
           )}
         </View>
       </Modal>
@@ -735,6 +990,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   deleteOption: {
+    marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(128,128,128,0.2)',
+    paddingTop: 16,
+  },
+  sectionDivider: {
     marginTop: 4,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(128,128,128,0.2)',
