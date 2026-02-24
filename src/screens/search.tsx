@@ -23,6 +23,7 @@ import {
 import { favoritesStore } from '../store/favoritesStore';
 import { filterBarStore } from '../store/filterBarStore';
 import { musicCacheStore } from '../store/musicCacheStore';
+import { offlineModeStore } from '../store/offlineModeStore';
 import { searchStore } from '../store/searchStore';
 
 /* ------------------------------------------------------------------ */
@@ -51,6 +52,7 @@ export function SearchScreen() {
   const results = searchStore((s) => s.results);
   const loading = searchStore((s) => s.loading);
   const performSearch = searchStore((s) => s.performSearch);
+  const offlineMode = offlineModeStore((s) => s.offlineMode);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -173,13 +175,21 @@ export function SearchScreen() {
   );
 
   if (!query.trim() || (!hasResults && !loading)) {
+    const emptyQuery = !query.trim();
+    const title = emptyQuery
+      ? offlineMode
+        ? 'Search downloaded music'
+        : 'Search for music'
+      : 'No results found';
+    const subtitle = emptyQuery
+      ? offlineMode
+        ? 'Find songs and albums in your downloaded music'
+        : 'Find songs, albums, and artists'
+      : `No results for "${query}"`;
+
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <EmptyState
-          icon="search-outline"
-          title={!query.trim() ? 'Search for music' : 'No results found'}
-          subtitle={!query.trim() ? 'Find songs, albums, and artists' : `No results for "${query}"`}
-        />
+        <EmptyState icon="search-outline" title={title} subtitle={subtitle} />
       </View>
     );
   }
