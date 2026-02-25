@@ -18,6 +18,7 @@ import {
   type PlaybackRate,
   type RepeatModeSetting,
 } from '../store/playbackSettingsStore';
+import { playbackToastStore } from '../store/playbackToastStore';
 import { playerStore, type PlaybackStatus } from '../store/playerStore';
 import { serverInfoStore } from '../store/serverInfoStore';
 import { addCompletedScrobble, sendNowPlaying } from './scrobbleService';
@@ -524,6 +525,7 @@ export async function playTrack(track: Child, queue: Child[]): Promise<void> {
   isSettingQueue = true;
   positionOffset = 0;
   playerStore.getState().setQueueLoading(true);
+  playbackToastStore.getState().show();
 
   try {
     await ensureCoverArtAuth();
@@ -542,6 +544,11 @@ export async function playTrack(track: Child, queue: Child[]): Promise<void> {
     }
 
     await TrackPlayer.play();
+    playbackToastStore.getState().succeed();
+  } catch (e) {
+    playbackToastStore.getState().fail(
+      e instanceof Error ? e.message : 'Playback error',
+    );
   } finally {
     isSettingQueue = false;
     isUserSkipping = false;

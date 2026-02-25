@@ -7,6 +7,7 @@ import { AddToPlaylistSheet } from '../components/AddToPlaylistSheet';
 import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
 import { CreateShareSheet } from '../components/CreateShareSheet';
 import { MoreOptionsSheet } from '../components/MoreOptionsSheet';
+import { PlaybackToast } from '../components/PlaybackToast';
 import { ProcessingOverlay } from '../components/ProcessingOverlay';
 import { useTheme } from '../hooks/useTheme';
 import { getImageCacheStats, initImageCache } from '../services/imageCacheService';
@@ -263,6 +264,9 @@ export default function RootLayout() {
 
       {/* Global processing overlay for async operations (delete, etc.) */}
       <ProcessingOverlay />
+
+      {/* Playback toast for detail screens without a MiniPlayer */}
+      <PlaybackToast />
 
       {/* Animated splash renders as an overlay on top of the Stack so the
           navigator is always mounted and ready for auth-based navigation. */}
