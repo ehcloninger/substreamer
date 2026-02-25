@@ -11,10 +11,21 @@
  *   image-cache/{coverArtId}/150.jpg
  *   image-cache/{coverArtId}/300.jpg
  *   image-cache/{coverArtId}/600.jpg
+ *
+ * Only the 600px source is downloaded from the server. Smaller
+ * variants (300, 150, 50) are generated locally using
+ * expo-image-manipulator.
+ *
+ * Downloads are queued and processed with configurable concurrency,
+ * mirroring the pattern used by musicCacheService. Incomplete (.tmp)
+ * files are cleaned up on startup and resume from background, and
+ * their items are re-queued.
  */
 
 import { Directory, File, Paths } from 'expo-file-system';
-import { readDirectoryAsync } from 'expo-file-system/legacy';
+import { moveAsync, readDirectoryAsync } from 'expo-file-system/legacy';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { AppState, type AppStateStatus } from 'react-native';
 import { fetch } from 'expo/fetch';
 
 import { imageCacheStore } from '../store/imageCacheStore';
@@ -27,6 +38,12 @@ import { ensureCoverArtAuth, getCoverArtUrl } from './subsonicService';
 /** All image size tiers used across the app. */
 export const IMAGE_SIZES = [50, 150, 300, 600] as const;
 
+/** The single size downloaded from the server; smaller sizes are derived locally. */
+const SOURCE_SIZE = 600;
+
+/** Sizes generated locally from the SOURCE_SIZE image. */
+const RESIZE_SIZES = [300, 150, 50] as const;
+
 /** Supported extensions ordered by likelihood. */
 const EXTENSIONS = ['.jpg', '.png', '.webp'] as const;
 
@@ -37,14 +54,29 @@ const MIME_TO_EXT: Record<string, string> = {
   'image/webp': '.webp',
 };
 
+/** JPEG quality for locally generated resize variants. */
+const RESIZE_COMPRESS = 0.9;
+
 /* ------------------------------------------------------------------ */
 /*  Module state                                                       */
 /* ------------------------------------------------------------------ */
 
 let cacheDir: Directory | null = null;
+let isProcessing = false;
+let appStateSubscription: { remove: () => void } | null = null;
 
-/** In-flight download guard: prevents duplicate parallel downloads. */
+/** CoverArtIds currently being downloaded/resized by a worker. */
 const downloading = new Set<string>();
+
+/** Ordered queue of coverArtIds waiting to be processed. */
+const downloadQueue: string[] = [];
+
+/**
+ * Promise resolvers keyed by coverArtId. When a download finishes
+ * (or is skipped), all registered resolvers for that ID are called
+ * so callers of cacheAllSizes() are notified.
+ */
+const pendingResolvers = new Map<string, (() => void)[]>();
 
 /**
  * In-memory URI cache: avoids repeated synchronous filesystem lookups
@@ -61,8 +93,9 @@ function uriCacheKey(coverArtId: string, size: number): string {
 /* ------------------------------------------------------------------ */
 
 /**
- * Create the image-cache directory under Paths.document.
- * Safe to call multiple times (no-ops if already exists).
+ * Create the image-cache directory under Paths.document and register
+ * the AppState listener for resume-from-background cleanup.
+ * Safe to call multiple times (no-ops if already initialised).
  */
 export function initImageCache(): void {
   if (cacheDir) return;
@@ -71,12 +104,80 @@ export function initImageCache(): void {
     dir.create();
   }
   cacheDir = dir;
+
+  recoverStalledImageDownloads();
+
+  if (!appStateSubscription) {
+    appStateSubscription = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'active') {
+        recoverStalledImageDownloads();
+      }
+    });
+  }
 }
 
 /** Return the initialised cache directory (auto-inits if needed). */
 function ensureCacheDir(): Directory {
   if (!cacheDir) initImageCache();
   return cacheDir!;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Startup / resume recovery                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Scan all subdirectories under image-cache/ for incomplete (.tmp)
+ * files, delete them, and re-queue any coverArtId that is missing
+ * size variants.
+ *
+ * Mirrors musicCacheService.recoverStalledDownloads().
+ */
+function recoverStalledImageDownloads(): void {
+  const dir = ensureCacheDir();
+  let subDirs: (File | Directory)[];
+  try {
+    subDirs = dir.list();
+  } catch {
+    return;
+  }
+
+  for (const subDir of subDirs) {
+    if (!(subDir instanceof Directory)) continue;
+    const coverArtId = subDir.uri.split('/').filter(Boolean).pop() ?? '';
+    if (!coverArtId) continue;
+
+    let hasTmp = false;
+    let completeCount = 0;
+
+    try {
+      for (const entry of subDir.list()) {
+        if (!(entry instanceof File)) continue;
+        if (entry.uri.endsWith('.tmp')) {
+          hasTmp = true;
+          try { entry.delete(); } catch { /* best-effort */ }
+        } else {
+          completeCount++;
+        }
+      }
+    } catch {
+      continue;
+    }
+
+    if (hasTmp || completeCount < IMAGE_SIZES.length) {
+      if (!downloading.has(coverArtId) && !downloadQueue.includes(coverArtId)) {
+        // Evict stale URI cache entries so the queue processor re-checks disk.
+        for (const s of IMAGE_SIZES) {
+          uriCache.delete(uriCacheKey(coverArtId, s));
+        }
+        downloadQueue.push(coverArtId);
+      }
+    }
+  }
+
+  if (downloadQueue.length > 0) {
+    processQueue();
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -121,57 +222,215 @@ export function evictUriCacheEntry(coverArtId: string, size: number): void {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Download helpers                                                   */
+/*  Queue management                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Resolve and remove all pending promise callbacks for a coverArtId. */
+function resolveWaiters(coverArtId: string): void {
+  const resolvers = pendingResolvers.get(coverArtId);
+  if (resolvers) {
+    for (const resolve of resolvers) resolve();
+    pendingResolvers.delete(coverArtId);
+  }
+}
+
+/** Resolve all pending waiters (used when the cache is cleared). */
+function resolveAllWaiters(): void {
+  for (const [, resolvers] of pendingResolvers) {
+    for (const resolve of resolvers) resolve();
+  }
+  pendingResolvers.clear();
+}
+
+/**
+ * Enqueue a coverArtId for download + local resize. Returns a Promise
+ * that resolves once the image has been fully cached (all 4 sizes) or
+ * skipped. No-ops if all sizes are already on disk.
+ */
+export function cacheAllSizes(coverArtId: string): Promise<void> {
+  if (!coverArtId) return Promise.resolve();
+
+  const allCached = IMAGE_SIZES.every(
+    (s) => getCachedImageUri(coverArtId, s) != null,
+  );
+  if (allCached) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    const list = pendingResolvers.get(coverArtId) ?? [];
+    list.push(resolve);
+    pendingResolvers.set(coverArtId, list);
+
+    if (downloading.has(coverArtId) || downloadQueue.includes(coverArtId)) {
+      return;
+    }
+
+    downloadQueue.push(coverArtId);
+    processQueue();
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Queue processing                                                   */
 /* ------------------------------------------------------------------ */
 
 /**
- * Download a single image variant and write it to the cache.
- * Returns silently on failure so one bad size doesn't block others.
+ * Process the download queue. Spawns up to maxConcurrentImageDownloads
+ * workers using the same pool pattern as musicCacheService.
  */
-async function downloadOne(
-  coverArtId: string,
-  size: number,
-): Promise<void> {
-  await ensureCoverArtAuth();
-  const url = getCoverArtUrl(coverArtId, size);
-  if (!url) return;
-
+async function processQueue(): Promise<void> {
+  if (isProcessing) return;
+  isProcessing = true;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return;
-
-    const contentType = response.headers.get('content-type') ?? '';
-    const ext = MIME_TO_EXT[contentType.split(';')[0].trim()] ?? '.jpg';
-
-    const subDir = new Directory(ensureCacheDir(), coverArtId);
-    if (!subDir.exists) subDir.create();
-    const file = new File(subDir, `${size}${ext}`);
-
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    file.write(bytes);
-    imageCacheStore.getState().addFile(bytes.length);
-  } catch {
-    // Swallow – caching is best-effort.
+    while (downloadQueue.length > 0) {
+      const { maxConcurrentImageDownloads } = imageCacheStore.getState();
+      const workerCount = Math.min(
+        maxConcurrentImageDownloads,
+        downloadQueue.length,
+      );
+      const workers = Array.from(
+        { length: workerCount },
+        () => processNext(),
+      );
+      await Promise.all(workers);
+    }
+  } finally {
+    isProcessing = false;
   }
 }
 
 /**
- * Download all size variants for a coverArtId in parallel.
- * No-ops if a download for this ID is already in progress.
+ * Worker loop: dequeue one coverArtId at a time and download + resize.
  */
-export async function cacheAllSizes(coverArtId: string): Promise<void> {
-  if (!coverArtId) return;
-  if (downloading.has(coverArtId)) return;
-  downloading.add(coverArtId);
+async function processNext(): Promise<void> {
+  while (downloadQueue.length > 0) {
+    const coverArtId = downloadQueue.shift()!;
+    if (downloading.has(coverArtId)) {
+      continue;
+    }
+    downloading.add(coverArtId);
+    try {
+      await downloadAndCacheImage(coverArtId);
+    } catch {
+      /* individual image failure -- continue with the rest */
+    } finally {
+      downloading.delete(coverArtId);
+      for (const s of IMAGE_SIZES) {
+        uriCache.delete(uriCacheKey(coverArtId, s));
+        getCachedImageUri(coverArtId, s);
+      }
+      resolveWaiters(coverArtId);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Download + resize pipeline                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Download the 600px source from the server (if not already cached)
+ * and generate the 300, 150, and 50px variants locally.
+ */
+async function downloadAndCacheImage(coverArtId: string): Promise<void> {
+  const subDir = new Directory(ensureCacheDir(), coverArtId);
+  if (!subDir.exists) subDir.create();
+
+  let source600Uri = getCachedImageUri(coverArtId, SOURCE_SIZE);
+  if (!source600Uri) {
+    source600Uri = await downloadSourceImage(coverArtId, subDir);
+    if (!source600Uri) return;
+  }
+
+  for (const size of RESIZE_SIZES) {
+    if (getCachedImageUri(coverArtId, size)) continue;
+    await generateResizedVariant(source600Uri, coverArtId, size, subDir);
+  }
+}
+
+/**
+ * Download the source (600px) image from the Subsonic server.
+ * Writes to a .tmp file first, then renames on success.
+ * Returns the local file:// URI on success, or null on failure.
+ */
+async function downloadSourceImage(
+  coverArtId: string,
+  subDir: Directory,
+): Promise<string | null> {
+  await ensureCoverArtAuth();
+  const url = getCoverArtUrl(coverArtId, SOURCE_SIZE);
+  if (!url) return null;
+
+  let tmpName: string | null = null;
   try {
-    await Promise.all(IMAGE_SIZES.map((s) => downloadOne(coverArtId, s)));
-  } finally {
-    downloading.delete(coverArtId);
-    // Re-populate the in-memory cache so subsequent lookups skip FS I/O.
-    for (const s of IMAGE_SIZES) {
-      const key = uriCacheKey(coverArtId, s);
-      uriCache.delete(key);
-      getCachedImageUri(coverArtId, s);
+    const response = await fetch(url);
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type') ?? '';
+    const ext = MIME_TO_EXT[contentType.split(';')[0].trim()] ?? '.jpg';
+    const fileName = `${SOURCE_SIZE}${ext}`;
+    tmpName = `${fileName}.tmp`;
+
+    const tmpFile = new File(subDir, tmpName);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    tmpFile.write(bytes);
+
+    const dest = new File(subDir, fileName);
+    if (dest.exists) {
+      try { dest.delete(); } catch { /* best-effort */ }
+    }
+    tmpFile.move(dest);
+
+    imageCacheStore.getState().addFile(bytes.length);
+    uriCache.set(uriCacheKey(coverArtId, SOURCE_SIZE), dest.uri);
+
+    return dest.uri;
+  } catch {
+    if (tmpName) {
+      const tmp = new File(subDir, tmpName);
+      if (tmp.exists) {
+        try { tmp.delete(); } catch { /* best-effort */ }
+      }
+    }
+    return null;
+  }
+}
+
+/**
+ * Generate a single resized variant from the 600px source using
+ * expo-image-manipulator. Writes to a .tmp file first, then renames.
+ */
+async function generateResizedVariant(
+  sourceUri: string,
+  coverArtId: string,
+  size: number,
+  subDir: Directory,
+): Promise<void> {
+  const fileName = `${size}.jpg`;
+  const tmpName = `${fileName}.tmp`;
+  try {
+    const context = ImageManipulator.manipulate(sourceUri);
+    context.resize({ width: size });
+    const rendered = await context.renderAsync();
+    const saved = await rendered.saveAsync({
+      format: SaveFormat.JPEG,
+      compress: RESIZE_COMPRESS,
+    });
+
+    const tmpFile = new File(subDir, tmpName);
+    await moveAsync({ from: saved.uri, to: tmpFile.uri });
+
+    const dest = new File(subDir, fileName);
+    if (dest.exists) {
+      try { dest.delete(); } catch { /* best-effort */ }
+    }
+    tmpFile.move(dest);
+
+    imageCacheStore.getState().addFile(dest.size ?? 0);
+    uriCache.set(uriCacheKey(coverArtId, size), dest.uri);
+  } catch {
+    const tmp = new File(subDir, tmpName);
+    if (tmp.exists) {
+      try { tmp.delete(); } catch { /* best-effort */ }
     }
   }
 }
@@ -194,7 +453,6 @@ export function getImageCacheStats(): ImageCacheStats {
   const dir = ensureCacheDir();
   const totalBytes = dir.size ?? 0;
 
-  // Each subdirectory represents one unique cover art image.
   let imageCount = 0;
   try {
     const contents = dir.list();
@@ -322,7 +580,6 @@ export async function listCachedImagesAsync(): Promise<CachedImageEntry[]> {
 export function deleteCachedImage(coverArtId: string): void {
   if (!coverArtId) return;
 
-  // Evict all size variants from the in-memory cache.
   for (const s of IMAGE_SIZES) {
     uriCache.delete(uriCacheKey(coverArtId, s));
   }
@@ -330,7 +587,6 @@ export function deleteCachedImage(coverArtId: string): void {
   const subDir = new Directory(ensureCacheDir(), coverArtId);
   if (!subDir.exists) return;
 
-  // Tally files before deleting the directory.
   let deletedCount = 0;
   let deletedBytes = 0;
   try {
@@ -341,13 +597,13 @@ export function deleteCachedImage(coverArtId: string): void {
       }
     }
   } catch {
-    // Best-effort – proceed with deletion regardless.
+    /* best-effort -- proceed with deletion regardless */
   }
 
   try {
     subDir.delete();
   } catch {
-    // May fail if already removed; ignore.
+    /* may fail if already removed */
   }
 
   if (deletedCount > 0) {
@@ -357,13 +613,14 @@ export function deleteCachedImage(coverArtId: string): void {
 
 /**
  * Re-download all size variants for a single coverArtId.
- * Deletes existing files first, then downloads fresh copies.
+ * Deletes existing files first, then re-enqueues for a fresh download.
  */
-export async function refreshCachedImage(coverArtId: string): Promise<void> {
+export function refreshCachedImage(coverArtId: string): Promise<void> {
   deleteCachedImage(coverArtId);
-  // Clear the in-flight guard so cacheAllSizes will proceed.
   downloading.delete(coverArtId);
-  await cacheAllSizes(coverArtId);
+  const idx = downloadQueue.indexOf(coverArtId);
+  if (idx !== -1) downloadQueue.splice(idx, 1);
+  return cacheAllSizes(coverArtId);
 }
 
 /* ------------------------------------------------------------------ */
@@ -380,11 +637,13 @@ export function clearImageCache(): number {
   try {
     dir.delete();
   } catch {
-    // May fail if already empty; ignore.
+    /* may fail if already empty */
   }
-  // Recreate.
   cacheDir = null;
   uriCache.clear();
+  downloadQueue.length = 0;
+  downloading.clear();
+  resolveAllWaiters();
   initImageCache();
   imageCacheStore.getState().reset();
   return freedBytes;

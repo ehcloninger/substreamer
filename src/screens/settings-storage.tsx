@@ -12,7 +12,11 @@ import { clearImageCache } from '../services/imageCacheService';
 import { clearMusicCache } from '../services/musicCacheService';
 import { clearQueue } from '../services/playerService';
 import { checkStorageLimit, getFreeDiskSpace } from '../services/storageService';
-import { imageCacheStore, getImageCount } from '../store/imageCacheStore';
+import {
+  imageCacheStore,
+  getImageCount,
+  type MaxConcurrentImageDownloads,
+} from '../store/imageCacheStore';
 import { albumDetailStore } from '../store/albumDetailStore';
 import { artistDetailStore } from '../store/artistDetailStore';
 import {
@@ -26,12 +30,14 @@ import { storageLimitStore, type StorageLimitMode } from '../store/storageLimitS
 import { formatBytes } from '../utils/formatters';
 
 const CONCURRENT_OPTIONS: MaxConcurrentDownloads[] = [1, 3, 5];
+const IMAGE_CONCURRENT_OPTIONS: MaxConcurrentImageDownloads[] = [1, 3, 5, 10];
 
 export function SettingsStorageScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [concurrentSheetVisible, setConcurrentSheetVisible] = useState(false);
+  const [imageConcurrentSheetVisible, setImageConcurrentSheetVisible] = useState(false);
   const [dangerousExpanded, setDangerousExpanded] = useState(false);
   const chevronRotation = useSharedValue(0);
 
@@ -49,6 +55,7 @@ export function SettingsStorageScreen() {
   const totalBytes = imageCacheStore((s) => s.totalBytes);
   const fileCount = imageCacheStore((s) => s.fileCount);
   const imageCount = getImageCount(fileCount);
+  const maxConcurrentImageDownloads = imageCacheStore((s) => s.maxConcurrentImageDownloads);
   const cachedAlbumCount = albumDetailStore((s) => Object.keys(s.albums).length);
   const cachedArtistCount = artistDetailStore((s) => Object.keys(s.artists).length);
   const cachedPlaylistCount = playlistDetailStore((s) => Object.keys(s.playlists).length);
@@ -182,6 +189,15 @@ export function SettingsStorageScreen() {
   const handleConcurrentSelect = useCallback((value: MaxConcurrentDownloads) => {
     musicCacheStore.getState().setMaxConcurrentDownloads(value);
     setConcurrentSheetVisible(false);
+  }, []);
+
+  const handleImageConcurrentPress = useCallback(() => {
+    setImageConcurrentSheetVisible(true);
+  }, []);
+
+  const handleImageConcurrentSelect = useCallback((value: MaxConcurrentImageDownloads) => {
+    imageCacheStore.getState().setMaxConcurrentImageDownloads(value);
+    setImageConcurrentSheetVisible(false);
   }, []);
 
   const dynamicStyles = useMemo(
@@ -320,6 +336,19 @@ export function SettingsStorageScreen() {
               {formatBytes(totalBytes)}
             </Text>
           </View>
+          <Pressable
+            onPress={handleImageConcurrentPress}
+            style={({ pressed }) => [
+              styles.infoRow,
+              { borderBottomColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Concurrent downloads</Text>
+            <Text style={[styles.infoValue, { color: colors.primary }]}>
+              {maxConcurrentImageDownloads}
+            </Text>
+          </Pressable>
           <Pressable
             onPress={() => router.push('/image-cache-browser')}
             style={({ pressed }) => [
@@ -542,6 +571,49 @@ export function SettingsStorageScreen() {
               {opt} {opt === 1 ? 'track' : 'tracks'}
             </Text>
             {maxConcurrentDownloads === opt && (
+              <Ionicons name="checkmark" size={22} color={colors.primary} />
+            )}
+          </Pressable>
+        ))}
+      </View>
+    </Modal>
+
+    <Modal
+      visible={imageConcurrentSheetVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setImageConcurrentSheetVisible(false)}
+    >
+      <Pressable
+        style={styles.sheetBackdrop}
+        onPress={() => setImageConcurrentSheetVisible(false)}
+      />
+      <View
+        style={[
+          styles.sheet,
+          { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) },
+        ]}
+      >
+        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+          Concurrent Image Downloads
+        </Text>
+        <Text style={[styles.sheetSubtitle, { color: colors.textSecondary }]}>
+          Select how many images to download simultaneously.
+        </Text>
+        {IMAGE_CONCURRENT_OPTIONS.map((opt) => (
+          <Pressable
+            key={opt}
+            onPress={() => handleImageConcurrentSelect(opt)}
+            style={({ pressed }) => [
+              styles.sheetOption,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.sheetOptionLabel, { color: colors.textPrimary }]}>
+              {opt} {opt === 1 ? 'image' : 'images'}
+            </Text>
+            {maxConcurrentImageDownloads === opt && (
               <Ionicons name="checkmark" size={22} color={colors.primary} />
             )}
           </Pressable>

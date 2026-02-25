@@ -21,6 +21,7 @@
     "@react-native-picker/picker": "^2.11.4",
     "@shopify/flash-list": "^2.2.2",
     "expo": "~54.0.33",
+    "expo-backup-exclusions": "file:./modules/expo-backup-exclusions",
     "expo-build-properties": "~1.0.10",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
@@ -29,6 +30,7 @@
     "expo-file-system": "~19.0.21",
     "expo-font": "~14.0.11",
     "expo-haptics": "~15.0.8",
+    "expo-image-manipulator": "~14.0.8",
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.11",
     "expo-router": "~6.0.23",
@@ -51,8 +53,7 @@
     "react-native-track-player": "file:./modules/react-native-track-player",
     "react-native-worklets": "0.7.4",
     "subsonic-api": "^3.2.0",
-    "zustand": "^5.0.11",
-    "expo-backup-exclusions": "file:./modules/expo-backup-exclusions"
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
