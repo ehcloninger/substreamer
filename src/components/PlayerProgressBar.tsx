@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -82,48 +83,67 @@ export function PlayerProgressBar({
   durationRef.current = duration;
   const onSeekRef = useRef(onSeek);
   onSeekRef.current = onSeek;
-  const thumbScaleRef = useRef(thumbScale);
-  thumbScaleRef.current = thumbScale;
 
   /** Convert an absolute screen pageX to a 0–1 fraction across the track. */
   const fractionFromPageX = (pageX: number) =>
     clamp((pageX - trackPageX.current) / (trackWidth.current || 1), 0, 1);
 
+  const handleTapSeek = useCallback((absoluteX: number) => {
+    const frac = fractionFromPageX(absoluteX);
+    setPendingSeekFraction(frac);
+    onSeekRef.current(frac * durationRef.current);
+  }, []);
+
+  const handlePanStart = useCallback((absoluteX: number) => {
+    const frac = fractionFromPageX(absoluteX);
+    setDragFraction(frac);
+    setIsDragging(true);
+    setPendingSeekFraction(null);
+  }, []);
+
+  const handlePanUpdate = useCallback((absoluteX: number) => {
+    setDragFraction(fractionFromPageX(absoluteX));
+  }, []);
+
+  const handlePanEnd = useCallback(() => {
+    const seekPos = dragFractionRef.current * durationRef.current;
+    setPendingSeekFraction(dragFractionRef.current);
+    setIsDragging(false);
+    onSeekRef.current(seekPos);
+  }, []);
+
+  const handlePanCancel = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
   const tapGesture = Gesture.Tap()
     .onEnd((e) => {
-      const frac = fractionFromPageX(e.absoluteX);
-      const seekPos = frac * durationRef.current;
-      setPendingSeekFraction(frac);
-      onSeekRef.current(seekPos);
+      'worklet';
+      runOnJS(handleTapSeek)(e.absoluteX);
     });
 
   const panGesture = Gesture.Pan()
     .activeOffsetX([-6, 6])
     .failOffsetY([-10, 10])
     .onStart((e) => {
-      const frac = fractionFromPageX(e.absoluteX);
-      setDragFraction(frac);
-      setIsDragging(true);
-      setPendingSeekFraction(null);
-      thumbScaleRef.current.value = withSpring(ACTIVE_THUMB_SIZE / THUMB_SIZE);
+      'worklet';
+      thumbScale.value = withSpring(ACTIVE_THUMB_SIZE / THUMB_SIZE);
+      runOnJS(handlePanStart)(e.absoluteX);
     })
     .onUpdate((e) => {
-      const frac = fractionFromPageX(e.absoluteX);
-      setDragFraction(frac);
+      'worklet';
+      runOnJS(handlePanUpdate)(e.absoluteX);
     })
     .onEnd(() => {
-      const currentDragFraction = dragFractionRef.current;
-      const currentDuration = durationRef.current;
-      const seekPosition = currentDragFraction * currentDuration;
-      setPendingSeekFraction(currentDragFraction);
-      setIsDragging(false);
-      onSeekRef.current(seekPosition);
-      thumbScaleRef.current.value = withSpring(1);
+      'worklet';
+      thumbScale.value = withSpring(1);
+      runOnJS(handlePanEnd)();
     })
     .onFinalize((_, success) => {
+      'worklet';
       if (!success) {
-        setIsDragging(false);
-        thumbScaleRef.current.value = withSpring(1);
+        thumbScale.value = withSpring(1);
+        runOnJS(handlePanCancel)();
       }
     });
 
