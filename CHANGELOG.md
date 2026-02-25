@@ -1,5 +1,10 @@
 # Changelog
 
+## [8.0.6] - 2026-02-25
+
+- downloads: keep screen alive when there are active downloads in the queue so they don't keep stalling!
+- player: fix progress bar swipe gesture being erratic (all gestures use RNGH)
+- update project rules
 ## [8.0.5] - 2026-02-25
 
 - player: fix close sometimes needs to be pressed multiple times to trigger
