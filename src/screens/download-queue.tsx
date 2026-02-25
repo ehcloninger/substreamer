@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo } from 'react';
 import {
@@ -10,6 +9,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import { TouchableOpacity } from 'react-native-gesture-handler';
+import DraggableFlatList, {
+  ScaleDecorator,
+  type DragEndParams,
+  type RenderItemParams,
+} from 'react-native-draggable-flatlist';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,8 +23,9 @@ import Animated, {
 
 import { CachedImage } from '../components/CachedImage';
 import { EmptyState } from '../components/EmptyState';
+import { closeOpenRow, SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { useTheme } from '../hooks/useTheme';
-import { cancelDownload, clearDownloadQueue, retryDownload } from '../services/musicCacheService';
+import { cancelDownload, clearDownloadQueue, recoverStalledDownloads, retryDownload } from '../services/musicCacheService';
 import {
   musicCacheStore,
   type DownloadQueueItem,
@@ -34,23 +40,19 @@ const ANIMATE_MS = 400;
 const QueueRow = memo(function QueueRow({
   item,
   colors,
-  onMoveUp,
-  onMoveDown,
+  drag,
+  isActive,
   onRemove,
   onRetry,
-  isFirst,
-  isLast,
 }: {
   item: DownloadQueueItem;
   colors: ReturnType<typeof useTheme>['colors'];
-  onMoveUp: (queueId: string) => void;
-  onMoveDown: (queueId: string) => void;
+  drag?: () => void;
+  isActive: boolean;
   onRemove: (queueId: string) => void;
   onRetry: (queueId: string) => void;
-  isFirst: boolean;
-  isLast: boolean;
 }) {
-  const isActive = item.status === 'downloading';
+  const isDownloading = item.status === 'downloading';
   const isQueued = item.status === 'queued';
   const isError = item.status === 'error';
 
@@ -69,7 +71,16 @@ const QueueRow = memo(function QueueRow({
   const fillStyle = useAnimatedStyle(() => ({ flex: fillFrac.value }));
   const freeStyle = useAnimatedStyle(() => ({ flex: freeFrac.value }));
 
-  return (
+  const handleRemove = useCallback(() => {
+    onRemove(item.queueId);
+  }, [item.queueId, onRemove]);
+
+  const rightActions: SwipeAction[] = useMemo(
+    () => [{ icon: 'trash-outline', color: colors.red, label: 'Remove', onPress: handleRemove, removesRow: true }],
+    [colors.red, handleRemove],
+  );
+
+  const row = (
     <View style={[styles.row, { borderBottomColor: colors.border }]}>
       <View style={styles.thumbWrap}>
         <CachedImage
@@ -78,7 +89,7 @@ const QueueRow = memo(function QueueRow({
           style={[styles.thumb, { backgroundColor: colors.border }]}
           resizeMode="cover"
         />
-        {isActive && (
+        {isDownloading && (
           <View style={styles.spinnerOverlay}>
             <ActivityIndicator size="small" color={colors.primary} style={{ opacity: 1 }} />
           </View>
@@ -94,7 +105,7 @@ const QueueRow = memo(function QueueRow({
           </Text>
         )}
 
-        {isActive && (
+        {isDownloading && (
           <View style={styles.progressSection}>
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
               {item.completedTracks} of {item.totalTracks} tracks
@@ -125,45 +136,41 @@ const QueueRow = memo(function QueueRow({
         )}
       </View>
 
-      <View style={styles.rowActions}>
-        {isQueued && (
-          <>
-            <Pressable
-              onPress={() => onMoveUp(item.queueId)}
-              disabled={isFirst}
-              hitSlop={6}
-              style={({ pressed }) => [pressed && styles.pressed, isFirst && styles.disabled]}
-            >
-              <Ionicons name="chevron-up" size={20} color={colors.textSecondary} />
-            </Pressable>
-            <Pressable
-              onPress={() => onMoveDown(item.queueId)}
-              disabled={isLast}
-              hitSlop={6}
-              style={({ pressed }) => [pressed && styles.pressed, isLast && styles.disabled]}
-            >
-              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-            </Pressable>
-          </>
-        )}
-        {isError && (
-          <Pressable
-            onPress={() => onRetry(item.queueId)}
-            hitSlop={6}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <Ionicons name="refresh" size={20} color={colors.primary} />
-          </Pressable>
-        )}
+      {isQueued && (
+        <View style={styles.dragHandle}>
+          <Ionicons name="reorder-three" size={24} color={colors.textSecondary} />
+        </View>
+      )}
+
+      {isError && (
         <Pressable
-          onPress={() => onRemove(item.queueId)}
-          hitSlop={6}
-          style={({ pressed }) => pressed && styles.pressed}
+          onPress={() => onRetry(item.queueId)}
+          hitSlop={8}
+          style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
         >
-          <Ionicons name="close-circle-outline" size={20} color={colors.red} />
+          <Ionicons name="refresh" size={20} color={colors.primary} />
         </Pressable>
-      </View>
+      )}
     </View>
+  );
+
+  return (
+    <ScaleDecorator activeScale={1.03}>
+      <SwipeableRow rightActions={rightActions} enableFullSwipeRight>
+        {isQueued && drag ? (
+          <TouchableOpacity
+            onLongPress={drag}
+            delayLongPress={200}
+            disabled={isActive}
+            activeOpacity={0.7}
+          >
+            {row}
+          </TouchableOpacity>
+        ) : (
+          row
+        )}
+      </SwipeableRow>
+    </ScaleDecorator>
   );
 });
 
@@ -176,6 +183,22 @@ export function DownloadQueueScreen() {
   const navigation = useNavigation();
   const downloadQueue = musicCacheStore((s) => s.downloadQueue);
 
+  /* ---- Sorted display list: downloading → queued → error ---- */
+
+  const sortedQueue = useMemo(() => {
+    const downloading: DownloadQueueItem[] = [];
+    const queued: DownloadQueueItem[] = [];
+    const errored: DownloadQueueItem[] = [];
+    for (const item of downloadQueue) {
+      if (item.status === 'downloading') downloading.push(item);
+      else if (item.status === 'queued') queued.push(item);
+      else if (item.status === 'error') errored.push(item);
+    }
+    return [...downloading, ...queued, ...errored];
+  }, [downloadQueue]);
+
+  /* ---- Header buttons ---- */
+
   const handleClearAll = useCallback(() => {
     Alert.alert(
       'Clear Download Queue',
@@ -183,12 +206,16 @@ export function DownloadQueueScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Clear All',
+          text: 'Clear',
           style: 'destructive',
           onPress: () => clearDownloadQueue(),
         },
       ],
     );
+  }, []);
+
+  const handleRecover = useCallback(() => {
+    recoverStalledDownloads();
   }, []);
 
   useEffect(() => {
@@ -198,32 +225,27 @@ export function DownloadQueueScreen() {
     }
     navigation.setOptions({
       headerRight: () => (
-        <Pressable
-          onPress={handleClearAll}
-          hitSlop={8}
-          style={({ pressed }) => pressed && styles.pressed}
-        >
-          <Text style={[styles.clearAllText, { color: colors.red }]}>Clear All</Text>
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={handleRecover}
+            hitSlop={8}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Ionicons name="refresh" size={22} color={colors.primary} />
+          </Pressable>
+          <Pressable
+            onPress={handleClearAll}
+            hitSlop={8}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Text style={[styles.clearText, { color: colors.red }]}>Clear</Text>
+          </Pressable>
+        </View>
       ),
     });
-  }, [downloadQueue.length, navigation, handleClearAll, colors.red]);
+  }, [downloadQueue.length, navigation, handleClearAll, handleRecover, colors.red, colors.primary]);
 
-  const handleMoveUp = useCallback((queueId: string) => {
-    const queue = musicCacheStore.getState().downloadQueue;
-    const idx = queue.findIndex((q) => q.queueId === queueId);
-    if (idx > 0) {
-      musicCacheStore.getState().reorderQueue(idx, idx - 1);
-    }
-  }, []);
-
-  const handleMoveDown = useCallback((queueId: string) => {
-    const queue = musicCacheStore.getState().downloadQueue;
-    const idx = queue.findIndex((q) => q.queueId === queueId);
-    if (idx >= 0 && idx < queue.length - 1) {
-      musicCacheStore.getState().reorderQueue(idx, idx + 1);
-    }
-  }, []);
+  /* ---- Handlers ---- */
 
   const handleRetry = useCallback((queueId: string) => {
     retryDownload(queueId);
@@ -235,35 +257,61 @@ export function DownloadQueueScreen() {
     );
     if (!item) return;
 
-    const isActive = item.status === 'downloading';
-    const message = isActive
-      ? `Cancel the download of "${item.name}"?`
-      : `Remove "${item.name}" from the download queue?`;
-
-    Alert.alert('Remove Download', message, [
-      { text: 'Keep', style: 'cancel' },
-      {
-        text: isActive ? 'Cancel Download' : 'Remove',
-        style: 'destructive',
-        onPress: () => cancelDownload(queueId),
-      },
-    ]);
+    if (item.status === 'downloading') {
+      Alert.alert('Cancel Download', `Cancel the download of "${item.name}"?`, [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Cancel Download',
+          style: 'destructive',
+          onPress: () => cancelDownload(queueId),
+        },
+      ]);
+    } else {
+      cancelDownload(queueId);
+    }
   }, []);
 
+  /* ---- Drag reorder ---- */
+
+  const handleDragEnd = useCallback(({ data }: DragEndParams<DownloadQueueItem>) => {
+    const newQueued = data.filter((q) => q.status === 'queued');
+    const storeQueue = musicCacheStore.getState().downloadQueue;
+    const storeQueued = storeQueue.filter((q) => q.status === 'queued');
+
+    // Check if queued item order actually changed
+    const changed = newQueued.some((q, i) => q.queueId !== storeQueued[i]?.queueId);
+    if (!changed) return;
+
+    // Apply the new queued order to the store by sequential reorders
+    for (let i = 0; i < newQueued.length; i++) {
+      const currentQueue = musicCacheStore.getState().downloadQueue;
+      const fromIdx = currentQueue.findIndex((q) => q.queueId === newQueued[i].queueId);
+      const targetIdx = currentQueue.findIndex((q) => q.queueId === storeQueued[0]?.queueId);
+
+      // Find the correct target position: after downloading items, in order
+      const downloadingCount = currentQueue.filter((q) => q.status === 'downloading').length;
+      const desiredIdx = downloadingCount + i;
+
+      if (fromIdx >= 0 && fromIdx !== desiredIdx) {
+        musicCacheStore.getState().reorderQueue(fromIdx, desiredIdx);
+      }
+    }
+  }, []);
+
+  /* ---- Render ---- */
+
   const renderItem = useCallback(
-    ({ item, index }: { item: DownloadQueueItem; index: number }) => (
+    ({ item, drag, isActive }: RenderItemParams<DownloadQueueItem>) => (
       <QueueRow
         item={item}
         colors={colors}
-        onMoveUp={handleMoveUp}
-        onMoveDown={handleMoveDown}
+        drag={item.status === 'queued' ? drag : undefined}
+        isActive={isActive}
         onRemove={handleRemove}
         onRetry={handleRetry}
-        isFirst={index === 0}
-        isLast={index === downloadQueue.length - 1}
       />
     ),
-    [colors, handleMoveUp, handleMoveDown, handleRemove, handleRetry, downloadQueue.length],
+    [colors, handleRemove, handleRetry],
   );
 
   const keyExtractor = useCallback(
@@ -278,14 +326,25 @@ export function DownloadQueueScreen() {
     [],
   );
 
+  const contentStyle = useMemo(
+    () => ({
+      flexGrow: 1 as const,
+      backgroundColor: colors.background,
+    }),
+    [colors.background],
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlashList
-        data={downloadQueue}
+      <DraggableFlatList
+        data={sortedQueue}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        onDragEnd={handleDragEnd}
+        onScrollBeginDrag={closeOpenRow}
         ListEmptyComponent={listEmpty}
-        contentContainerStyle={downloadQueue.length === 0 ? styles.emptyListContent : undefined}
+        containerStyle={styles.container}
+        contentContainerStyle={contentStyle}
       />
     </View>
   );
@@ -299,8 +358,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  emptyListContent: {
-    flex: 1,
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   row: {
     flexDirection: 'row',
@@ -359,20 +420,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  rowActions: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 4,
+  dragHandle: {
     marginLeft: 12,
+    padding: 4,
   },
-  clearAllText: {
+  retryButton: {
+    marginLeft: 12,
+    padding: 4,
+  },
+  clearText: {
     fontSize: 15,
     fontWeight: '600',
   },
   pressed: {
     opacity: 0.6,
-  },
-  disabled: {
-    opacity: 0.25,
   },
 });

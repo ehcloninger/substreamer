@@ -139,7 +139,7 @@ export function initMusicCache(): void {
  * against trackUriMap: completed tracks are skipped, and tracks
  * whose .tmp files were cleaned up are re-downloaded.
  */
-function recoverStalledDownloads(): void {
+export function recoverStalledDownloads(): void {
   const { downloadQueue } = musicCacheStore.getState();
   for (const item of downloadQueue) {
     if (item.status !== 'downloading') continue;
@@ -552,6 +552,19 @@ export function retryDownload(queueId: string): void {
     completedTracks: 0,
     error: undefined,
   });
+
+  // Move the retried item to just after the last queued/downloading item
+  // so it doesn't jump ahead of items already waiting.
+  const queue = musicCacheStore.getState().downloadQueue;
+  const fromIdx = queue.findIndex((q) => q.queueId === queueId);
+  const lastNonErrorIdx = queue.reduce(
+    (last, q, i) => (q.status !== 'error' ? i : last),
+    -1,
+  );
+  if (fromIdx >= 0 && lastNonErrorIdx >= 0 && fromIdx !== lastNonErrorIdx) {
+    musicCacheStore.getState().reorderQueue(fromIdx, lastNonErrorIdx);
+  }
+
   processQueue();
 }
 

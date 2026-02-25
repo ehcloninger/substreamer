@@ -102,6 +102,8 @@ const renderGridItem = ({ item, index }: { item: AlbumID3; index: number }) => {
 
 - Ref type: `useRef<FlashListRef<T>>(null)` (import `FlashListRef` from `@shopify/flash-list`).
 
+**Exception:** The download queue screen (`src/screens/download-queue.tsx`) uses `DraggableFlatList` from `react-native-draggable-flatlist` instead of FlashList because it requires drag-to-reorder functionality. The download queue is inherently small (typically under 20 items) and does not need FlashList's virtualization. This is the only screen where this exception applies.
+
 ## Modals and Bottom Sheets
 
 Use RN `Modal` with transparent backdrop for bottom sheets:
