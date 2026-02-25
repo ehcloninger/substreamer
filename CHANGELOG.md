@@ -1,5 +1,8 @@
 # Changelog
 
+## [8.0.7] - 2026-02-25
+
+- No notable changes
 ## [8.0.6] - 2026-02-25
 
 - downloads: keep screen alive when there are active downloads in the queue so they don't keep stalling!
