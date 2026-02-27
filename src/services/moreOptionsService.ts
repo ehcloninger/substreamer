@@ -5,8 +5,10 @@
  * Keeps star/queue logic in one place so row and card components stay thin.
  */
 
+import { albumDetailStore } from '../store/albumDetailStore';
 import { artistDetailStore } from '../store/artistDetailStore';
 import { favoritesStore } from '../store/favoritesStore';
+import { playlistDetailStore } from '../store/playlistDetailStore';
 import { playlistLibraryStore } from '../store/playlistLibraryStore';
 import { processingOverlayStore } from '../store/processingOverlayStore';
 import { addToQueue, playTrack, removeFromQueue } from './playerService';
@@ -106,22 +108,30 @@ export async function addSongToQueue(song: Child): Promise<void> {
 
 /**
  * Add every song from an album to the end of the play queue.
- * Fetches the full album (with songs) from the server first.
+ * Uses cached album data when available, otherwise fetches from the API.
  */
 export async function addAlbumToQueue(album: AlbumID3): Promise<void> {
-  const full = await getAlbum(album.id);
-  if (!full?.song?.length) return;
-  await addToQueue(full.song);
+  let songs = albumDetailStore.getState().albums[album.id]?.album?.song;
+  if (!songs?.length) {
+    const full = await getAlbum(album.id);
+    songs = full?.song;
+  }
+  if (!songs?.length) return;
+  await addToQueue(songs);
 }
 
 /**
  * Add every song from a playlist to the end of the play queue.
- * Fetches the full playlist (with entries) from the server first.
+ * Uses cached playlist data when available, otherwise fetches from the API.
  */
 export async function addPlaylistToQueue(playlist: Playlist): Promise<void> {
-  const full = await getPlaylist(playlist.id);
-  if (!full?.entry?.length) return;
-  await addToQueue(full.entry);
+  let entries = playlistDetailStore.getState().playlists[playlist.id]?.playlist?.entry;
+  if (!entries?.length) {
+    const full = await getPlaylist(playlist.id);
+    entries = full?.entry;
+  }
+  if (!entries?.length) return;
+  await addToQueue(entries);
 }
 
 /**
