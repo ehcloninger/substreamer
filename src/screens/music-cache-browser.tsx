@@ -13,6 +13,11 @@ import {
 
 import { CachedImage } from '../components/CachedImage';
 import { EmptyState } from '../components/EmptyState';
+import {
+  SwipeableRow,
+  closeOpenRow,
+  type SwipeAction,
+} from '../components/SwipeableRow';
 import { useTheme } from '../hooks/useTheme';
 import {
   deleteCachedItem,
@@ -103,32 +108,42 @@ const CacheRow = memo(function CacheRow({
     ? '1 track'
     : `${item.tracks.length} tracks`;
 
+  const handleDelete = useCallback(() => {
+    onDelete(item.itemId);
+  }, [item.itemId, onDelete]);
+
+  const handleToggle = useCallback(() => {
+    onToggle(item.itemId);
+  }, [item.itemId, onToggle]);
+
+  const rightActions: SwipeAction[] = useMemo(
+    () => [{ icon: 'trash-outline', color: colors.red, label: 'Delete', onPress: handleDelete, removesRow: true }],
+    [colors.red, handleDelete],
+  );
+
   return (
-    <View style={[styles.rowContainer, { borderBottomColor: colors.border }]}>
-      <Pressable
-        onPress={() => onToggle(item.itemId)}
-        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-      >
-        <CachedImage
-          coverArtId={item.coverArtId}
-          size={300}
-          style={[styles.thumb, { backgroundColor: colors.border }]}
-          resizeMode="cover"
-        />
-        <View style={styles.rowContent}>
-          <Text style={[styles.rowTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-            {item.name}
-          </Text>
-          {item.artist && (
-            <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-              {item.artist}
+    <SwipeableRow rightActions={rightActions} enableFullSwipeRight onPress={handleToggle}>
+      <View style={[styles.rowContainer, { borderBottomColor: colors.border }]}>
+        <View style={styles.row}>
+          <CachedImage
+            coverArtId={item.coverArtId}
+            size={300}
+            style={[styles.thumb, { backgroundColor: colors.border }]}
+            resizeMode="cover"
+          />
+          <View style={styles.rowContent}>
+            <Text style={[styles.rowTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+              {item.name}
             </Text>
-          )}
-          <Text style={[styles.rowMeta, { color: colors.textSecondary }]}>
-            {item.type === 'album' ? 'Album' : 'Playlist'} · {trackLabel} · {formatBytes(item.totalBytes)}
-          </Text>
-        </View>
-        <View style={styles.rowActions}>
+            {item.artist && (
+              <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                {item.artist}
+              </Text>
+            )}
+            <Text style={[styles.rowMeta, { color: colors.textSecondary }]}>
+              {item.type === 'album' ? 'Album' : 'Playlist'} · {trackLabel} · {formatBytes(item.totalBytes)}
+            </Text>
+          </View>
           {!offlineMode && (
             <Pressable
               onPress={() => onRedownload(item.itemId)}
@@ -138,35 +153,28 @@ const CacheRow = memo(function CacheRow({
               <Ionicons name="refresh" size={20} color={colors.primary} />
             </Pressable>
           )}
-          <Pressable
-            onPress={() => onDelete(item.itemId)}
-            hitSlop={8}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <Ionicons name="trash-outline" size={20} color={colors.red} />
-          </Pressable>
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.textSecondary}
+            style={styles.chevron}
+          />
         </View>
-        <Ionicons
-          name={expanded ? 'chevron-up' : 'chevron-down'}
-          size={16}
-          color={colors.textSecondary}
-          style={styles.chevron}
-        />
-      </Pressable>
 
-      {expanded && (
-        <View style={[styles.trackList, { backgroundColor: colors.background }]}>
-          {item.tracks.map((track) => (
-            <TrackFileRow
-              key={track.id}
-              track={track}
-              itemId={item.itemId}
-              colors={colors}
-            />
-          ))}
-        </View>
-      )}
-    </View>
+        {expanded && (
+          <View style={[styles.trackList, { backgroundColor: colors.background }]}>
+            {item.tracks.map((track) => (
+              <TrackFileRow
+                key={track.id}
+                track={track}
+                itemId={item.itemId}
+                colors={colors}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    </SwipeableRow>
   );
 });
 
@@ -294,6 +302,7 @@ export function MusicCacheBrowserScreen() {
         extraData={expandedId}
         ListEmptyComponent={listEmpty}
         contentContainerStyle={entries.length === 0 ? styles.emptyListContent : undefined}
+        onScrollBeginDrag={closeOpenRow}
       />
     </View>
   );
@@ -352,12 +361,6 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontSize: 11,
     marginTop: 3,
-  },
-  rowActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginLeft: 12,
   },
   chevron: {
     marginLeft: 8,
