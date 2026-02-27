@@ -127,13 +127,29 @@ export async function ensureCoverArtAuth(): Promise<void> {
   cachedCoverArtToken = token;
 }
 
+/**
+ * Navidrome coverArt IDs use `{type}-{entityId}_{hexTimestamp}`. The hex
+ * suffix changes when art is re-indexed but the entity is the same.
+ * Stripping it produces a stable key for caching and server requests.
+ * Idempotent: returns the original ID when no hex suffix is present.
+ */
+const HEX_SUFFIX_RE = /^[0-9a-f]+$/i;
+
+export function stripCoverArtSuffix(coverArtId: string): string {
+  const i = coverArtId.lastIndexOf('_');
+  if (i <= 0) return coverArtId;
+  const suffix = coverArtId.slice(i + 1);
+  if (!HEX_SUFFIX_RE.test(suffix)) return coverArtId;
+  return coverArtId.slice(0, i);
+}
+
 export function getCoverArtUrl(coverArtId: string, size?: number): string | null {
   const { isLoggedIn, serverUrl, username } = authStore.getState();
   if (!coverArtId || !isLoggedIn || !serverUrl || !username) return null;
   if (cachedCoverArtKey === null || !cachedCoverArtSalt || !cachedCoverArtToken) return null;
   const base = `${normalizeServerUrl(serverUrl)}/rest/getCoverArt.view`;
   const params = new URLSearchParams({
-    id: coverArtId,
+    id: stripCoverArtSuffix(coverArtId),
     v: '1.16.1',
     c: 'substreamer',
     u: username,

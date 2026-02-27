@@ -29,7 +29,7 @@ import { fetch } from 'expo/fetch';
 
 import { listDirectoryAsync, getDirectorySizeAsync } from 'expo-async-fs';
 import { imageCacheStore } from '../store/imageCacheStore';
-import { ensureCoverArtAuth, getCoverArtUrl } from './subsonicService';
+import { ensureCoverArtAuth, getCoverArtUrl, stripCoverArtSuffix } from './subsonicService';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -56,13 +56,6 @@ const MIME_TO_EXT: Record<string, string> = {
 
 /** JPEG quality for locally generated resize variants. */
 const RESIZE_COMPRESS = 0.9;
-
-/**
- * Navidrome coverArt IDs use the format `{type}-{entityId}_{hexTimestamp}`.
- * The hex suffix changes when art is re-indexed, but the prefix stays
- * stable for the same entity. Matches hex digits (0-9, a-f).
- */
-const HEX_SUFFIX_RE = /^[0-9a-f]+$/i;
 
 /* ------------------------------------------------------------------ */
 /*  Module state                                                       */
@@ -135,7 +128,6 @@ export function initImageCache(): void {
  */
 export async function deferredImageCacheInit(): Promise<void> {
   await recoverStalledImageDownloadsAsync();
-  await deduplicateCacheFoldersAsync();
 }
 
 /** Return the initialised cache directory (auto-inits if needed). */
@@ -216,6 +208,7 @@ export function getCachedImageUri(
   size: number,
 ): string | null {
   if (!coverArtId) return null;
+  coverArtId = stripCoverArtSuffix(coverArtId);
 
   const key = uriCacheKey(coverArtId, size);
   if (uriCache.has(key)) return uriCache.get(key)!;
@@ -241,6 +234,7 @@ export function getCachedImageUri(
  * filesystem. Used by CachedImage's onError recovery path.
  */
 export function evictUriCacheEntry(coverArtId: string, size: number): void {
+  coverArtId = stripCoverArtSuffix(coverArtId);
   uriCache.delete(uriCacheKey(coverArtId, size));
 }
 
@@ -272,6 +266,7 @@ function resolveAllWaiters(): void {
  */
 export function cacheAllSizes(coverArtId: string): Promise<void> {
   if (!coverArtId) return Promise.resolve();
+  coverArtId = stripCoverArtSuffix(coverArtId);
 
   const allCached = IMAGE_SIZES.every(
     (s) => getCachedImageUri(coverArtId, s) != null,
@@ -347,96 +342,6 @@ async function processNext(): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Stale duplicate cleanup                                            */
-/* ------------------------------------------------------------------ */
-
-/**
- * Extract the stable entity key from a Navidrome-style coverArtId by
- * stripping the hex timestamp suffix. Returns `null` for IDs that
- * don't follow the `{prefix}_{hexDigits}` pattern (e.g. non-Navidrome
- * servers), so dedup is safely skipped for those.
- */
-function entityPrefix(coverArtId: string): string | null {
-  const i = coverArtId.lastIndexOf('_');
-  if (i <= 0) return null;
-  const suffix = coverArtId.slice(i + 1);
-  if (!HEX_SUFFIX_RE.test(suffix)) return null;
-  return coverArtId.slice(0, i);
-}
-
-/**
- * Remove cache folders that share the same entity prefix as
- * `coverArtId` but have a different (outdated) timestamp suffix.
- * Reuses {@link deleteCachedImage} for safe deletion with stat updates.
- *
- * Directory listing runs on a native background thread via
- * expo-async-fs, keeping the JS thread free for UI rendering.
- */
-async function removeStaleFolders(coverArtId: string): Promise<void> {
-  const prefix = entityPrefix(coverArtId);
-  if (!prefix) return;
-
-  const dir = ensureCacheDir();
-  let entryNames: string[];
-  try {
-    entryNames = await listDirectoryAsync(dir.uri);
-  } catch {
-    return;
-  }
-
-  for (const name of entryNames) {
-    if (name === coverArtId) continue;
-    if (entityPrefix(name) === prefix) {
-      await deleteCachedImage(name);
-    }
-  }
-}
-
-/**
- * Batch-deduplicate all cache folders on startup. Groups directories
- * by entity prefix and, for each group with duplicates, keeps the one
- * with the highest hex suffix (newest timestamp) and deletes the rest.
- *
- * Directory listing runs on a native background thread via
- * expo-async-fs, keeping the JS thread free for UI rendering.
- */
-async function deduplicateCacheFoldersAsync(): Promise<void> {
-  const dir = ensureCacheDir();
-  let entryNames: string[];
-  try {
-    entryNames = await listDirectoryAsync(dir.uri);
-  } catch {
-    return;
-  }
-
-  const groups = new Map<string, string[]>();
-
-  for (const name of entryNames) {
-    const prefix = entityPrefix(name);
-    if (!prefix) continue;
-    const list = groups.get(prefix) ?? [];
-    list.push(name);
-    groups.set(prefix, list);
-  }
-
-  for (const [, ids] of groups) {
-    if (ids.length <= 1) continue;
-
-    ids.sort((a, b) => {
-      const aHex = a.slice(a.lastIndexOf('_') + 1);
-      const bHex = b.slice(b.lastIndexOf('_') + 1);
-      const aVal = parseInt(aHex, 16);
-      const bVal = parseInt(bHex, 16);
-      return bVal - aVal;
-    });
-
-    for (let i = 1; i < ids.length; i++) {
-      await deleteCachedImage(ids[i]);
-    }
-  }
-}
-
-/* ------------------------------------------------------------------ */
 /*  Download + resize pipeline                                         */
 /* ------------------------------------------------------------------ */
 
@@ -458,8 +363,6 @@ async function downloadAndCacheImage(coverArtId: string): Promise<void> {
     if (getCachedImageUri(coverArtId, size)) continue;
     await generateResizedVariant(source600Uri, coverArtId, size, subDir);
   }
-
-  await removeStaleFolders(coverArtId);
 }
 
 /**
@@ -656,6 +559,7 @@ export async function listCachedImagesAsync(): Promise<CachedImageEntry[]> {
  */
 export async function deleteCachedImage(coverArtId: string): Promise<void> {
   if (!coverArtId) return;
+  coverArtId = stripCoverArtSuffix(coverArtId);
 
   for (const s of IMAGE_SIZES) {
     uriCache.delete(uriCacheKey(coverArtId, s));
@@ -690,6 +594,7 @@ export async function deleteCachedImage(coverArtId: string): Promise<void> {
  * Deletes existing files first, then re-enqueues for a fresh download.
  */
 export async function refreshCachedImage(coverArtId: string): Promise<void> {
+  coverArtId = stripCoverArtSuffix(coverArtId);
   await deleteCachedImage(coverArtId);
   downloading.delete(coverArtId);
   const idx = downloadQueue.indexOf(coverArtId);
