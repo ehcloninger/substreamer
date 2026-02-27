@@ -145,6 +145,11 @@ export function ScrobbleBrowserScreen() {
     [completedScrobbles],
   );
 
+  const pendingReversed = useMemo(
+    () => [...pendingScrobbles].reverse(),
+    [pendingScrobbles],
+  );
+
   const keyExtractor = useCallback((item: Scrobble, index: number) => `${item.id}-${index}`, []);
 
   const renderItem = useCallback(
@@ -177,11 +182,11 @@ export function ScrobbleBrowserScreen() {
         )}
         {activeSegment === 'pending' && (
           <FlashList
-            data={pendingScrobbles}
+            data={pendingReversed}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             ListEmptyComponent={pendingEmpty}
-            contentContainerStyle={pendingScrobbles.length === 0 ? styles.emptyListContent : undefined}
+            contentContainerStyle={pendingReversed.length === 0 ? styles.emptyListContent : undefined}
           />
         )}
       </View>
