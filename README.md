@@ -12,6 +12,24 @@ npm install
 npx expo start
 ```
 
+## Native Builds
+
+Native Android builds require `JAVA_HOME` and `ANDROID_HOME` to be set. Use the helper script which auto-detects Android Studio's bundled JBR and the Android SDK:
+
+```bash
+# Default: runs npx expo run:android with correct env
+scripts/build-android.sh
+
+# Gradle only (assembleDebug)
+scripts/build-android.sh --gradle-only
+
+# Release variant via Gradle
+scripts/build-android.sh --gradle-only --release
+
+# Build without installing on device
+scripts/build-android.sh --no-install
+```
+
 ## Releasing
 
 Releases are managed by a script that increments the version, updates the changelog, commits, tags, pushes, and creates a GitHub release.

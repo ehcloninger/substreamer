@@ -79,3 +79,16 @@ import { type AlbumID3 } from '../services/subsonicService';
 ```
 
 Use `type` keyword for type-only imports: `import { type AlbumID3 } from '...'`.
+
+## Native Builds
+
+**Always use the helper scripts in `scripts/`** for native builds. Do not run `./gradlew`, `expo run:android`, or `expo run:ios` directly -- the shell environment inside Cursor does not have `JAVA_HOME` or `ANDROID_HOME` set.
+
+| Command | What it does |
+|---------|-------------|
+| `scripts/build-android.sh` | Sets env vars, runs `npx expo run:android` |
+| `scripts/build-android.sh --gradle-only` | Sets env vars, runs `./gradlew assembleDebug` |
+| `scripts/build-android.sh --gradle-only --release` | Release variant via Gradle |
+| `scripts/build-android.sh --no-install` | Build only, skip device install |
+
+The scripts auto-detect `JAVA_HOME` (Android Studio bundled JBR) and `ANDROID_HOME` (`~/Library/Android/sdk`).
