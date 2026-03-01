@@ -124,6 +124,18 @@ let isFullyBuffered = false;
 /** The previously active Child, used for scrobble-on-completion. */
 let previousActiveChild: Child | null = null;
 /**
+ * Saved by PlaybackActiveTrackChanged when it fires BEFORE
+ * PlaybackEndedWithReason.  Ensures the ended handler scrobbles the
+ * correct (outgoing) track even when RNTP delivers events in reverse.
+ */
+let savedTrackForScrobble: Child | null = null;
+/**
+ * True when PlaybackEndedWithReason fired before PlaybackActiveTrackChanged
+ * for the current transition.  Prevents the subsequent ActiveTrackChanged
+ * from saving a stale outgoing track reference.
+ */
+let scrobbleHandledByEnded = false;
+/**
  * Set to true before user-initiated track changes (skip, play new queue)
  * so the PlaybackActiveTrackChanged handler can distinguish them from
  * natural auto-advance and avoid scrobbling partially-played tracks.
@@ -400,13 +412,27 @@ export async function initPlayer(): Promise<void> {
       e.position
     );
 
-    // Scrobble when a track plays until the end.
+    // During queue-setup operations, skip scrobble coordination entirely.
+    if (isSettingQueue || isShuffling) return;
+
+    // Resolve the track that actually finished: prefer the snapshot saved
+    // by ActiveTrackChanged (if it fired first), otherwise use the current
+    // previousActiveChild (if we fired first — it hasn't been overwritten yet).
+    const trackThatEnded = savedTrackForScrobble ?? previousActiveChild;
+
     if (
       (e.reason === 'playedUntilEnd' || e.reason === 'PLAYED_UNTIL_END') &&
-      previousActiveChild
+      trackThatEnded
     ) {
-      addCompletedScrobble(previousActiveChild);
+      addCompletedScrobble(trackThatEnded);
     }
+
+    // If savedTrackForScrobble was null, we fired before ActiveTrackChanged —
+    // tell the upcoming ActiveTrackChanged not to save a stale reference.
+    if (savedTrackForScrobble == null) {
+      scrobbleHandledByEnded = true;
+    }
+    savedTrackForScrobble = null;
   });
 
   TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, ({ track, index: activeIndex }) => {
@@ -425,6 +451,19 @@ export async function initPlayer(): Promise<void> {
     // a transient null-track event — ignore it so the UI stays open.
     if (isShuffling && (track == null || !track.id)) {
       return;
+    }
+
+    // --- Scrobble coordination: save the outgoing track for EndedWithReason ---
+    if (!isSettingQueue && !isShuffling && !isRecoveringStream) {
+      if (scrobbleHandledByEnded) {
+        // EndedWithReason already fired first for this transition and
+        // consumed previousActiveChild — don't save a stale reference.
+        scrobbleHandledByEnded = false;
+      } else {
+        // We fired first — snapshot the outgoing track so EndedWithReason
+        // can read it even though previousActiveChild is about to change.
+        savedTrackForScrobble = previousActiveChild;
+      }
     }
 
     maxBufferedSeen = 0;
@@ -510,6 +549,12 @@ async function syncStoreFromNative(): Promise<void> {
   }
 }
 
+/** Reset scrobble coordination state (call before queue-level operations). */
+function resetScrobbleCoordination() {
+  savedTrackForScrobble = null;
+  scrobbleHandledByEnded = false;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Public API                                                         */
 /* ------------------------------------------------------------------ */
@@ -521,6 +566,7 @@ async function syncStoreFromNative(): Promise<void> {
  * and begins playback.
  */
 export async function playTrack(track: Child, queue: Child[]): Promise<void> {
+  resetScrobbleCoordination();
   isUserSkipping = true;
   isSettingQueue = true;
   positionOffset = 0;
@@ -642,6 +688,7 @@ export async function retryPlayback(): Promise<void> {
  * returns to its idle state (MiniPlayer hidden, no current track).
  */
 export async function clearQueue(): Promise<void> {
+  resetScrobbleCoordination();
   stopProgressPolling();
   isUserSkipping = true;
   positionOffset = 0;
@@ -757,6 +804,7 @@ export async function cyclePlaybackRate(): Promise<void> {
 export async function shuffleQueue(): Promise<void> {
   if (currentChildQueue.length < 2) return;
 
+  resetScrobbleCoordination();
   isUserSkipping = true;
   isSettingQueue = true;
   isShuffling = true;
