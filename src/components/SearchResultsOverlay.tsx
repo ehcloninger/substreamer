@@ -199,6 +199,15 @@ export function SearchResultsOverlay() {
     [hideOverlay, router]
   );
 
+  const handlePlaySong = useCallback(
+    (song: Child) => {
+      hideOverlay();
+      Keyboard.dismiss();
+      playTrack(song, results.songs);
+    },
+    [hideOverlay, results.songs]
+  );
+
   if (!isOverlayVisible || !query.trim()) return null;
 
   return (
@@ -223,6 +232,7 @@ export function SearchResultsOverlay() {
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
             {/* Artists */}
@@ -270,7 +280,7 @@ export function SearchResultsOverlay() {
                     key={`${song.id}-${index}`}
                     song={song}
                     colors={colors}
-                    onPress={() => playTrack(song, results.songs)}
+                    onPress={() => handlePlaySong(song)}
                   />
                 ))}
               </View>

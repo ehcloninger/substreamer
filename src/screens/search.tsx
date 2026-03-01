@@ -207,6 +207,7 @@ export function SearchScreen() {
         onRefresh={handleRefresh}
         refreshing={refreshing}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       />
     </View>
   );

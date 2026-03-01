@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
 import { useCallback } from 'react';
-import { View } from 'react-native';
+import { Keyboard, View } from 'react-native';
 
 import { ConnectivityBanner } from '../../components/ConnectivityBanner';
 import { DownloadBanner } from '../../components/DownloadBanner';
@@ -30,6 +30,9 @@ export default function TabLayout() {
     <View style={{ flex: 1 }}>
       <Tabs
         tabBar={renderTabBar}
+        screenListeners={{
+          tabPress: () => Keyboard.dismiss(),
+        }}
         screenOptions={{
           header: (props) => (
             <>

@@ -59,6 +59,10 @@ export function SearchableHeader({ route }: BottomTabHeaderProps) {
     }
   }, [query, showOverlay, isSearchTab]);
 
+  const handleSubmitEditing = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
+
   const handleClear = useCallback(() => {
     setQuery('');
     hideOverlay();
@@ -99,6 +103,7 @@ export function SearchableHeader({ route }: BottomTabHeaderProps) {
             value={query}
             onChangeText={handleChangeText}
             onFocus={handleFocus}
+            onSubmitEditing={handleSubmitEditing}
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
