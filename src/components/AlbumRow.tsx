@@ -5,9 +5,11 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
+import { StarRatingDisplay } from './StarRating';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
+import { useRating } from '../hooks/useRating';
 import { useTheme } from '../hooks/useTheme';
 import { addAlbumToQueue, toggleStar } from '../services/moreOptionsService';
 import { type AlbumID3 } from '../services/subsonicService';
@@ -26,6 +28,7 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
   const router = useRouter();
   const starred = useIsStarred('album', album.id);
   const downloaded = useDownloadStatus('album', album.id) === 'complete';
+  const rating = useRating(album.id, album.userRating);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
   const onPress = useCallback(() => {
@@ -112,6 +115,11 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
                 {album.songCount} {album.songCount === 1 ? 'track' : 'tracks'}
               </Text>
             </View>
+            {rating > 0 && (
+              <View style={styles.indicator}>
+                <StarRatingDisplay rating={rating} size={12} color={colors.primary} emptyColor={colors.primary} />
+              </View>
+            )}
             {starred && <Ionicons name="heart" size={14} color={colors.red} style={styles.indicator} />}
             {downloaded && <View style={styles.indicator}><DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" /></View>}
             <View style={styles.metaRight}>

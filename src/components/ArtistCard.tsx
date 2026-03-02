@@ -5,7 +5,9 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
 import { LongPressable } from './LongPressable';
+import { StarRatingDisplay } from './StarRating';
 import { useIsStarred } from '../hooks/useIsStarred';
+import { useRating } from '../hooks/useRating';
 import { useTheme } from '../hooks/useTheme';
 import { type ArtistID3 } from '../services/subsonicService';
 import { moreOptionsStore } from '../store/moreOptionsStore';
@@ -22,6 +24,7 @@ export const ArtistCard = memo(function ArtistCard({
   const { colors } = useTheme();
   const router = useRouter();
   const starred = useIsStarred('artist', artist.id);
+  const rating = useRating(artist.id, (artist as unknown as { userRating?: number }).userRating);
   const imageSize = width - 16; // 8px padding on each side
 
   const onPress = useCallback(() => {
@@ -45,6 +48,11 @@ export const ArtistCard = memo(function ArtistCard({
           {starred && (
             <View style={styles.indicators}>
               <Ionicons name="heart" size={14} color={colors.red} />
+            </View>
+          )}
+          {rating > 0 && (
+            <View style={styles.ratingOverlay}>
+              <StarRatingDisplay rating={rating} size={11} color={colors.primary} emptyColor={colors.primary} />
             </View>
           )}
         </View>
@@ -91,5 +99,10 @@ const styles = StyleSheet.create({
   albumCount: {
     fontSize: 13,
     marginTop: 2,
+  },
+  ratingOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
   },
 });

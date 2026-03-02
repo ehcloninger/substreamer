@@ -8,6 +8,7 @@ import AnimatedSplashScreen from '../components/AnimatedSplashScreen';
 import { CreateShareSheet } from '../components/CreateShareSheet';
 import { MbidSearchSheet } from '../components/MbidSearchSheet';
 import { MoreOptionsSheet } from '../components/MoreOptionsSheet';
+import { SetRatingSheet } from '../components/SetRatingSheet';
 import { PlaybackToast } from '../components/PlaybackToast';
 import { ProcessingOverlay } from '../components/ProcessingOverlay';
 import { useDownloadBackgroundNotification } from '../hooks/useDownloadBackgroundNotification';
@@ -280,6 +281,9 @@ export default function RootLayout() {
 
       {/* Global create-share bottom sheet driven by createShareStore */}
       <CreateShareSheet />
+
+      {/* Global set-rating bottom sheet driven by setRatingStore */}
+      <SetRatingSheet />
 
       {/* Global add-to-playlist bottom sheet driven by addToPlaylistStore */}
       <AddToPlaylistSheet />

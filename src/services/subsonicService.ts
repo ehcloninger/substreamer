@@ -664,6 +664,16 @@ export async function unstarSong(id: string): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Rating                                                             */
+/* ------------------------------------------------------------------ */
+
+export async function setRating(id: string, rating: number): Promise<void> {
+  const api = getApi();
+  if (!api) return;
+  await api.setRating({ id, rating });
+}
+
+/* ------------------------------------------------------------------ */
 /*  Library Scan                                                       */
 /* ------------------------------------------------------------------ */
 

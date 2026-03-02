@@ -14,9 +14,11 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
+import { StarRatingDisplay } from './StarRating';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
+import { useRating } from '../hooks/useRating';
 import { addSongToQueue, toggleStar } from '../services/moreOptionsService';
 import { addToPlaylistStore } from '../store/addToPlaylistStore';
 import { moreOptionsStore } from '../store/moreOptionsStore';
@@ -46,7 +48,7 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
   const starred = useIsStarred('song', track.id);
   const downloaded = useDownloadStatus('song', track.id) === 'complete';
   const offlineMode = offlineModeStore((s) => s.offlineMode);
-  const rating = track.userRating;
+  const rating = useRating(track.id, track.userRating);
 
   const handleAddToQueue = useCallback(() => {
     addSongToQueue(track);
@@ -143,16 +145,19 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
           </View>
         </View>
         <View style={styles.trackRight}>
+          {rating > 0 && (
+            <StarRatingDisplay
+              rating={rating}
+              size={12}
+              color={colors.primary}
+              emptyColor={colors.primary}
+            />
+          )}
           {downloaded && (
             <DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" />
           )}
           {starred && (
             <Ionicons name="heart" size={14} color={colors.red} />
-          )}
-          {rating != null && rating > 0 && (
-            <Text style={[styles.trackRating, { color: colors.textSecondary }]}>
-              {rating}/5
-            </Text>
           )}
           <Text style={[styles.trackDuration, { color: colors.textSecondary }]}>
             {duration}
@@ -220,9 +225,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginLeft: 12,
-  },
-  trackRating: {
-    fontSize: 12,
   },
   trackDuration: {
     fontSize: 15,

@@ -25,8 +25,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumDetailsModal } from './AlbumDetailsModal';
+import { StarRatingDisplay } from './StarRating';
 import { useDownloadStatus, type DownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
+import { useRating } from '../hooks/useRating';
 import { useTheme } from '../hooks/useTheme';
 import {
   addAlbumToQueue,
@@ -63,6 +65,8 @@ import { playerStore } from '../store/playerStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
 import { playlistLibraryStore } from '../store/playlistLibraryStore';
 import { processingOverlayStore } from '../store/processingOverlayStore';
+import { serverInfoStore } from '../store/serverInfoStore';
+import { setRatingStore } from '../store/setRatingStore';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -145,6 +149,16 @@ function canPlaySimilarArtistsMix(entity: MoreOptionsEntity): boolean {
   return entity.type === 'artist';
 }
 
+function isRatable(entity: MoreOptionsEntity): boolean {
+  return entity.type === 'song' || entity.type === 'album' || entity.type === 'artist';
+}
+
+function getEntityUserRating(entity: MoreOptionsEntity | null): number | undefined {
+  if (!entity) return undefined;
+  if (entity.type === 'playlist') return undefined;
+  return (entity.item as { userRating?: number }).userRating;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -158,6 +172,7 @@ export function MoreOptionsSheet() {
   const starType: 'song' | 'album' | 'artist' =
     entity?.type === 'album' || entity?.type === 'artist' ? entity.type : 'song';
   const starred = useIsStarred(starType, entity?.item.id ?? '');
+  const entityRating = useRating(entity?.item.id ?? '', getEntityUserRating(entity));
 
   const downloadType: 'album' | 'playlist' =
     entity?.type === 'playlist' ? 'playlist' : 'album';
@@ -332,6 +347,22 @@ export function MoreOptionsSheet() {
     }, 300);
   }, [entity, handleClose]);
 
+  const handleSetRating = useCallback(() => {
+    if (!entity || !isRatable(entity)) return;
+    handleClose();
+    setTimeout(() => {
+      const coverArtId = (entity.item as { coverArt?: string }).coverArt;
+      setRatingStore.getState().show(
+        entity.type as 'song' | 'album' | 'artist',
+        entity.item.id,
+        getTitle(entity),
+        entityRating,
+        coverArtId,
+        getEntityUserRating(entity) ?? 0,
+      );
+    }, 300);
+  }, [entity, entityRating, handleClose]);
+
   const handleDeletePlaylist = useCallback(() => {
     if (!entity || entity.type !== 'playlist') return;
     const playlistId = entity.item.id;
@@ -396,7 +427,9 @@ export function MoreOptionsSheet() {
   }
 
   const offline = offlineModeStore.getState().offlineMode;
+  const isNavidrome = serverInfoStore.getState().serverType?.toLowerCase() === 'navidrome';
   const starrable = !offline && isStarrable(entity);
+  const showRating = !offline && isNavidrome && isRatable(entity);
   const showArtistLink = !offline && hasArtistLink(entity);
   const showAlbumLink = hasAlbumLink(entity) &&
     (!offline || (entity.type === 'song' && entity.item.albumId != null &&
@@ -414,7 +447,7 @@ export function MoreOptionsSheet() {
   const showSetMbid = entity?.type === 'artist';
 
   const hasAnyOption =
-    starrable || showAddToPlaylist || showAddQueueToPlaylist ||
+    starrable || showRating || showAddToPlaylist || showAddQueueToPlaylist ||
     showAddToQueue || showPlayMoreLikeThis || showPlaySimilarArtistsMix || showDownload ||
     showAlbumLink || showArtistLink || showShare || showDetails || showDelete ||
     showSaveTopSongsPlaylist || showSetMbid;
@@ -514,6 +547,37 @@ export function MoreOptionsSheet() {
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                     {starred ? 'Remove from Favorites' : 'Add to Favorites'}
                   </Text>
+                </Pressable>
+              )}
+
+              {/* Set Rating (player section) */}
+              {showRating && (
+                <Pressable
+                  onPress={handleSetRating}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="star-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Set Rating
+                  </Text>
+                  {entityRating > 0 && (
+                    <View style={styles.ratingBadge}>
+                      <StarRatingDisplay
+                        rating={entityRating}
+                        size={14}
+                        color={colors.primary}
+                        emptyColor={colors.primary}
+                      />
+                    </View>
+                  )}
                 </Pressable>
               )}
 
@@ -852,6 +916,37 @@ export function MoreOptionsSheet() {
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                     {starred ? 'Remove from Favorites' : 'Add to Favorites'}
                   </Text>
+                </Pressable>
+              )}
+
+              {/* Set Rating */}
+              {showRating && (
+                <Pressable
+                  onPress={handleSetRating}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="star-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Set Rating
+                  </Text>
+                  {entityRating > 0 && (
+                    <View style={styles.ratingBadge}>
+                      <StarRatingDisplay
+                        rating={entityRating}
+                        size={14}
+                        color={colors.primary}
+                        emptyColor={colors.primary}
+                      />
+                    </View>
+                  )}
                 </Pressable>
               )}
 
@@ -1226,5 +1321,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 8,
+  },
+  ratingBadge: {
+    marginLeft: 'auto',
+    paddingLeft: 8,
   },
 });

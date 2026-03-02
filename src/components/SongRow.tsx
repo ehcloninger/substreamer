@@ -4,9 +4,11 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
+import { StarRatingDisplay } from './StarRating';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
+import { useRating } from '../hooks/useRating';
 import { useTheme } from '../hooks/useTheme';
 import { addSongToQueue, toggleStar } from '../services/moreOptionsService';
 import { type Child } from '../services/subsonicService';
@@ -25,6 +27,7 @@ export const SongRow = memo(function SongRow({ song, onPress }: { song: Child; o
   const starred = useIsStarred('song', song.id);
   const downloaded = useDownloadStatus('song', song.id) === 'complete';
   const offlineMode = offlineModeStore((s) => s.offlineMode);
+  const rating = useRating(song.id, song.userRating);
   const duration =
     song.duration != null ? formatTrackDuration(song.duration) : '—';
 
@@ -106,6 +109,11 @@ export const SongRow = memo(function SongRow({ song, onPress }: { song: Child; o
                 </Text>
               </View>
             </View>
+            {rating > 0 && (
+              <View style={styles.indicator}>
+                <StarRatingDisplay rating={rating} size={12} color={colors.primary} emptyColor={colors.primary} />
+              </View>
+            )}
             {starred && <Ionicons name="heart" size={14} color={colors.red} style={styles.indicator} />}
             {downloaded && <View style={styles.indicator}><DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" /></View>}
             <View style={styles.metaDuration}>

@@ -6,8 +6,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
 import { LongPressable } from './LongPressable';
+import { StarRatingDisplay } from './StarRating';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
+import { useRating } from '../hooks/useRating';
 import { useTheme } from '../hooks/useTheme';
 import { type AlbumID3 } from '../services/subsonicService';
 import { moreOptionsStore } from '../store/moreOptionsStore';
@@ -25,6 +27,7 @@ export const AlbumCard = memo(function AlbumCard({
   const router = useRouter();
   const starred = useIsStarred('album', album.id);
   const downloaded = useDownloadStatus('album', album.id) === 'complete';
+  const rating = useRating(album.id, album.userRating);
   const imageSize = width - 16; // 8px padding on each side
 
   const onPress = useCallback(() => {
@@ -49,6 +52,11 @@ export const AlbumCard = memo(function AlbumCard({
             <View style={styles.indicators}>
               {downloaded && <DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" />}
               {starred && <Ionicons name="heart" size={14} color={colors.red} />}
+            </View>
+          )}
+          {rating > 0 && (
+            <View style={styles.ratingOverlay}>
+              <StarRatingDisplay rating={rating} size={11} color={colors.primary} emptyColor={colors.primary} />
             </View>
           )}
         </View>
@@ -93,5 +101,10 @@ const styles = StyleSheet.create({
   artistName: {
     fontSize: 13,
     marginTop: 2,
+  },
+  ratingOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
   },
 });

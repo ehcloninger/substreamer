@@ -4,8 +4,10 @@ import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
+import { StarRatingDisplay } from './StarRating';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useIsStarred } from '../hooks/useIsStarred';
+import { useRating } from '../hooks/useRating';
 import { useTheme } from '../hooks/useTheme';
 import { toggleStar } from '../services/moreOptionsService';
 import { type ArtistID3 } from '../services/subsonicService';
@@ -21,6 +23,7 @@ export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3
   const { colors } = useTheme();
   const router = useRouter();
   const starred = useIsStarred('artist', artist.id);
+  const rating = useRating(artist.id, (artist as unknown as { userRating?: number }).userRating);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
   const onPress = useCallback(() => {
@@ -73,6 +76,11 @@ export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3
                 {artist.albumCount === 1 ? '1 album' : `${artist.albumCount} albums`}
               </Text>
             </View>
+            {rating > 0 && (
+              <View style={styles.indicator}>
+                <StarRatingDisplay rating={rating} size={12} color={colors.primary} emptyColor={colors.primary} />
+              </View>
+            )}
             {starred && <Ionicons name="heart" size={14} color={colors.red} style={styles.indicator} />}
           </View>
         </View>

@@ -4,9 +4,11 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
+import { StarRatingDisplay } from './StarRating';
 import { SwipeableRow, type SwipeAction } from './SwipeableRow';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
+import { useRating } from '../hooks/useRating';
 import { removeItemFromQueue, toggleStar } from '../services/moreOptionsService';
 import { type Child } from '../services/subsonicService';
 import { addToPlaylistStore } from '../store/addToPlaylistStore';
@@ -59,6 +61,7 @@ export const QueueItemRow = memo(function QueueItemRow({
 
   const starred = useIsStarred('song', track.id);
   const downloaded = useDownloadStatus('song', track.id) === 'complete';
+  const rating = useRating(track.id, track.userRating);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
   const handleRemove = useCallback(() => {
@@ -144,6 +147,9 @@ export const QueueItemRow = memo(function QueueItemRow({
 
         {/* Downloaded + Starred indicators + Duration */}
         <View style={styles.trailing}>
+          {rating > 0 && (
+            <StarRatingDisplay rating={rating} size={12} color={colors.primary} emptyColor={colors.primary} />
+          )}
           {downloaded && (
             <DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" />
           )}
