@@ -1,5 +1,10 @@
 # Changelog
 
+## [8.0.16] - 2026-03-03
+
+- list views: fix empty list on offline/online switch. fix incorrect list position on filter disable
+- UI: fix swipe item highlighting
+- player: remove DuckOthers option, it wasn't what I expected.
 ## [8.0.15] - 2026-03-03
 
 - expo: update to SDK55
