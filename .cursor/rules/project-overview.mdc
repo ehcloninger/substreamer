@@ -80,6 +80,10 @@ import { type AlbumID3 } from '../services/subsonicService';
 
 Use `type` keyword for type-only imports: `import { type AlbumID3 } from '...'`.
 
+## Native Modules
+
+Local native modules live in `modules/` and are referenced in `package.json` as `"module-name": "file:./modules/module-name"`. After adding or removing a local module dependency in `package.json`, **always run `npm install`** to create/update the symlink in `node_modules/`. Without this step Metro cannot resolve the module and the app will crash at startup.
+
 ## Native Builds
 
 **Always use the helper scripts in `scripts/`** for native builds. Do not run `./gradlew`, `expo run:android`, or `expo run:ios` directly -- the shell environment inside Cursor does not have `JAVA_HOME` or `ANDROID_HOME` set.

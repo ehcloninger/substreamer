@@ -1,13 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StorageUsageBar } from '../components/StorageUsageBar';
 import { useTheme } from '../hooks/useTheme';
+import {
+  createBackup,
+  listBackups,
+  pruneBackups,
+  restoreBackup,
+  type BackupEntry,
+} from '../services/backupService';
 import { clearImageCache } from '../services/imageCacheService';
 import { clearMusicCache } from '../services/musicCacheService';
 import { clearQueue } from '../services/playerService';
@@ -19,6 +26,7 @@ import {
 } from '../store/imageCacheStore';
 import { albumDetailStore } from '../store/albumDetailStore';
 import { artistDetailStore } from '../store/artistDetailStore';
+import { backupStore } from '../store/backupStore';
 import {
   musicCacheStore,
   type MaxConcurrentDownloads,
@@ -29,9 +37,18 @@ import { mbidOverrideStore } from '../store/mbidOverrideStore';
 import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
 import { storageLimitStore, type StorageLimitMode } from '../store/storageLimitStore';
 import { formatBytes } from '../utils/formatters';
+import { minDelay } from '../utils/stringHelpers';
 
 const CONCURRENT_OPTIONS: MaxConcurrentDownloads[] = [1, 3, 5];
 const IMAGE_CONCURRENT_OPTIONS: MaxConcurrentImageDownloads[] = [1, 3, 5, 10];
+
+const SUCCESS_GREEN = '#34C759';
+const ERROR_RED = '#FF3B30';
+const MIN_SPINNER_MS = 600;
+const SUCCESS_DELAY_MS = 600;
+const ERROR_DELAY_MS = 2000;
+
+type RestoreState = 'idle' | 'restoring' | 'success' | 'error';
 
 export function SettingsStorageScreen() {
   const router = useRouter();
@@ -40,6 +57,19 @@ export function SettingsStorageScreen() {
   const [concurrentSheetVisible, setConcurrentSheetVisible] = useState(false);
   const [imageConcurrentSheetVisible, setImageConcurrentSheetVisible] = useState(false);
   const [dangerousExpanded, setDangerousExpanded] = useState(false);
+  const [restoreSheetVisible, setRestoreSheetVisible] = useState(false);
+  const [restoreBackups, setRestoreBackups] = useState<BackupEntry[]>([]);
+  const [selectedBackup, setSelectedBackup] = useState<BackupEntry | null>(null);
+  const [restoreState, setRestoreState] = useState<RestoreState>('idle');
+  const [backingUp, setBackingUp] = useState(false);
+  const restoreTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (restoreTimer.current) clearTimeout(restoreTimer.current);
+    };
+  }, []);
+
   const chevronRotation = useSharedValue(0);
 
   const chevronStyle = useAnimatedStyle(() => ({
@@ -70,6 +100,9 @@ export function SettingsStorageScreen() {
   const musicFileCount = musicCacheStore((s) => s.totalFiles);
   const musicQueueCount = musicCacheStore((s) => s.downloadQueue.length);
   const maxConcurrentDownloads = musicCacheStore((s) => s.maxConcurrentDownloads);
+
+  const autoBackupEnabled = backupStore((s) => s.autoBackupEnabled);
+  const lastBackupTime = backupStore((s) => s.lastBackupTime);
 
   const limitMode = storageLimitStore((s) => s.limitMode);
   const maxCacheSizeGB = storageLimitStore((s) => s.maxCacheSizeGB);
@@ -183,6 +216,102 @@ export function SettingsStorageScreen() {
       ],
     );
   }, []);
+
+  const handleToggleAutoBackup = useCallback(() => {
+    backupStore.getState().setAutoBackupEnabled(!autoBackupEnabled);
+  }, [autoBackupEnabled]);
+
+  const handleBackUpNow = useCallback(async () => {
+    setBackingUp(true);
+    try {
+      await createBackup();
+      await pruneBackups();
+    } catch {
+      Alert.alert('Backup Failed', 'Something went wrong while creating the backup. Please try again.');
+    } finally {
+      setBackingUp(false);
+    }
+  }, []);
+
+  const handleOpenRestoreSheet = useCallback(async () => {
+    const backups = await listBackups();
+    setRestoreBackups(backups);
+    setSelectedBackup(null);
+    setRestoreState('idle');
+    setRestoreSheetVisible(true);
+  }, []);
+
+  const handleCloseRestoreSheet = useCallback(() => {
+    if (restoreState === 'restoring') return;
+    if (restoreTimer.current) clearTimeout(restoreTimer.current);
+    setRestoreSheetVisible(false);
+    setRestoreBackups([]);
+    setSelectedBackup(null);
+    setRestoreState('idle');
+  }, [restoreState]);
+
+  const handleSelectBackup = useCallback((entry: BackupEntry) => {
+    if (restoreState !== 'idle') return;
+    setSelectedBackup((prev) => prev?.stem === entry.stem ? null : entry);
+  }, [restoreState]);
+
+  const handleRestore = useCallback(async () => {
+    if (!selectedBackup) return;
+
+    if (restoreState === 'error') {
+      setRestoreState('idle');
+      return;
+    }
+
+    if (restoreTimer.current) clearTimeout(restoreTimer.current);
+
+    const entry = selectedBackup;
+    const parts: string[] = [];
+    if (entry.scrobbleCount > 0) {
+      parts.push(`${entry.scrobbleCount.toLocaleString()} scrobbles`);
+    }
+    if (entry.mbidOverrideCount > 0) {
+      parts.push(`${entry.mbidOverrideCount.toLocaleString()} MBID overrides`);
+    }
+    const dateStr = new Date(entry.createdAt).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+
+    Alert.alert(
+      'Restore Backup?',
+      `This will replace your current data with the backup from ${dateStr} (${parts.join(', ')}).\n\nThis cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          style: 'destructive',
+          onPress: async () => {
+            setRestoreState('restoring');
+            const [result] = await Promise.allSettled([
+              restoreBackup(entry),
+              minDelay(MIN_SPINNER_MS),
+            ]);
+
+            if (result.status === 'fulfilled') {
+              setRestoreState('success');
+              restoreTimer.current = setTimeout(() => {
+                setRestoreSheetVisible(false);
+                setRestoreBackups([]);
+                setSelectedBackup(null);
+                setRestoreState('idle');
+              }, SUCCESS_DELAY_MS);
+            } else {
+              setRestoreState('error');
+              restoreTimer.current = setTimeout(() => {
+                setRestoreState('idle');
+              }, ERROR_DELAY_MS);
+            }
+          },
+        },
+      ],
+    );
+  }, [selectedBackup, restoreState]);
 
   const handleConcurrentPress = useCallback(() => {
     setConcurrentSheetVisible(true);
@@ -349,6 +478,65 @@ export function SettingsStorageScreen() {
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Backup</Text>
+        <View style={[styles.card, dynamicStyles.card]}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Auto backup</Text>
+            <Switch
+              value={autoBackupEnabled}
+              onValueChange={handleToggleAutoBackup}
+              trackColor={{ false: colors.border, true: colors.primary }}
+            />
+          </View>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Last backup</Text>
+            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+              {lastBackupTime
+                ? new Date(lastBackupTime).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })
+                : 'Never'}
+            </Text>
+          </View>
+          <View style={styles.backupButtonRow}>
+            <Pressable
+              onPress={handleBackUpNow}
+              disabled={backingUp}
+              style={({ pressed }) => [
+                styles.backupActionButton,
+                { backgroundColor: colors.primary },
+                pressed && !backingUp && styles.buttonPressed,
+              ]}
+            >
+              {backingUp ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
+                  <Text style={styles.backupActionButtonText}>Back Up</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={handleOpenRestoreSheet}
+              style={({ pressed }) => [
+                styles.backupActionButton,
+                { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth },
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <Ionicons name="cloud-download-outline" size={18} color={colors.textPrimary} />
+              <Text style={[styles.backupActionButtonText, { color: colors.textPrimary }]}>Restore</Text>
+            </Pressable>
+          </View>
+        </View>
+        <Text style={[styles.backupDescription, { color: colors.textSecondary }]}>
+          Backups save your listening history and MBID overrides as compressed files that sync to {Platform.OS === 'ios' ? 'iCloud' : 'Google Backup'}. If you reinstall the app, you can restore from these backups to recover your data.
+        </Text>
       </View>
 
       <View style={styles.section}>
@@ -650,6 +838,115 @@ export function SettingsStorageScreen() {
         ))}
       </View>
     </Modal>
+
+    <Modal
+      visible={restoreSheetVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleCloseRestoreSheet}
+    >
+      <Pressable
+        style={styles.sheetBackdrop}
+        onPress={handleCloseRestoreSheet}
+      />
+      <View
+        style={[
+          styles.sheet,
+          { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) },
+        ]}
+      >
+        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+        <Text style={[styles.restoreTitle, { color: colors.textPrimary }]}>
+          Restore Backup
+        </Text>
+        <Text style={[styles.restoreSubtitle, { color: colors.textSecondary }]}>
+          Select a backup to restore. This will replace your current data.
+        </Text>
+        {restoreBackups.length === 0 ? (
+          <View style={styles.emptyBackups}>
+            <Ionicons name="cloud-offline-outline" size={32} color={colors.primary} />
+            <Text style={[styles.emptyBackupsText, { color: colors.textSecondary }]}>
+              No backups available
+            </Text>
+          </View>
+        ) : (
+          <>
+            {restoreBackups.map((entry) => {
+              const isSelected = selectedBackup?.stem === entry.stem;
+              const dateStr = new Date(entry.createdAt).toLocaleString(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              });
+              const details: string[] = [];
+              if (entry.scrobbleCount > 0) {
+                details.push(`${entry.scrobbleCount.toLocaleString()} scrobbles`);
+              }
+              if (entry.mbidOverrideCount > 0) {
+                details.push(`${entry.mbidOverrideCount.toLocaleString()} MBID overrides`);
+              }
+              const totalBytes = entry.scrobbleSizeBytes + entry.mbidOverrideSizeBytes;
+              return (
+                <Pressable
+                  key={entry.stem}
+                  onPress={() => handleSelectBackup(entry)}
+                  style={({ pressed }) => [
+                    styles.restoreRow,
+                    { borderBottomColor: colors.border },
+                    isSelected && { borderLeftColor: colors.primary, borderLeftWidth: 3 },
+                    pressed && styles.restoreRowPressed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.restoreRowTitle,
+                      { color: colors.textPrimary },
+                      isSelected && { color: colors.primary },
+                    ]}
+                  >
+                    {dateStr}
+                  </Text>
+                  <Text style={[styles.restoreRowDetail, { color: colors.textSecondary }]}>
+                    {details.join(', ')} · {formatBytes(totalBytes)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+
+            <View style={styles.restoreActions}>
+              <Pressable
+                onPress={handleRestore}
+                disabled={!selectedBackup || restoreState === 'restoring' || restoreState === 'success'}
+                style={({ pressed }) => [
+                  styles.restoreButton,
+                  restoreState === 'success'
+                    ? styles.restoreButtonSuccess
+                    : restoreState === 'error'
+                      ? styles.restoreButtonError
+                      : { backgroundColor: colors.primary },
+                  pressed && restoreState === 'idle' && selectedBackup && styles.buttonPressed,
+                  (!selectedBackup && restoreState === 'idle') && styles.buttonDisabled,
+                ]}
+              >
+                {restoreState === 'restoring' ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : restoreState === 'success' ? (
+                  <Ionicons name="checkmark" size={20} color="#fff" />
+                ) : restoreState === 'error' ? (
+                  <View style={styles.restoreErrorContent}>
+                    <Ionicons name="alert-circle" size={20} color="#fff" />
+                    <Text style={styles.restoreButtonText}>
+                      Failed to restore — tap to retry
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.restoreButtonText}>Restore</Text>
+                )}
+              </Pressable>
+            </View>
+          </>
+        )}
+      </View>
+    </Modal>
     </>
   );
 }
@@ -811,5 +1108,100 @@ const styles = StyleSheet.create({
   sheetOptionLabel: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  backupButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  backupActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 44,
+    borderRadius: 10,
+  },
+  backupActionButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  backupDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8,
+    marginHorizontal: 4,
+  },
+  emptyBackups: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  emptyBackupsText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  restoreTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 2,
+    paddingHorizontal: 4,
+  },
+  restoreSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  restoreRow: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 2,
+  },
+  restoreRowPressed: {
+    opacity: 0.6,
+  },
+  restoreRowTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  restoreRowDetail: {
+    fontSize: 13,
+  },
+  restoreActions: {
+    paddingHorizontal: 4,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  restoreButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    height: 48,
+  },
+  restoreButtonSuccess: {
+    backgroundColor: SUCCESS_GREEN,
+  },
+  restoreButtonError: {
+    backgroundColor: ERROR_RED,
+  },
+  restoreErrorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  restoreButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonPressed: {
+    opacity: 0.8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });

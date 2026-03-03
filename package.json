@@ -23,6 +23,7 @@
     "expo": "^55.0.0",
     "expo-async-fs": "file:./modules/expo-async-fs",
     "expo-backup-exclusions": "file:./modules/expo-backup-exclusions",
+    "expo-gzip": "file:./modules/expo-gzip",
     "expo-build-properties": "~55.0.9",
     "expo-clipboard": "~55.0.8",
     "expo-constants": "~55.0.7",
@@ -82,7 +83,8 @@
           "react-native-track-player",
           "expo-async-fs",
           "expo-ssl-trust",
-          "expo-backup-exclusions"
+          "expo-backup-exclusions",
+          "expo-gzip"
         ]
       }
     }

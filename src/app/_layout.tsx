@@ -22,6 +22,7 @@ import { fetchScanStatus } from '../services/scanService';
 import { startMonitoring, stopMonitoring } from '../services/connectivityService';
 import { initScrobbleService } from '../services/scrobbleService';
 import { initSslTrustStore } from '../services/sslTrustService';
+import { runAutoBackupIfNeeded } from '../services/backupService';
 import { excludeFromBackup } from 'expo-backup-exclusions';
 import { albumListsStore } from '../store/albumListsStore';
 import { imageCacheStore } from '../store/imageCacheStore';
@@ -74,6 +75,7 @@ export default function RootLayout() {
       imageCacheStore.getState().recalculate(await getImageCacheStats());
       musicCacheStore.getState().recalculate(await getMusicCacheStats());
       checkStorageLimit();
+      await runAutoBackupIfNeeded();
     })();
     return () => { cancelled = true; };
   }, []);
