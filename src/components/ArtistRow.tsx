@@ -58,10 +58,11 @@ export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3
       leftActions={leftActions}
       enableFullSwipeLeft={!offlineMode}
       rowGap={8}
+      restingBackgroundColor={colors.card}
       onLongPress={handleLongPress}
       onPress={onPress}
     >
-      <View style={[styles.row, { backgroundColor: colors.card }]}>
+      <View style={styles.row}>
         <CachedImage coverArtId={artist.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
         <View style={styles.text}>
           <Text

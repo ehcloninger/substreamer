@@ -45,10 +45,11 @@ export const PlaylistRow = memo(function PlaylistRow({ playlist }: { playlist: P
       rightActions={rightActions}
       enableFullSwipeRight
       rowGap={8}
+      restingBackgroundColor={colors.card}
       onLongPress={handleLongPress}
       onPress={onPress}
     >
-      <View style={[styles.row, { backgroundColor: colors.card }]}>
+      <View style={styles.row}>
         <CachedImage coverArtId={playlist.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
         <View style={styles.text}>
           <Text

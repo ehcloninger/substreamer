@@ -80,10 +80,11 @@ export const SongRow = memo(function SongRow({ song, onPress }: { song: Child; o
       enableFullSwipeRight
       enableFullSwipeLeft={!offlineMode}
       rowGap={8}
+      restingBackgroundColor={colors.card}
       onLongPress={handleLongPress}
       onPress={onPress}
     >
-      <View style={[styles.row, { backgroundColor: colors.card }]}>
+      <View style={styles.row}>
         <CachedImage coverArtId={song.coverArt} size={COVER_SIZE} style={styles.cover} resizeMode="cover" />
         <View style={styles.text}>
           <Text
