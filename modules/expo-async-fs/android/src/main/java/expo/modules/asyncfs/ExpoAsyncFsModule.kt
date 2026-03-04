@@ -4,8 +4,12 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.core.os.bundleOf
 import com.facebook.react.modules.network.OkHttpClientProvider
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import okhttp3.MediaType
 import okhttp3.Request
 import okhttp3.ResponseBody
@@ -37,64 +41,75 @@ class ExpoAsyncFsModule : Module() {
     // interceptor for progress events. Uses OkHttpClientProvider (rather
     // than a bare OkHttpClient) so the RN network stack configuration
     // (including custom SSL trust) is inherited.
-    AsyncFunction("downloadFileAsyncWithProgress") { url: String, destinationUri: String, downloadId: String ->
-      val destPath = Uri.parse(destinationUri).path
-        ?: throw Exception("Invalid destination URI")
-      val destFile = File(destPath)
-      destFile.parentFile?.mkdirs()
+    //
+    // Takes a Promise parameter and dispatches to Dispatchers.IO so that
+    // concurrent calls run on separate threads. Expo's default module
+    // queue is a single HandlerThread; without this, blocking execute()
+    // calls would serialize all downloads.
+    AsyncFunction("downloadFileAsyncWithProgress") { url: String, destinationUri: String, downloadId: String, promise: Promise ->
+      CoroutineScope(Dispatchers.IO).launch {
+        try {
+          val destPath = Uri.parse(destinationUri).path
+            ?: throw Exception("Invalid destination URI")
+          val destFile = File(destPath)
+          destFile.parentFile?.mkdirs()
 
-      var lastEventTime = 0L
+          var lastEventTime = 0L
 
-      val client = OkHttpClientProvider.createClient().newBuilder()
-        .addNetworkInterceptor { chain ->
-          val response = chain.proceed(chain.request())
-          val body = response.body ?: return@addNetworkInterceptor response
-          val contentLength = body.contentLength()
-          val source = object : ForwardingSource(body.source()) {
-            var totalBytesRead = 0L
+          val client = OkHttpClientProvider.createClient().newBuilder()
+            .addNetworkInterceptor { chain ->
+              val response = chain.proceed(chain.request())
+              val body = response.body ?: return@addNetworkInterceptor response
+              val contentLength = body.contentLength()
+              val source = object : ForwardingSource(body.source()) {
+                var totalBytesRead = 0L
 
-            override fun read(sink: Buffer, byteCount: Long): Long {
-              val bytesRead = super.read(sink, byteCount)
-              if (bytesRead != -1L) totalBytesRead += bytesRead
-              val now = System.currentTimeMillis()
-              val isComplete = contentLength > 0 && totalBytesRead >= contentLength
-              if (now - lastEventTime >= 100 || isComplete) {
-                lastEventTime = now
-                sendEvent("onDownloadProgress", bundleOf(
-                  "downloadId" to downloadId,
-                  "bytesWritten" to totalBytesRead.toDouble(),
-                  "totalBytes" to contentLength.toDouble(),
-                ))
+                override fun read(sink: Buffer, byteCount: Long): Long {
+                  val bytesRead = super.read(sink, byteCount)
+                  if (bytesRead != -1L) totalBytesRead += bytesRead
+                  val now = System.currentTimeMillis()
+                  val isComplete = contentLength > 0 && totalBytesRead >= contentLength
+                  if (now - lastEventTime >= 100 || isComplete) {
+                    lastEventTime = now
+                    sendEvent("onDownloadProgress", bundleOf(
+                      "downloadId" to downloadId,
+                      "bytesWritten" to totalBytesRead.toDouble(),
+                      "totalBytes" to contentLength.toDouble(),
+                    ))
+                  }
+                  return bytesRead
+                }
               }
-              return bytesRead
+              response.newBuilder()
+                .body(ProgressResponseBody(body.contentType(), contentLength, source.buffer()))
+                .build()
+            }
+            .build()
+
+          val request = Request.Builder().url(url).build()
+          val response = client.newCall(request).execute()
+
+          if (!response.isSuccessful) {
+            response.close()
+            throw Exception("Download failed with HTTP status ${response.code}")
+          }
+
+          val body = response.body ?: throw Exception("Empty response body")
+          body.byteStream().use { input ->
+            FileOutputStream(destFile).use { output ->
+              input.copyTo(output)
             }
           }
-          response.newBuilder()
-            .body(ProgressResponseBody(body.contentType(), contentLength, source.buffer()))
-            .build()
-        }
-        .build()
 
-      val request = Request.Builder().url(url).build()
-      val response = client.newCall(request).execute()
-
-      if (!response.isSuccessful) {
-        response.close()
-        throw Exception("Download failed with HTTP status ${response.code}")
-      }
-
-      val body = response.body ?: throw Exception("Empty response body")
-      body.byteStream().use { input ->
-        FileOutputStream(destFile).use { output ->
-          input.copyTo(output)
+          val fileSize = destFile.length()
+          promise.resolve(bundleOf(
+            "uri" to Uri.fromFile(destFile).toString(),
+            "bytes" to fileSize.toDouble(),
+          ))
+        } catch (e: Exception) {
+          promise.reject("ERR_DOWNLOAD", e.message ?: "Download failed", e)
         }
       }
-
-      val fileSize = destFile.length()
-      bundleOf(
-        "uri" to Uri.fromFile(destFile).toString(),
-        "bytes" to fileSize.toDouble(),
-      )
     }
   }
 
