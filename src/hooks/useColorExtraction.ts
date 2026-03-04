@@ -8,7 +8,6 @@
 
 import Constants from 'expo-constants';
 import { useEffect, useState } from 'react';
-import { InteractionManager } from 'react-native';
 import { useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 
 import { useCachedCoverArt } from './useCachedCoverArt';
@@ -51,7 +50,7 @@ export function useColorExtraction(
       return;
     }
     let cancelled = false;
-    const handle = InteractionManager.runAfterInteractions(() => {
+    const id = requestIdleCallback(() => {
       (async () => {
         try {
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -71,7 +70,7 @@ export function useColorExtraction(
     });
     return () => {
       cancelled = true;
-      handle.cancel();
+      cancelIdleCallback(id);
     };
   }, [coverArtId, cachedUri, fallbackColor]);
 

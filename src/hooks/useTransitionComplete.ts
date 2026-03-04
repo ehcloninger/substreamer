@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { InteractionManager } from 'react-native';
 
 /**
- * Defer heavy rendering until the navigation transition animation completes.
- * Returns `true` once `InteractionManager.runAfterInteractions` fires.
+ * Defer heavy rendering until the JS thread is idle (e.g. after a navigation
+ * transition animation completes). Returns `true` once `requestIdleCallback` fires.
  *
  * If `skip` is true the hook returns `true` immediately (useful when there
  * is no cached data and you want to render the loading state right away).
@@ -13,10 +12,10 @@ export function useTransitionComplete(skip = false): boolean {
 
   useEffect(() => {
     if (skip) return;
-    const handle = InteractionManager.runAfterInteractions(() => {
+    const id = requestIdleCallback(() => {
       setComplete(true);
     });
-    return () => handle.cancel();
+    return () => cancelIdleCallback(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return complete;
