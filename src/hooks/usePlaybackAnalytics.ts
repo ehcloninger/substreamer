@@ -73,10 +73,9 @@ function dateKey(ts: number): string {
   return `${y}-${m}-${day}`;
 }
 
-function startOfDay(ts: number): number {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
+function offsetDateKey(dk: string, offset: number): string {
+  const [y, m, d] = dk.split('-').map(Number);
+  return dateKey(new Date(y, m - 1, d + offset).getTime());
 }
 
 export function computeStreaks(scrobbles: Pick<ScrobbleRecord, 'time'>[]): {
@@ -85,21 +84,18 @@ export function computeStreaks(scrobbles: Pick<ScrobbleRecord, 'time'>[]): {
 } {
   if (scrobbles.length === 0) return { longest: 0, current: 0 };
 
-  const daySet = new Set<number>();
+  const daySet = new Set<string>();
   for (const s of scrobbles) {
-    daySet.add(startOfDay(s.time));
+    daySet.add(dateKey(s.time));
   }
 
-  const sortedDays = Array.from(daySet).sort((a, b) => a - b);
+  const sortedDays = Array.from(daySet).sort();
 
-  const ONE_DAY = 86_400_000;
   let longest = 1;
-  let current = 1;
   let streak = 1;
 
   for (let i = 1; i < sortedDays.length; i++) {
-    const diff = sortedDays[i] - sortedDays[i - 1];
-    if (diff === ONE_DAY) {
+    if (sortedDays[i] === offsetDateKey(sortedDays[i - 1], 1)) {
       streak++;
     } else {
       streak = 1;
@@ -107,20 +103,17 @@ export function computeStreaks(scrobbles: Pick<ScrobbleRecord, 'time'>[]): {
     if (streak > longest) longest = streak;
   }
 
-  // Current streak: count backwards from today
-  const todayStart = startOfDay(Date.now());
-  current = 0;
-  let checkDay = todayStart;
-  while (daySet.has(checkDay)) {
+  let current = 0;
+  let checkKey = dateKey(Date.now());
+  while (daySet.has(checkKey)) {
     current++;
-    checkDay -= ONE_DAY;
+    checkKey = offsetDateKey(checkKey, -1);
   }
-  // If no scrobble today, check if yesterday continues a streak
   if (current === 0) {
-    checkDay = todayStart - ONE_DAY;
-    while (daySet.has(checkDay)) {
+    checkKey = offsetDateKey(dateKey(Date.now()), -1);
+    while (daySet.has(checkKey)) {
       current++;
-      checkDay -= ONE_DAY;
+      checkKey = offsetDateKey(checkKey, -1);
     }
   }
 
@@ -282,11 +275,9 @@ export function usePlaybackAnalytics(
       }
     }
 
-    // Streaks – include pending scrobbles so offline plays count
-    const pendingFiltered = pendingScrobbles
-      ? (periodDays ? pendingScrobbles.filter((s) => s.time >= cutoff) : pendingScrobbles)
-      : [];
-    const { longest, current } = computeStreaks([...filtered, ...pendingFiltered]);
+    // Streaks are a lifetime metric – always use all scrobbles (including pending)
+    const allPending = pendingScrobbles ?? [];
+    const { longest, current } = computeStreaks([...scrobbles, ...allPending]);
 
     // Average plays per day
     const uniqueDays = dayCounts.size;

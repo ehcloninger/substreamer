@@ -173,8 +173,8 @@ export function PlaybackHistoryScreen() {
           />
           <StatCard
             icon="flame-outline"
-            value={`${analytics.longestStreak}d`}
-            label={`Streak${analytics.currentStreak > 0 ? ` (${analytics.currentStreak}d active)` : ''}`}
+            value={`${analytics.currentStreak}d`}
+            label={`Streak${analytics.longestStreak > analytics.currentStreak ? ` (${analytics.longestStreak}d best)` : ''}`}
             colors={colors}
             index={3}
           />
