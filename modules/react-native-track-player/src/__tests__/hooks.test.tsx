@@ -120,6 +120,7 @@ describe('useAppIsInBackground', () => {
 
 describe('useActiveTrack', () => {
   it('returns undefined initially', () => {
+    mockGetActiveTrack.mockImplementation(() => new Promise(() => {}));
     const { result } = renderHook(() => useActiveTrack());
 
     expect(result.current).toBeUndefined();
@@ -138,6 +139,7 @@ describe('useActiveTrack', () => {
 
   it('updates when PlaybackActiveTrackChanged fires', async () => {
     const { result } = renderHook(() => useActiveTrack());
+    await act(async () => {});
 
     const newTrack = { url: 'https://x.com/new.mp3', title: 'New' };
     act(() => {
@@ -202,6 +204,7 @@ describe('useActiveTrack', () => {
 
 describe('usePlaybackState', () => {
   it('returns { state: undefined } initially', () => {
+    mockGetPlaybackState.mockImplementation(() => new Promise(() => {}));
     const { result } = renderHook(() => usePlaybackState());
 
     expect(result.current).toEqual({ state: undefined });
@@ -218,6 +221,7 @@ describe('usePlaybackState', () => {
 
   it('updates on PlaybackState event', async () => {
     const { result } = renderHook(() => usePlaybackState());
+    await act(async () => {});
 
     act(() => {
       emitEvent(Event.PlaybackState, { state: 'paused' });
@@ -263,6 +267,7 @@ describe('usePlaybackState', () => {
 
 describe('usePlayWhenReady', () => {
   it('returns undefined initially', () => {
+    mockGetPlayWhenReady.mockImplementation(() => new Promise(() => {}));
     const { result } = renderHook(() => usePlayWhenReady());
 
     expect(result.current).toBeUndefined();
@@ -279,6 +284,7 @@ describe('usePlayWhenReady', () => {
 
   it('updates on PlaybackPlayWhenReadyChanged event', async () => {
     const { result } = renderHook(() => usePlayWhenReady());
+    await act(async () => {});
 
     act(() => {
       emitEvent(Event.PlaybackPlayWhenReadyChanged, { playWhenReady: true });
@@ -410,6 +416,8 @@ describe('useProgress', () => {
 
 describe('useIsPlaying', () => {
   it('returns undefined playing/bufferingDuringPlay when state unknown', () => {
+    mockGetPlaybackState.mockImplementation(() => new Promise(() => {}));
+    mockGetPlayWhenReady.mockImplementation(() => new Promise(() => {}));
     const { result } = renderHook(() => useIsPlaying());
 
     expect(result.current.playing).toBeUndefined();

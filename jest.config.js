@@ -3,12 +3,20 @@ module.exports = {
     {
       preset: 'jest-expo/ios',
       displayName: 'ios',
-      testMatch: ['<rootDir>/modules/**/__tests__/**/*.(test|spec).[jt]s?(x)'],
+      testMatch: [
+        '<rootDir>/modules/**/__tests__/**/*.(test|spec).[jt]s?(x)',
+        '<rootDir>/src/**/__tests__/**/*.(test|spec).[jt]s?(x)',
+      ],
+      moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
     },
     {
       preset: 'jest-expo/android',
       displayName: 'android',
-      testMatch: ['<rootDir>/modules/**/__tests__/**/*.(test|spec).[jt]s?(x)'],
+      testMatch: [
+        '<rootDir>/modules/**/__tests__/**/*.(test|spec).[jt]s?(x)',
+        '<rootDir>/src/**/__tests__/**/*.(test|spec).[jt]s?(x)',
+      ],
+      moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
     },
   ],
   collectCoverageFrom: [
@@ -18,5 +26,11 @@ module.exports = {
     'modules/expo-ssl-trust/src/ExpoSslTrust.ts',
     'modules/react-native-track-player/src/trackPlayer.ts',
     'modules/react-native-track-player/src/hooks/use*.ts',
+    'src/utils/**/*.ts',
+    'src/hooks/usePlaybackAnalytics.ts',
+    'src/store/**/*.ts',
+    'src/services/**/*.ts',
+    '!src/**/__tests__/**',
+    '!src/**/__mocks__/**',
   ],
 };

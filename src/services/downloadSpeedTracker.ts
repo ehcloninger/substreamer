@@ -86,3 +86,13 @@ export function clearDownload(downloadId: string): void {
   downloadBytesMap.delete(downloadId);
   finishedIds.add(downloadId);
 }
+
+/**
+ * Reset all tracking state. Used only in tests for isolation.
+ * @internal
+ */
+export function __resetForTesting(): void {
+  downloadBytesMap.clear();
+  samples.length = 0;
+  finishedIds.clear();
+}
