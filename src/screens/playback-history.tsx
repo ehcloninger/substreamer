@@ -298,7 +298,7 @@ export function PlaybackHistoryScreen() {
           <Text style={[styles.pendingHint, { color: colors.textSecondary }]}>
             Waiting to be submitted to the server
           </Text>
-          {pendingScrobbles.slice(0, 10).map((s) => (
+          {[...pendingScrobbles].reverse().slice(0, 10).map((s) => (
             <View key={s.id} style={[styles.recentRow, { borderBottomColor: colors.border }]}>
               {s.song.coverArt && (
                 <CachedImage
