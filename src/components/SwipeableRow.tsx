@@ -18,7 +18,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from '@/utils/haptics';
 import { memo, useCallback, useMemo, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
   interpolate,
@@ -464,6 +464,10 @@ const ActionButton = memo(function ActionButton({
     };
   });
 
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.3, 1], [0, 1, 1], 'clamp'),
+  }));
+
   const handlePress = useCallback(() => {
     action.onPress();
     methods.close();
@@ -477,9 +481,9 @@ const ActionButton = memo(function ActionButton({
         <Ionicons name={action.icon} size={ICON_SIZE} color="#fff" />
       </Animated.View>
       {action.label != null && (
-        <Text style={styles.actionLabel} numberOfLines={1}>
+        <Animated.Text style={[styles.actionLabel, labelStyle]} numberOfLines={1}>
           {action.label}
-        </Text>
+        </Animated.Text>
       )}
     </Pressable>
   );
