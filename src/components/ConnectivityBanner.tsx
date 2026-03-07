@@ -56,11 +56,10 @@ export const ConnectivityBanner = memo(function ConnectivityBanner() {
 
   const visible = bannerState !== 'hidden';
 
-  const config = getConfig(
-    visible ? bannerState : 'unreachable',
-    isInternetReachable,
-    colors.red,
-  );
+  const liveConfig = getConfig(bannerState, isInternetReachable, colors.red);
+  const frozenConfig = useRef(liveConfig);
+  if (visible) frozenConfig.current = liveConfig;
+  const config = visible ? liveConfig : frozenConfig.current;
 
   useEffect(() => {
     const wasVisible = prev.current !== 'hidden';
