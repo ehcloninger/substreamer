@@ -1,6 +1,4 @@
-jest.mock('../subsonicService', () => ({
-  getApi: jest.fn(),
-}));
+jest.mock('../subsonicService');
 jest.mock('../../store/sqliteStorage', () => require('../../store/__mocks__/sqliteStorage'));
 jest.mock('../../store/albumListsStore', () => ({
   albumListsStore: {

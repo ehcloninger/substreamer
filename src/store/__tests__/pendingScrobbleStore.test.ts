@@ -1,5 +1,5 @@
 jest.mock('../sqliteStorage', () => require('../__mocks__/sqliteStorage'));
-jest.mock('../../services/subsonicService', () => ({}));
+jest.mock('../../services/subsonicService');
 
 import { pendingScrobbleStore } from '../pendingScrobbleStore';
 

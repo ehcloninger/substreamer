@@ -36,9 +36,7 @@ jest.mock('../../store/connectivityStore', () => ({
 }));
 
 const mockPing = jest.fn();
-jest.mock('../subsonicService', () => ({
-  getApiUnchecked: jest.fn(() => ({ ping: mockPing })),
-}));
+jest.mock('../subsonicService');
 
 import { getApiUnchecked } from '../subsonicService';
 import { startMonitoring, stopMonitoring } from '../connectivityService';

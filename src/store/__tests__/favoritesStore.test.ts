@@ -1,19 +1,15 @@
+jest.mock('../sqliteStorage', () => require('../__mocks__/sqliteStorage'));
+jest.mock('../../services/subsonicService');
+
+import { getStarred2 } from '../../services/subsonicService';
 import { favoritesStore } from '../favoritesStore';
 
-jest.mock('../sqliteStorage', () => require('../__mocks__/sqliteStorage'));
-jest.mock('../../services/subsonicService', () => ({
-  ensureCoverArtAuth: jest.fn().mockResolvedValue(undefined),
-  getStarred2: jest.fn().mockResolvedValue({
-    songs: [],
-    albums: [],
-    artists: [],
-  }),
-}));
+const mockGetStarred2 = getStarred2 as jest.MockedFunction<typeof getStarred2>;
 
 beforeEach(() => {
+  jest.clearAllMocks();
   favoritesStore.getState().clearFavorites();
-  const { getStarred2 } = require('../../services/subsonicService');
-  getStarred2.mockResolvedValue({ songs: [], albums: [], artists: [] });
+  mockGetStarred2.mockResolvedValue({ songs: [], albums: [], artists: [] });
 });
 
 describe('setOverride', () => {
@@ -44,11 +40,10 @@ describe('fetchStarred', () => {
   });
 
   it('populates songs, albums, artists from server response', async () => {
-    const { getStarred2 } = require('../../services/subsonicService');
-    getStarred2.mockResolvedValue({
-      songs: [{ id: 's1', title: 'Song' }],
-      albums: [{ id: 'a1', name: 'Album' }],
-      artists: [{ id: 'ar1', name: 'Artist' }],
+    mockGetStarred2.mockResolvedValue({
+      songs: [{ id: 's1', title: 'Song', isDir: false }],
+      albums: [{ id: 'a1', name: 'Album', created: new Date(), duration: 0, songCount: 0 }],
+      artists: [{ id: 'ar1', name: 'Artist', albumCount: 0 }],
     });
     await favoritesStore.getState().fetchStarred();
     expect(favoritesStore.getState().songs).toHaveLength(1);
@@ -63,24 +58,21 @@ describe('fetchStarred', () => {
   });
 
   it('sets error and clears loading on API failure', async () => {
-    const { getStarred2 } = require('../../services/subsonicService');
-    getStarred2.mockRejectedValue(new Error('Network error'));
+    mockGetStarred2.mockRejectedValue(new Error('Network error'));
     await favoritesStore.getState().fetchStarred();
     expect(favoritesStore.getState().loading).toBe(false);
     expect(favoritesStore.getState().error).toBe('Network error');
   });
 
   it('sets generic error for non-Error throws', async () => {
-    const { getStarred2 } = require('../../services/subsonicService');
-    getStarred2.mockRejectedValue('some string');
+    mockGetStarred2.mockRejectedValue('some string');
     await favoritesStore.getState().fetchStarred();
     expect(favoritesStore.getState().error).toBe('Failed to load favorites');
   });
 
   it('prevents duplicate concurrent fetches', async () => {
-    const { getStarred2 } = require('../../services/subsonicService');
     let callCount = 0;
-    getStarred2.mockImplementation(async () => {
+    mockGetStarred2.mockImplementation(async () => {
       callCount++;
       await new Promise((r) => setTimeout(r, 100));
       return { songs: [], albums: [], artists: [] };
@@ -93,9 +85,8 @@ describe('fetchStarred', () => {
   });
 
   it('does not clear overrides on failure', async () => {
-    const { getStarred2 } = require('../../services/subsonicService');
     favoritesStore.getState().setOverride('album-1', true);
-    getStarred2.mockRejectedValue(new Error('fail'));
+    mockGetStarred2.mockRejectedValue(new Error('fail'));
     await favoritesStore.getState().fetchStarred();
     expect(favoritesStore.getState().overrides['album-1']).toBe(true);
   });

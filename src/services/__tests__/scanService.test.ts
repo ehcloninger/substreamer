@@ -1,7 +1,4 @@
-jest.mock('../subsonicService', () => ({
-  getScanStatus: jest.fn(),
-  startScan: jest.fn(),
-}));
+jest.mock('../subsonicService');
 
 const mockSetScanStatus = jest.fn();
 const mockSetLoading = jest.fn();

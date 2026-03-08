@@ -90,12 +90,9 @@ jest.mock('../../store/imageCacheStore', () => ({
   },
 }));
 
-jest.mock('../subsonicService', () => ({
-  ensureCoverArtAuth: jest.fn().mockResolvedValue(undefined),
-  getCoverArtUrl: jest.fn().mockReturnValue('https://example.com/cover.jpg'),
-  stripCoverArtSuffix: jest.fn((id: string) => id.replace(/_[0-9a-f]+$/, '')),
-}));
+jest.mock('../subsonicService');
 
+import { getCoverArtUrl, stripCoverArtSuffix } from '../subsonicService';
 import {
   IMAGE_SIZES,
   initImageCache,
@@ -144,6 +141,8 @@ beforeEach(() => {
   mockReset.mockClear();
   mockFetch.mockClear();
   mockImageManipulator.manipulate.mockClear();
+  (getCoverArtUrl as jest.Mock).mockReturnValue('https://example.com/cover.jpg');
+  (stripCoverArtSuffix as jest.Mock).mockImplementation((id: string) => id.replace(/_[0-9a-f]+$/, ''));
   initImageCache();
 });
 

@@ -4,19 +4,7 @@ jest.mock('../playerService', () => ({
   removeFromQueue: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../subsonicService', () => ({
-  starSong: jest.fn().mockResolvedValue(undefined),
-  unstarSong: jest.fn().mockResolvedValue(undefined),
-  starAlbum: jest.fn().mockResolvedValue(undefined),
-  unstarAlbum: jest.fn().mockResolvedValue(undefined),
-  starArtist: jest.fn().mockResolvedValue(undefined),
-  unstarArtist: jest.fn().mockResolvedValue(undefined),
-  getAlbum: jest.fn(),
-  getPlaylist: jest.fn(),
-  getSimilarSongs: jest.fn(),
-  getSimilarSongs2: jest.fn(),
-  createNewPlaylist: jest.fn(),
-}));
+jest.mock('../subsonicService');
 
 jest.mock('../musicCacheService', () => ({
   enqueueAlbumDownload: jest.fn(),

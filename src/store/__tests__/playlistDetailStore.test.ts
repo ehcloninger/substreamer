@@ -1,13 +1,10 @@
 jest.mock('../sqliteStorage', () => require('../__mocks__/sqliteStorage'));
-jest.mock('../../services/subsonicService', () => ({
-  ensureCoverArtAuth: jest.fn().mockResolvedValue(undefined),
-  getPlaylist: jest.fn(),
-}));
+jest.mock('../../services/subsonicService');
 
-import { playlistDetailStore } from '../playlistDetailStore';
 import { getPlaylist } from '../../services/subsonicService';
+import { playlistDetailStore } from '../playlistDetailStore';
 
-const mockGetPlaylist = getPlaylist as jest.Mock;
+const mockGetPlaylist = getPlaylist as jest.MockedFunction<typeof getPlaylist>;
 
 function makeEntry(songCount: number, duration: number, entries: Array<{ id: string; duration?: number }>) {
   return {
@@ -31,7 +28,7 @@ beforeEach(() => {
 
 describe('fetchPlaylist', () => {
   it('fetches and stores playlist data', async () => {
-    const mockData = { id: 'pl-1', name: 'Test', songCount: 2, duration: 360, changed: new Date(), created: new Date(), entry: [{ id: 's1', isDir: false as const }, { id: 's2', isDir: false as const }] };
+    const mockData = { id: 'pl-1', name: 'Test', songCount: 2, duration: 360, changed: new Date(), created: new Date(), entry: [{ id: 's1', title: 'Song 1', isDir: false as const }, { id: 's2', title: 'Song 2', isDir: false as const }] };
     mockGetPlaylist.mockResolvedValue(mockData);
     const result = await playlistDetailStore.getState().fetchPlaylist('pl-1');
     expect(result).toEqual(mockData);
@@ -51,7 +48,7 @@ describe('fetchPlaylist', () => {
   it('overwrites existing entry on re-fetch', async () => {
     const old = makeEntry(1, 100, [{ id: 's1' }]);
     playlistDetailStore.setState({ playlists: { 'pl-1': old } });
-    const newData = { id: 'pl-1', name: 'Updated', songCount: 2, duration: 200, changed: new Date(), created: new Date(), entry: [{ id: 's1', isDir: false as const }, { id: 's2', isDir: false as const }] };
+    const newData = { id: 'pl-1', name: 'Updated', songCount: 2, duration: 200, changed: new Date(), created: new Date(), entry: [{ id: 's1', title: 'Song 1', isDir: false as const }, { id: 's2', title: 'Song 2', isDir: false as const }] };
     mockGetPlaylist.mockResolvedValue(newData);
     await playlistDetailStore.getState().fetchPlaylist('pl-1');
     expect(playlistDetailStore.getState().playlists['pl-1']!.playlist.name).toBe('Updated');

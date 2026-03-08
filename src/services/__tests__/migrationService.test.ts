@@ -42,6 +42,7 @@ jest.mock('react-native', () => ({
 
 import { Platform } from 'react-native';
 import { getPendingTasks, runMigrations } from '../migrationService';
+import { completedScrobbleStore } from '../../store/completedScrobbleStore';
 
 beforeEach(() => {
   mockFileWrite.mockClear();
@@ -162,6 +163,28 @@ describe('runMigrations', () => {
     await runMigrations(0);
     const logContent = mockFileWrite.mock.calls[0][0] as string;
     expect(logContent).toContain('Failed to remove:');
+  });
+
+  it('Task 3 skips aggregate rebuild when no scrobbles', async () => {
+    completedScrobbleStore.setState({ completedScrobbles: [] } as any);
+    await runMigrations(2);
+    const logContent = mockFileWrite.mock.calls[0][0] as string;
+    expect(logContent).toContain('No scrobbles');
+    expect(logContent).toContain('skipping aggregate rebuild');
+  });
+
+  it('Task 3 rebuilds aggregates when scrobbles exist', async () => {
+    const mockRebuild = jest.fn();
+    completedScrobbleStore.setState({
+      completedScrobbles: [
+        { id: '1', song: { id: 's1', title: 'Song', artist: 'A', duration: 200 }, time: Date.now() },
+      ],
+      rebuildAggregates: mockRebuild,
+    } as any);
+    await runMigrations(2);
+    expect(mockRebuild).toHaveBeenCalled();
+    const logContent = mockFileWrite.mock.calls[0][0] as string;
+    expect(logContent).toContain('Rebuilt aggregates for 1 scrobbles');
   });
 
   it('Task 2 uses android databases path', async () => {

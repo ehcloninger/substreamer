@@ -1,32 +1,6 @@
-const VARIOUS_ARTISTS_COVER_ART_ID = '__various_artists_cover__';
-
-jest.mock('../../services/subsonicService', () => ({
-  ensureCoverArtAuth: jest.fn().mockResolvedValue(undefined),
-  getArtist: jest.fn().mockResolvedValue(null),
-  getArtistInfo2: jest.fn().mockResolvedValue(null),
-  getTopSongs: jest.fn().mockResolvedValue([]),
-  isVariousArtists: (name: string | undefined) =>
-    name?.trim().toLowerCase() === 'various artists',
-  VARIOUS_ARTISTS_BIO:
-    'Various Artists collects compilation albums, soundtracks, tribute records and other ' +
-    'releases that feature songs from multiple artists.\n\n' +
-    "Browse the albums below to discover what's in your collection.",
-  VARIOUS_ARTISTS_COVER_ART_ID,
-}));
-jest.mock('../sqliteStorage', () => ({
-  sqliteStorage: {
-    getItem: jest.fn().mockResolvedValue(null),
-    setItem: jest.fn().mockResolvedValue(undefined),
-    removeItem: jest.fn().mockResolvedValue(undefined),
-  },
-}));
-jest.mock('../mbidOverrideStore', () => ({
-  mbidOverrideStore: { getState: jest.fn(() => ({ overrides: {} })) },
-}));
-jest.mock('../../services/musicbrainzService', () => ({
-  getArtistBiography: jest.fn().mockResolvedValue(null),
-  searchArtistMBID: jest.fn().mockResolvedValue(null),
-}));
+jest.mock('../sqliteStorage', () => require('../__mocks__/sqliteStorage'));
+jest.mock('../../services/subsonicService');
+jest.mock('../../services/musicbrainzService');
 jest.mock('../../utils/formatters', () => ({
   sanitizeBiographyText: jest.fn((text: string) => text),
 }));
@@ -36,16 +10,25 @@ import {
   getArtistInfo2,
   getTopSongs,
   VARIOUS_ARTISTS_BIO,
+  VARIOUS_ARTISTS_COVER_ART_ID,
 } from '../../services/subsonicService';
+import {
+  getArtistBiography,
+  searchArtistMBID,
+} from '../../services/musicbrainzService';
+import { mbidOverrideStore } from '../mbidOverrideStore';
 import { artistDetailStore } from '../artistDetailStore';
 
 const mockGetArtist = getArtist as jest.MockedFunction<typeof getArtist>;
 const mockGetArtistInfo2 = getArtistInfo2 as jest.MockedFunction<typeof getArtistInfo2>;
 const mockGetTopSongs = getTopSongs as jest.MockedFunction<typeof getTopSongs>;
+const mockSearchMBID = searchArtistMBID as jest.MockedFunction<typeof searchArtistMBID>;
+const mockGetBio = getArtistBiography as jest.MockedFunction<typeof getArtistBiography>;
 
 beforeEach(() => {
   jest.clearAllMocks();
   artistDetailStore.getState().clearArtists();
+  mbidOverrideStore.setState({ overrides: {} });
   mockGetArtist.mockResolvedValue(null);
   mockGetArtistInfo2.mockResolvedValue(null);
   mockGetTopSongs.mockResolvedValue([]);
@@ -143,5 +126,130 @@ describe('fetchArtist — normal artist', () => {
     expect(entry).toBeNull();
     expect(mockGetArtistInfo2).not.toHaveBeenCalled();
     expect(mockGetTopSongs).not.toHaveBeenCalled();
+  });
+
+  it('falls back to getTopSongs empty array when getTopSongs throws', async () => {
+    mockGetArtist.mockResolvedValue({
+      id: 'ar-1',
+      name: 'Radiohead',
+      albumCount: 9,
+      album: [],
+    } as any);
+    mockGetArtistInfo2.mockResolvedValue({ biography: 'Bio text.' } as any);
+    mockGetTopSongs.mockRejectedValue(new Error('fail'));
+
+    const entry = await artistDetailStore.getState().fetchArtist('ar-1');
+
+    expect(entry).not.toBeNull();
+    expect(entry!.topSongs).toEqual([]);
+  });
+});
+
+describe('fetchArtist — MusicBrainz biography fallback', () => {
+  const setupArtist = () => {
+    mockGetArtist.mockResolvedValue({
+      id: 'ar-1',
+      name: 'Radiohead',
+      albumCount: 9,
+      album: [],
+    } as any);
+  };
+
+  it('uses MBID override for bio when Subsonic has no bio', async () => {
+    setupArtist();
+    mockGetArtistInfo2.mockResolvedValue({ biography: '' } as any);
+    mbidOverrideStore.setState({
+      overrides: { 'ar-1': { artistId: 'ar-1', artistName: 'Radiohead', mbid: 'override-mbid' } },
+    });
+    mockGetBio.mockResolvedValue('MusicBrainz bio from override.');
+
+    const entry = await artistDetailStore.getState().fetchArtist('ar-1');
+
+    expect(entry!.biography).toBe('MusicBrainz bio from override.');
+    expect(entry!.resolvedMbid).toBe('override-mbid');
+    expect(mockGetBio).toHaveBeenCalledWith('override-mbid');
+  });
+
+  it('uses server musicBrainzId when no override and no Subsonic bio', async () => {
+    setupArtist();
+    mockGetArtistInfo2.mockResolvedValue({
+      biography: '',
+      musicBrainzId: 'server-mbid',
+    } as any);
+    mbidOverrideStore.setState({ overrides: {} });
+    mockGetBio.mockResolvedValue('MusicBrainz bio from server.');
+
+    const entry = await artistDetailStore.getState().fetchArtist('ar-1');
+
+    expect(entry!.biography).toBe('MusicBrainz bio from server.');
+    expect(entry!.resolvedMbid).toBe('server-mbid');
+  });
+
+  it('auto-searches MBID when no override, no server MBID, no Subsonic bio', async () => {
+    setupArtist();
+    mockGetArtistInfo2.mockResolvedValue({ biography: '' } as any);
+    mbidOverrideStore.setState({ overrides: {} });
+    mockSearchMBID.mockResolvedValue('auto-mbid');
+    mockGetBio.mockResolvedValue('Auto-searched bio.');
+
+    const entry = await artistDetailStore.getState().fetchArtist('ar-1');
+
+    expect(mockSearchMBID).toHaveBeenCalledWith('Radiohead');
+    expect(entry!.biography).toBe('Auto-searched bio.');
+    expect(entry!.resolvedMbid).toBe('auto-mbid');
+  });
+
+  it('returns null biography when auto-search finds no MBID', async () => {
+    setupArtist();
+    mockGetArtistInfo2.mockResolvedValue({ biography: '' } as any);
+    mbidOverrideStore.setState({ overrides: {} });
+    mockSearchMBID.mockResolvedValue(null);
+
+    const entry = await artistDetailStore.getState().fetchArtist('ar-1');
+
+    expect(entry!.biography).toBeNull();
+    expect(entry!.resolvedMbid).toBeNull();
+  });
+
+  it('returns null biography when MusicBrainz bio fetch returns null', async () => {
+    setupArtist();
+    mockGetArtistInfo2.mockResolvedValue({ biography: '' } as any);
+    mbidOverrideStore.setState({ overrides: {} });
+    mockSearchMBID.mockResolvedValue('some-mbid');
+    mockGetBio.mockResolvedValue(null);
+
+    const entry = await artistDetailStore.getState().fetchArtist('ar-1');
+
+    expect(entry!.biography).toBeNull();
+    expect(entry!.resolvedMbid).toBe('some-mbid');
+  });
+
+  it('catches MusicBrainz errors and still returns entry', async () => {
+    setupArtist();
+    mockGetArtistInfo2.mockResolvedValue({ biography: '' } as any);
+    mbidOverrideStore.setState({ overrides: {} });
+    mockSearchMBID.mockRejectedValue(new Error('MusicBrainz down'));
+
+    const entry = await artistDetailStore.getState().fetchArtist('ar-1');
+
+    expect(entry).not.toBeNull();
+    expect(entry!.biography).toBeNull();
+    expect(entry!.resolvedMbid).toBeNull();
+  });
+
+  it('resolvedMbid uses override when Subsonic bio is present', async () => {
+    setupArtist();
+    mockGetArtistInfo2.mockResolvedValue({
+      biography: 'Subsonic bio exists.',
+      musicBrainzId: 'server-mbid',
+    } as any);
+    mbidOverrideStore.setState({
+      overrides: { 'ar-1': { artistId: 'ar-1', artistName: 'Radiohead', mbid: 'override-mbid' } },
+    });
+
+    const entry = await artistDetailStore.getState().fetchArtist('ar-1');
+
+    expect(entry!.biography).toBe('Subsonic bio exists.');
+    expect(entry!.resolvedMbid).toBe('override-mbid');
   });
 });

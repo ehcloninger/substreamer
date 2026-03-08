@@ -73,10 +73,7 @@ jest.mock('../imageCacheService', () => ({
   getCachedImageUri: jest.fn().mockReturnValue(null),
 }));
 
-jest.mock('../subsonicService', () => ({
-  ensureCoverArtAuth: jest.fn().mockResolvedValue(undefined),
-  getDownloadStreamUrl: jest.fn().mockReturnValue('https://example.com/stream'),
-}));
+jest.mock('../subsonicService');
 
 const mockFetchAlbum = jest.fn();
 jest.mock('../../store/albumDetailStore', () => ({

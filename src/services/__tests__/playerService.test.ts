@@ -109,11 +109,7 @@ jest.mock('../musicCacheService', () => ({
   getLocalTrackUri: jest.fn().mockReturnValue(null),
 }));
 
-jest.mock('../subsonicService', () => ({
-  ensureCoverArtAuth: jest.fn().mockResolvedValue(undefined),
-  getCoverArtUrl: jest.fn().mockReturnValue('https://example.com/art.jpg'),
-  getStreamUrl: jest.fn().mockReturnValue('https://example.com/stream.mp3'),
-}));
+jest.mock('../subsonicService');
 
 import TrackPlayer, { Event, RepeatMode, State } from 'react-native-track-player';
 import { playbackSettingsStore } from '../../store/playbackSettingsStore';
@@ -133,11 +129,12 @@ import {
   clearQueue,
   addToQueue,
   removeFromQueue,
+  removeNonDownloadedTracks,
   cycleRepeatMode,
   cyclePlaybackRate,
   shuffleQueue,
 } from '../playerService';
-import { getStreamUrl, type Child } from '../subsonicService';
+import { getCoverArtUrl, getStreamUrl, type Child } from '../subsonicService';
 
 const makeChild = (id: string, overrides?: Partial<Child>): Child => ({
   id,
@@ -220,6 +217,10 @@ beforeEach(async () => {
     streamFormat: 'raw',
     estimateContentLength: false,
   } as any);
+
+  // Restore default return values for subsonicService mocks.
+  (getCoverArtUrl as jest.Mock).mockReturnValue('https://example.com/art.jpg');
+  (getStreamUrl as jest.Mock).mockReturnValue('https://example.com/stream.mp3');
 });
 
 describe('initPlayer', () => {
@@ -1524,5 +1525,63 @@ describe('PlaybackActiveTrackChanged edge branches', () => {
     expect(addCompletedScrobble).toHaveBeenCalledWith(
       expect.objectContaining({ id: 't2' }),
     );
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  removeNonDownloadedTracks                                          */
+/* ------------------------------------------------------------------ */
+
+describe('removeNonDownloadedTracks', () => {
+  it('no-ops when queue is empty', async () => {
+    await removeNonDownloadedTracks();
+    expect(mockTP.reset).not.toHaveBeenCalled();
+    expect(mockTP.remove).not.toHaveBeenCalled();
+  });
+
+  it('no-ops when all tracks are downloaded', async () => {
+    const { getLocalTrackUri } = require('../musicCacheService');
+    await initPlayer();
+    const queue = [makeChild('t1'), makeChild('t2')];
+    await playTrack(queue[0], queue);
+    mockTP.remove.mockClear();
+    mockTP.reset.mockClear();
+
+    (getLocalTrackUri as jest.Mock).mockReturnValue('/local/path');
+    await removeNonDownloadedTracks();
+
+    expect(mockTP.reset).not.toHaveBeenCalled();
+    expect(mockTP.remove).not.toHaveBeenCalled();
+  });
+
+  it('clears queue when all tracks are non-downloaded', async () => {
+    const { getLocalTrackUri } = require('../musicCacheService');
+    await initPlayer();
+    const queue = [makeChild('t1'), makeChild('t2')];
+    await playTrack(queue[0], queue);
+    mockTP.reset.mockClear();
+
+    (getLocalTrackUri as jest.Mock).mockReturnValue(null);
+    await removeNonDownloadedTracks();
+
+    expect(mockTP.reset).toHaveBeenCalled();
+  });
+
+  it('selectively removes non-downloaded tracks', async () => {
+    const { getLocalTrackUri } = require('../musicCacheService');
+    await initPlayer();
+    const queue = [makeChild('t1'), makeChild('t2'), makeChild('t3')];
+    await playTrack(queue[0], queue);
+    mockTP.remove.mockClear();
+    mockTP.reset.mockClear();
+
+    // t1 downloaded, t2 not, t3 downloaded
+    (getLocalTrackUri as jest.Mock).mockImplementation((id: string) =>
+      id === 't2' ? null : '/local/' + id,
+    );
+    await removeNonDownloadedTracks();
+
+    expect(mockTP.reset).not.toHaveBeenCalled();
+    expect(mockTP.remove).toHaveBeenCalled();
   });
 });
