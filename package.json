@@ -4,7 +4,8 @@
   "main": "./index.js",
   "scripts": {
     "start": "expo start",
-    "android": "source scripts/env-android.sh && expo run:android",
+    "android": "source scripts/env-android.sh && expo run:android ${EXPO_ANDROID_DEVICE:+--device $EXPO_ANDROID_DEVICE}",
+    "android:device": "source scripts/env-android.sh && expo run:android",
     "ios": "expo run:ios",
     "prebuild": "expo prebuild --clean",
     "web": "expo start --web",
