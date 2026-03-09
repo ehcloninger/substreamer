@@ -49,7 +49,12 @@ const mockOpenURL = Linking.openURL as jest.Mock;
 const mockLinkingOpenSettings = Linking.openSettings as jest.Mock;
 const mockSetOffline = jest.spyOn(offlineModeStore.getState(), 'setOfflineMode');
 
+let consoleLogSpy: jest.SpyInstance;
+let consoleWarnSpy: jest.SpyInstance;
+
 beforeEach(() => {
+  consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
   stopAutoOffline();
   autoOfflineStore.setState({
     enabled: false,
@@ -72,7 +77,11 @@ beforeEach(() => {
   mockNetInfoCallback = null;
 });
 
-afterEach(() => stopAutoOffline());
+afterEach(() => {
+  stopAutoOffline();
+  consoleLogSpy.mockRestore();
+  consoleWarnSpy.mockRestore();
+});
 
 describe('startAutoOffline', () => {
   it('does nothing when not enabled', () => {
