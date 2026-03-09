@@ -7,6 +7,7 @@
     "android": "source scripts/env-android.sh && expo run:android ${EXPO_ANDROID_DEVICE:+--device $EXPO_ANDROID_DEVICE}",
     "android:device": "source scripts/env-android.sh && expo run:android",
     "ios": "expo run:ios",
+    "concurrent": "npx concurrently \"npm run ios\" \"npm run android\"",
     "prebuild": "expo prebuild --clean",
     "web": "expo start --web",
     "test": "jest",
