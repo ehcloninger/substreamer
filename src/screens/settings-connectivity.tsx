@@ -32,13 +32,34 @@ export function SettingsConnectivityScreen() {
   const [ssidPromptVisible, setSsidPromptVisible] = useState(false);
   const [ssidPromptValue, setSsidPromptValue] = useState('');
   const [ssidEditTarget, setSsidEditTarget] = useState<string | null>(null);
+  const [ssidSetupValue, setSsidSetupValue] = useState('');
+  const [ssidReadFailed, setSsidReadFailed] = useState(false);
 
   useEffect(() => {
     if (autoMode === 'home-wifi') {
-      checkLocationPermission();
-      getCurrentSSID().then(setCurrentSSID);
+      checkLocationPermission().then(async (granted) => {
+        const ssid = await getCurrentSSID();
+        setCurrentSSID(ssid);
+        setSsidReadFailed(granted && ssid == null);
+      });
     }
   }, [autoMode]);
+
+  useEffect(() => {
+    if (currentSSID && homeSSIDs.length === 0) {
+      setSsidSetupValue(currentSSID);
+    }
+  }, [currentSSID, homeSSIDs.length]);
+
+  // Revert auto-offline to disabled on unmount if home-wifi requirements aren't met
+  useEffect(() => {
+    return () => {
+      const { enabled, mode, homeSSIDs: ssids, locationPermissionGranted } = autoOfflineStore.getState();
+      if (enabled && mode === 'home-wifi' && (!locationPermissionGranted || ssids.length === 0)) {
+        autoOfflineStore.getState().setEnabled(false);
+      }
+    };
+  }, []);
 
   const handleAutoEnabledChange = useCallback((value: boolean) => {
     autoOfflineStore.getState().setEnabled(value);
@@ -47,15 +68,20 @@ export function SettingsConnectivityScreen() {
   const handleModeSelect = useCallback((mode: AutoOfflineMode) => {
     autoOfflineStore.getState().setMode(mode);
     if (mode === 'home-wifi') {
-      checkLocationPermission();
-      getCurrentSSID().then(setCurrentSSID);
+      checkLocationPermission().then(async (granted) => {
+        const ssid = await getCurrentSSID();
+        setCurrentSSID(ssid);
+        setSsidReadFailed(granted && ssid == null);
+      });
     }
   }, []);
 
   const handleGrantPermission = useCallback(async () => {
     const granted = await requestLocationPermission();
     if (granted) {
-      getCurrentSSID().then(setCurrentSSID);
+      const ssid = await getCurrentSSID();
+      setCurrentSSID(ssid);
+      setSsidReadFailed(ssid == null);
     } else {
       openAppSettings();
     }
@@ -67,9 +93,18 @@ export function SettingsConnectivityScreen() {
     }
   }, [currentSSID]);
 
+  const handleSetupAdd = useCallback(() => {
+    const trimmed = ssidSetupValue.trim();
+    if (trimmed) {
+      autoOfflineStore.getState().addSSID(trimmed);
+      setSsidSetupValue('');
+    }
+  }, [ssidSetupValue]);
+
   const handleAddSSIDManual = useCallback(() => {
+    const defaultValue = currentSSID && !homeSSIDs.includes(currentSSID) ? currentSSID : '';
     if (Platform.OS === 'ios') {
-      Alert.prompt('Add SSID', 'Enter the WiFi network name (case-sensitive).', [
+      Alert.prompt('Add Network', 'Enter the WiFi network name (case-sensitive).', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Add',
@@ -78,17 +113,17 @@ export function SettingsConnectivityScreen() {
             if (trimmed) autoOfflineStore.getState().addSSID(trimmed);
           },
         },
-      ]);
+      ], 'plain-text', defaultValue);
     } else {
       setSsidEditTarget(null);
-      setSsidPromptValue('');
+      setSsidPromptValue(defaultValue);
       setSsidPromptVisible(true);
     }
-  }, []);
+  }, [currentSSID, homeSSIDs]);
 
   const handleEditSSID = useCallback((ssid: string) => {
     if (Platform.OS === 'ios') {
-      Alert.prompt('Edit SSID', 'Update the WiFi network name (case-sensitive).', [
+      Alert.prompt('Edit Network', 'Update the WiFi network name (case-sensitive).', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Save',
@@ -180,7 +215,7 @@ export function SettingsConnectivityScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Offline mode</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Offline</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.toggleRow, { borderBottomColor: colors.border }]}>
             <View style={styles.toggleTextWrap}>
@@ -197,7 +232,7 @@ export function SettingsConnectivityScreen() {
               trackColor={{ false: colors.border, true: colors.primary }}
             />
           </View>
-          <View style={[styles.toggleRow, styles.toggleRowLast]}>
+          <View style={[styles.toggleRow, { borderBottomColor: colors.border }]}>
             <View style={styles.toggleTextWrap}>
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 Show in Filter Bar
@@ -212,12 +247,6 @@ export function SettingsConnectivityScreen() {
               trackColor={{ false: colors.border, true: colors.primary }}
             />
           </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Auto offline</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.toggleRow, autoEnabled ? { borderBottomColor: colors.border } : styles.toggleRowLast]}>
             <View style={styles.toggleTextWrap}>
               <Text style={[styles.label, { color: colors.textPrimary }]}>
@@ -259,14 +288,14 @@ export function SettingsConnectivityScreen() {
                 onPress={() => handleModeSelect('home-wifi')}
                 style={({ pressed }) => [
                   styles.toggleRow,
-                  autoMode !== 'home-wifi' ? styles.toggleRowLast : { borderBottomColor: colors.border },
+                  autoMode !== 'home-wifi' || !locationGranted || ssidReadFailed ? styles.toggleRowLast : { borderBottomColor: colors.border },
                   pressed && styles.pressed,
                 ]}
               >
                 <View style={styles.toggleTextWrap}>
                   <Text style={[styles.label, { color: colors.textPrimary }]}>Home WiFi</Text>
                   <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                    Go offline when not connected to a specific home WiFi network. SSIDs are case-sensitive.
+                    Go offline when not connected to a specific home WiFi network. Network names are case-sensitive.
                   </Text>
                 </View>
                 {autoMode === 'home-wifi' && (
@@ -275,14 +304,13 @@ export function SettingsConnectivityScreen() {
               </Pressable>
 
               {autoMode === 'home-wifi' && !locationGranted && (
-                <View style={[styles.permissionWarning, { borderBottomColor: colors.border }]}>
+                <View style={styles.permissionWarning}>
                   <Ionicons name="warning-outline" size={20} color={colors.red} />
                   <View style={styles.permissionWarningText}>
                     <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                      Location permission is required to read WiFi network names.{' '}
                       {Platform.OS === 'ios'
-                        ? 'Grant location access in Settings.'
-                        : 'Grant location access to enable this feature.'}
+                        ? 'To detect which WiFi network you\'re on, Substreamer needs location access. When prompted, choose "Allow While Using the App" so the app can check your network each time it opens. Choosing "Allow Once" means you\'d need to grant permission again every time.'
+                        : 'To detect which WiFi network you\'re on, Substreamer needs location access. When prompted, choose "While using the app" so the app can check your network each time it opens. Choosing "Only this time" means you\'d need to grant permission again every time.'}
                     </Text>
                     <Pressable
                       onPress={handleGrantPermission}
@@ -296,7 +324,35 @@ export function SettingsConnectivityScreen() {
                 </View>
               )}
 
-              {showCurrentSSIDRow && (
+              {autoMode === 'home-wifi' && locationGranted && ssidReadFailed && (
+                <View style={styles.permissionWarning}>
+                  <Ionicons name="warning-outline" size={20} color={colors.red} />
+                  <View style={styles.permissionWarningText}>
+                    {homeSSIDs.length > 0 ? (
+                      <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
+                        {Platform.OS === 'ios'
+                          ? 'Unable to read your WiFi network name. Location permission may have been revoked or set to "Allow Once". In your device Settings, make sure location access for Substreamer is set to "Allow While Using the App".'
+                          : 'Unable to read your WiFi network name. Location permission may have been revoked or set to "Only this time". In your device Settings, make sure location access for Substreamer is set to "While using the app".'}
+                      </Text>
+                    ) : (
+                      <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
+                        Permission was granted but we still can't read your WiFi network name. This feature may not work correctly on your device. You can try again later, or switch to the{' '}
+                        <Text style={{ fontWeight: '600' }}>WiFi Only</Text> option instead which doesn't need location access.
+                      </Text>
+                    )}
+                    <Pressable
+                      onPress={handleGrantPermission}
+                      style={({ pressed }) => [pressed && styles.pressed]}
+                    >
+                      <Text style={[styles.permissionButton, { color: colors.primary }]}>
+                        {homeSSIDs.length > 0 ? 'Grant Permission' : 'Try Again'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+
+              {showCurrentSSIDRow && !ssidReadFailed && (
                 <View style={[styles.ssidRow, { borderBottomColor: colors.border }]}>
                   <Ionicons name="wifi" size={18} color={colors.primary} />
                   <Text style={[styles.ssidText, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -312,7 +368,7 @@ export function SettingsConnectivityScreen() {
                 </View>
               )}
 
-              {autoMode === 'home-wifi' && homeSSIDs.length > 0 && homeSSIDs.map((ssid, index) => (
+              {autoMode === 'home-wifi' && locationGranted && !ssidReadFailed && homeSSIDs.length > 0 && homeSSIDs.map((ssid, index) => (
                 <View
                   key={ssid}
                   style={[
@@ -346,24 +402,48 @@ export function SettingsConnectivityScreen() {
                 </View>
               ))}
 
-              {autoMode === 'home-wifi' && (
+              {autoMode === 'home-wifi' && locationGranted && !ssidReadFailed && (
                 <Pressable
                   onPress={handleAddSSIDManual}
                   style={({ pressed }) => [styles.addSsidRow, pressed && styles.pressed]}
                 >
                   <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-                  <Text style={[styles.addSsidText, { color: colors.primary }]}>Add SSID</Text>
+                  <Text style={[styles.addSsidText, { color: colors.primary }]}>Add Network</Text>
                 </Pressable>
               )}
 
-              {autoMode === 'home-wifi' && homeSSIDs.length === 0 && (
-                <View style={styles.permissionWarning}>
-                  <Ionicons name="warning-outline" size={20} color={colors.red} />
-                  <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                    No home networks configured. Auto offline is paused until at least one WiFi network name is added.
+              {autoMode === 'home-wifi' && homeSSIDs.length === 0 && locationGranted && currentSSID != null && (
+                <View style={[styles.setupArea, { borderBottomColor: colors.border }]}>
+                  <View style={styles.setupHeader}>
+                    <Ionicons name="wifi" size={18} color={colors.primary} />
+                    <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
+                      Current network detected
+                    </Text>
+                  </View>
+                  <View style={styles.setupRow}>
+                    <TextInput
+                      style={[styles.setupInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.border }]}
+                      value={ssidSetupValue}
+                      onChangeText={setSsidSetupValue}
+                      placeholder="WiFi network name"
+                      placeholderTextColor={colors.textSecondary}
+                      onSubmitEditing={handleSetupAdd}
+                      returnKeyType="done"
+                    />
+                    <Pressable
+                      onPress={handleSetupAdd}
+                      hitSlop={8}
+                      style={({ pressed }) => [pressed && styles.pressed]}
+                    >
+                      <Text style={[styles.ssidActionText, { color: colors.primary }]}>Add</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={[styles.setupHint, { color: colors.textSecondary }]}>
+                    Verify the name is correct, then tap Add.
                   </Text>
                 </View>
               )}
+
             </>
           )}
         </View>
@@ -379,7 +459,7 @@ export function SettingsConnectivityScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setSsidPromptVisible(false)}>
           <Pressable style={[styles.modalCard, { backgroundColor: colors.card }]} onPress={() => {}}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {ssidEditTarget ? 'Edit SSID' : 'Add SSID'}
+              {ssidEditTarget ? 'Edit Network' : 'Add Network'}
             </Text>
             <TextInput
               style={[styles.modalInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.border }]}
@@ -576,6 +656,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  setupArea: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  setupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  setupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  setupInput: {
+    flex: 1,
+    fontSize: 16,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+  },
+  setupHint: {
+    fontSize: 12,
+    marginTop: 6,
   },
   addSsidRow: {
     flexDirection: 'row',
