@@ -55,6 +55,8 @@
         }
       ],
       "./plugins/silence-hermes-warning",
+      "./plugins/silence-dev-launcher-warning",
+      "./plugins/dedupe-lc++",
       "./plugins/fix-jvm-target",
       "./plugins/set-gradle-version",
       "expo-sqlite",
