@@ -49,7 +49,7 @@ import { excludeFromBackup } from 'expo-backup-exclusions';
 import { albumListsStore } from '../store/albumListsStore';
 import { imageCacheStore } from '../store/imageCacheStore';
 import { musicCacheStore } from '../store/musicCacheStore';
-import { authStore, clearPersistedData } from '../store/authStore';
+import { authStore } from '../store/authStore';
 import { favoritesStore } from '../store/favoritesStore';
 import { autoOfflineStore } from '../store/autoOfflineStore';
 import { offlineModeStore } from '../store/offlineModeStore';
@@ -110,18 +110,15 @@ export default function RootLayout() {
 
   // --- Rehydrate auth from SQLite ---
   useEffect(() => {
-    (async () => {
-      await clearPersistedData();
-      const done = () => {
-        authStore.getState().setRehydrated(true);
-      };
-      const p = authStore.persist.rehydrate();
-      if (p instanceof Promise) {
-        p.then(done);
-      } else {
-        done();
-      }
-    })();
+    const done = () => {
+      authStore.getState().setRehydrated(true);
+    };
+    const p = authStore.persist.rehydrate();
+    if (p instanceof Promise) {
+      p.then(done);
+    } else {
+      done();
+    }
   }, []);
 
   // --- Initialise audio player & pre-fetch server data when logged in ---
