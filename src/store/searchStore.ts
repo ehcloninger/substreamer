@@ -9,6 +9,7 @@ import {
 } from '../services/subsonicService';
 import { albumDetailStore } from './albumDetailStore';
 import { albumLibraryStore } from './albumLibraryStore';
+import { ratingStore } from './ratingStore';
 import { favoritesStore } from './favoritesStore';
 import { musicCacheStore } from './musicCacheStore';
 import { offlineModeStore } from './offlineModeStore';
@@ -161,6 +162,12 @@ export const searchStore = create<SearchState>()((set, get) => ({
     try {
       await ensureCoverArtAuth();
       const results = await search3(query);
+      const ratingEntries: Array<{ id: string; serverRating: number }> = [
+        ...results.albums.map((a) => ({ id: a.id, serverRating: a.userRating ?? 0 })),
+        ...results.artists.map((a) => ({ id: a.id, serverRating: (a as { userRating?: number }).userRating ?? 0 })),
+        ...results.songs.map((s) => ({ id: s.id, serverRating: s.userRating ?? 0 })),
+      ];
+      ratingStore.getState().reconcileRatings(ratingEntries);
       set({ results, loading: false });
     } catch (e) {
       set({

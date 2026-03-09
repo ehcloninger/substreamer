@@ -11,8 +11,14 @@ import {
   getRecentlyPlayedAlbums,
   type AlbumID3,
 } from '../services/subsonicService';
+import { ratingStore } from './ratingStore';
 
 const SIZE_HOME = 20;
+
+function reconcileAlbumRatings(albums: AlbumID3[]) {
+  const entries = albums.map((a) => ({ id: a.id, serverRating: a.userRating ?? 0 }));
+  ratingStore.getState().reconcileRatings(entries);
+}
 
 export type AlbumListType =
   | 'recentlyAdded'
@@ -55,6 +61,7 @@ export const albumListsStore = create<AlbumListsState>()(
         try {
           await ensureCoverArtAuth();
           const albums = await getRecentlyAddedAlbums(SIZE_HOME);
+          reconcileAlbumRatings(albums);
           set({ recentlyAdded: albums });
         } catch {
           set({ recentlyAdded: [] });
@@ -65,6 +72,7 @@ export const albumListsStore = create<AlbumListsState>()(
         try {
           await ensureCoverArtAuth();
           const albums = await getRecentlyPlayedAlbums(SIZE_HOME);
+          reconcileAlbumRatings(albums);
           set({ recentlyPlayed: albums });
         } catch {
           set({ recentlyPlayed: [] });
@@ -75,6 +83,7 @@ export const albumListsStore = create<AlbumListsState>()(
         try {
           await ensureCoverArtAuth();
           const albums = await getFrequentlyPlayedAlbums(SIZE_HOME);
+          reconcileAlbumRatings(albums);
           set({ frequentlyPlayed: albums });
         } catch {
           set({ frequentlyPlayed: [] });
@@ -85,6 +94,7 @@ export const albumListsStore = create<AlbumListsState>()(
         try {
           await ensureCoverArtAuth();
           const albums = await getRandomAlbums(SIZE_HOME);
+          reconcileAlbumRatings(albums);
           set({ randomSelection: albums });
         } catch {
           set({ randomSelection: [] });
@@ -101,6 +111,7 @@ export const albumListsStore = create<AlbumListsState>()(
               getFrequentlyPlayedAlbums(SIZE_HOME),
               getRandomAlbums(SIZE_HOME),
             ]);
+          reconcileAlbumRatings([...recentlyAdded, ...recentlyPlayed, ...frequentlyPlayed, ...randomSelection]);
           set({
             recentlyAdded,
             recentlyPlayed,

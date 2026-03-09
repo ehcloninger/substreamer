@@ -93,8 +93,7 @@ export function SetRatingSheet() {
     ]);
 
     if (result.status === 'fulfilled') {
-      const rawServerRating = setRatingStore.getState().rawServerRating;
-      ratingStore.getState().setOverride(entityId, localRating, rawServerRating);
+      ratingStore.getState().setOverride(entityId, localRating);
 
       setSaveState('success');
       closeTimer.current = setTimeout(() => {

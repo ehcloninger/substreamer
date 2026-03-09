@@ -359,7 +359,6 @@ export function MoreOptionsSheet() {
         getTitle(entity),
         entityRating,
         coverArtId,
-        getEntityUserRating(entity) ?? 0,
       );
     }, 300);
   }, [entity, entityRating, handleClose]);

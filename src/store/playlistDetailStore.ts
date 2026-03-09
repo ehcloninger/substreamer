@@ -8,6 +8,7 @@ import {
   getPlaylist,
   type PlaylistWithSongs,
 } from '../services/subsonicService';
+import { ratingStore } from './ratingStore';
 
 export interface PlaylistDetailEntry {
   playlist: PlaylistWithSongs;
@@ -41,6 +42,11 @@ export const playlistDetailStore = create<PlaylistDetailState>()(
         await ensureCoverArtAuth();
         const data = await getPlaylist(id);
         if (data) {
+          const ratingEntries = (data.entry ?? []).map((s) => ({
+            id: s.id,
+            serverRating: s.userRating ?? 0,
+          }));
+          ratingStore.getState().reconcileRatings(ratingEntries);
           set({
             playlists: {
               ...get().playlists,

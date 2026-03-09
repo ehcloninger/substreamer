@@ -21,6 +21,7 @@ import {
   searchArtistMBID,
 } from '../services/musicbrainzService';
 import { sanitizeBiographyText } from '../utils/formatters';
+import { ratingStore } from './ratingStore';
 
 export interface ArtistDetailEntry {
   artist: ArtistWithAlbumsID3;
@@ -111,6 +112,13 @@ export const artistDetailStore = create<ArtistDetailState>()(
           resolvedMbid,
           retrievedAt: Date.now(),
         };
+
+        const ratingEntries: Array<{ id: string; serverRating: number }> = [
+          { id, serverRating: (artistData as { userRating?: number }).userRating ?? 0 },
+          ...topSongs.map((s) => ({ id: s.id, serverRating: s.userRating ?? 0 })),
+          ...(artistData.album ?? []).map((a) => ({ id: a.id, serverRating: a.userRating ?? 0 })),
+        ];
+        ratingStore.getState().reconcileRatings(ratingEntries);
 
         set({
           artists: {

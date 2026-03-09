@@ -5,15 +5,14 @@ import { sqliteStorage } from './sqliteStorage';
 
 interface RatingOverride {
   rating: number;
-  baseRating: number;
 }
 
 interface RatingState {
   overrides: Record<string, RatingOverride>;
 
-  setOverride: (id: string, rating: number, baseRating: number) => void;
+  setOverride: (id: string, rating: number) => void;
   removeOverride: (id: string) => void;
-  syncOverride: (id: string, serverRating: number) => void;
+  reconcileRatings: (entries: Array<{ id: string; serverRating: number }>) => void;
   clearOverrides: () => void;
 }
 
@@ -24,9 +23,9 @@ export const ratingStore = create<RatingState>()(
     (set) => ({
       overrides: {},
 
-      setOverride: (id, rating, baseRating) =>
+      setOverride: (id, rating) =>
         set((s) => ({
-          overrides: { ...s.overrides, [id]: { rating, baseRating } },
+          overrides: { ...s.overrides, [id]: { rating } },
         })),
 
       removeOverride: (id) =>
@@ -35,16 +34,18 @@ export const ratingStore = create<RatingState>()(
           return { overrides: rest };
         }),
 
-      syncOverride: (id, serverRating) =>
+      reconcileRatings: (entries) =>
         set((s) => {
-          const existing = s.overrides[id];
-          if (!existing || existing.rating === serverRating) return s;
-          return {
-            overrides: {
-              ...s.overrides,
-              [id]: { rating: serverRating, baseRating: existing.baseRating },
-            },
-          };
+          let changed = false;
+          const newOverrides = { ...s.overrides };
+          for (const { id, serverRating } of entries) {
+            const existing = newOverrides[id];
+            if (existing && existing.rating !== serverRating) {
+              newOverrides[id] = { rating: serverRating };
+              changed = true;
+            }
+          }
+          return changed ? { overrides: newOverrides } : s;
         }),
 
       clearOverrides: () => set({ overrides: {} }),

@@ -10,6 +10,7 @@ import {
   type AlbumID3,
 } from '../services/subsonicService';
 import { layoutPreferencesStore } from './layoutPreferencesStore';
+import { ratingStore } from './ratingStore';
 
 export interface AlbumLibraryState {
   /** All albums in the user's library */
@@ -68,6 +69,9 @@ export const albumLibraryStore = create<AlbumLibraryState>()(
             })
           );
 
+          ratingStore.getState().reconcileRatings(
+            albums.map((a) => ({ id: a.id, serverRating: a.userRating ?? 0 }))
+          );
           set({
             albums,
             loading: false,

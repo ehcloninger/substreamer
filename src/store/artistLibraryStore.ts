@@ -8,6 +8,7 @@ import {
   getAllArtists,
   type ArtistID3,
 } from '../services/subsonicService';
+import { ratingStore } from './ratingStore';
 
 export interface ArtistLibraryState {
   /** All artists in the user's library */
@@ -44,6 +45,9 @@ export const artistLibraryStore = create<ArtistLibraryState>()(
           await ensureCoverArtAuth();
           const artists = await getAllArtists();
 
+          ratingStore.getState().reconcileRatings(
+            artists.map((a) => ({ id: a.id, serverRating: (a as { userRating?: number }).userRating ?? 0 }))
+          );
           set({
             artists,
             loading: false,

@@ -8,6 +8,7 @@ import {
   getAlbum,
   type AlbumWithSongsID3,
 } from '../services/subsonicService';
+import { ratingStore } from './ratingStore';
 
 export interface AlbumDetailEntry {
   album: AlbumWithSongsID3;
@@ -35,6 +36,11 @@ export const albumDetailStore = create<AlbumDetailState>()(
         await ensureCoverArtAuth();
         const data = await getAlbum(id);
         if (data) {
+          const ratingEntries: Array<{ id: string; serverRating: number }> = [
+            { id: data.id, serverRating: data.userRating ?? 0 },
+            ...(data.song ?? []).map((s) => ({ id: s.id, serverRating: s.userRating ?? 0 })),
+          ];
+          ratingStore.getState().reconcileRatings(ratingEntries);
           set({
             albums: {
               ...get().albums,

@@ -10,6 +10,7 @@ import {
   type ArtistID3,
   type Child,
 } from '../services/subsonicService';
+import { ratingStore } from './ratingStore';
 
 export interface FavoritesState {
   /** Starred songs */
@@ -61,6 +62,13 @@ export const favoritesStore = create<FavoritesState>()(
         try {
           await ensureCoverArtAuth();
           const { albums, artists, songs } = await getStarred2();
+
+          const ratingEntries: Array<{ id: string; serverRating: number }> = [
+            ...songs.map((s) => ({ id: s.id, serverRating: s.userRating ?? 0 })),
+            ...albums.map((a) => ({ id: a.id, serverRating: a.userRating ?? 0 })),
+            ...artists.map((a) => ({ id: a.id, serverRating: (a as { userRating?: number }).userRating ?? 0 })),
+          ];
+          ratingStore.getState().reconcileRatings(ratingEntries);
 
           set({
             songs,
