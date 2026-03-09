@@ -17,9 +17,9 @@ export type ExtractedColors = {
   detail?: string;
 };
 
-/** Prefer primary (iOS) then darkVibrant (Android/Web); else null for theme background. */
+/** Prefer secondary (iOS) then darkVibrant (Android/Web); else null for theme background. */
 export function getProminentColor(result: ExtractedColors): string | null {
-  if (result.primary && typeof result.primary === 'string') return result.primary;
+  if (result.secondary && typeof result.secondary === 'string') return result.secondary;
   if (result.darkVibrant && typeof result.darkVibrant === 'string') return result.darkVibrant;
   return null;
 }
