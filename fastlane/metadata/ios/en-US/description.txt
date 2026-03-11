@@ -6,7 +6,7 @@ Features:
 - Offline mode with automatic music caching
 - Browse by album, artist, playlist, or genre
 - Search across your entire library
-- Scrobbling support
+- Scrobbling support (including offline scrobbles!)
 - Customizable themes (light/dark mode)
 - High-quality streaming with configurable bitrate
 - Share tracks and albums
