@@ -1,5 +1,8 @@
 # Changelog
 
+## [8.0.24] - 2026-03-13
+
+- android: fix crazy version / versionCode handling.  Now I might actually get a beta release available!
 ## [8.0.23] - 2026-03-13
 
 - android: alerts were not themed
