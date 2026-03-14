@@ -23,6 +23,7 @@ module.exports = {
     'modules/expo-async-fs/src/index.ts',
     'modules/expo-backup-exclusions/src/index.ts',
     'modules/expo-gzip/src/index.ts',
+    'modules/expo-move-to-back/src/index.ts',
     'modules/expo-ssl-trust/src/ExpoSslTrust.ts',
     'modules/react-native-track-player/src/trackPlayer.ts',
     'modules/react-native-track-player/src/hooks/use*.ts',
