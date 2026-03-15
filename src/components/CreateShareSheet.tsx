@@ -3,15 +3,14 @@ import * as Clipboard from 'expo-clipboard';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomSheet } from './BottomSheet';
 import { useTheme } from '../hooks/useTheme';
 import {
   createShare,
@@ -46,7 +45,6 @@ export function CreateShareSheet() {
   const hide = createShareStore((s) => s.hide);
 
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const [description, setDescription] = useState('');
   const [selectedExpiration, setSelectedExpiration] = useState<ExpirationDays>(null);
@@ -105,11 +103,6 @@ export function CreateShareSheet() {
   const dynamicStyles = useMemo(
     () =>
       StyleSheet.create({
-        sheet: {
-          backgroundColor: colors.card,
-          paddingBottom: Math.max(insets.bottom, 16),
-        },
-        handle: { backgroundColor: colors.border },
         title: { color: colors.textPrimary },
         subtitle: { color: colors.textSecondary },
         label: { color: colors.textSecondary },
@@ -136,27 +129,17 @@ export function CreateShareSheet() {
         urlText: { color: colors.textPrimary },
         copyButton: { backgroundColor: colors.primary },
       }),
-    [colors, insets.bottom],
+    [colors],
   );
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
-      <Pressable style={styles.backdrop} onPress={handleClose} />
-
-      <View style={[styles.sheet, dynamicStyles.sheet]}>
-        <View style={[styles.handle, dynamicStyles.handle]} />
-
-        <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
-          Share {typeLabel}
-        </Text>
-        <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
-          {itemName}
-        </Text>
+    <BottomSheet visible={visible} onClose={handleClose}>
+      <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
+        Share {typeLabel}
+      </Text>
+      <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
+        {itemName}
+      </Text>
 
         {shareUrl ? (
           <View style={styles.successSection}>
@@ -259,29 +242,11 @@ export function CreateShareSheet() {
             </Pressable>
           </View>
         )}
-      </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
   title: {
     fontSize: 18,
     fontWeight: '700',

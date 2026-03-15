@@ -1,15 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback } from 'react';
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomSheet } from './BottomSheet';
 import { useTheme } from '../hooks/useTheme';
 import { type CertificateInfo } from '../../modules/expo-ssl-trust/src';
 
@@ -37,7 +36,6 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
   onCancel,
 }: CertificatePromptModalProps) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const handleTrust = useCallback(() => {
     onTrust();
@@ -50,28 +48,11 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
   if (!certInfo) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onCancel}
-    >
-      <Pressable style={styles.backdrop} onPress={onCancel} />
-      <View
-        style={[
-          styles.sheet,
-          {
-            backgroundColor: colors.card,
-            paddingBottom: Math.max(insets.bottom, 16),
-          },
-        ]}
+    <BottomSheet visible={visible} onClose={onCancel} maxHeight="85%">
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.handle, { backgroundColor: colors.border }]} />
-
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
           {/* Warning Header */}
           <View style={styles.headerRow}>
             <Ionicons
@@ -199,8 +180,7 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
             </Text>
           </Pressable>
         </ScrollView>
-      </View>
-    </Modal>
+    </BottomSheet>
   );
 });
 
@@ -255,23 +235,6 @@ function formatDate(isoString: string): string {
 // --- Styles ---
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 8,
-    maxHeight: '85%',
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
   content: {
     paddingHorizontal: 20,
   },

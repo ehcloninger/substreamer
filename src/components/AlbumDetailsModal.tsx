@@ -1,14 +1,12 @@
 import { useMemo } from 'react';
 import {
-  Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomSheet } from './BottomSheet';
 import { useTheme } from '../hooks/useTheme';
 import type { AlbumID3, AlbumWithSongsID3, Child } from '../services/subsonicService';
 import { formatCompactDuration } from '../utils/formatters';
@@ -89,7 +87,6 @@ function formatDate(date: Date | string): string {
 
 export function AlbumDetailsModal({ album, visible, onClose }: AlbumDetailsModalProps) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const rows = useMemo(() => {
     const result: { label: string; value: string }[] = [];
@@ -142,72 +139,31 @@ export function AlbumDetailsModal({ album, visible, onClose }: AlbumDetailsModal
   }, [album]);
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      {/* Backdrop */}
-      <Pressable style={styles.backdrop} onPress={onClose} />
+    <BottomSheet visible={visible} onClose={onClose} maxHeight="60%">
+      <Text style={[styles.title, { color: colors.textPrimary }]}>
+        Album Details
+      </Text>
 
-      {/* Sheet */}
-      <View
-        style={[
-          styles.sheet,
-          {
-            backgroundColor: colors.card,
-            paddingBottom: Math.max(insets.bottom, 16),
-          },
-        ]}
-      >
-        {/* Handle indicator */}
-        <View style={[styles.handle, { backgroundColor: colors.border }]} />
-
-        {/* Title */}
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Album Details
-        </Text>
-
-        <ScrollView style={styles.scrollArea} bounces={false}>
-          {rows.map((row) => (
-            <View key={row.label} style={styles.row}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {row.label}
-              </Text>
-              <Text
-                style={[styles.value, { color: colors.textPrimary }]}
-                numberOfLines={2}
-              >
-                {row.value}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-    </Modal>
+      <ScrollView style={styles.scrollArea} bounces={false}>
+        {rows.map((row) => (
+          <View key={row.label} style={styles.row}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>
+              {row.label}
+            </Text>
+            <Text
+              style={[styles.value, { color: colors.textPrimary }]}
+              numberOfLines={2}
+            >
+              {row.value}
+            </Text>
+          </View>
+        ))}
+      </ScrollView>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    maxHeight: '60%',
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
   title: {
     fontSize: 18,
     fontWeight: '700',

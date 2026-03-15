@@ -15,17 +15,16 @@ import { usePathname, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AlbumDetailsModal } from './AlbumDetailsModal';
+import { BottomSheet } from './BottomSheet';
 import { ThemedAlert } from './ThemedAlert';
 import { useThemedAlert } from '../hooks/useThemedAlert';
-import { AlbumDetailsModal } from './AlbumDetailsModal';
 import { StarRatingDisplay } from './StarRating';
 import { useDownloadStatus, type DownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
@@ -195,7 +194,6 @@ export function MoreOptionsSheet() {
   const { alert, alertProps } = useThemedAlert();
   const router = useRouter();
   const pathname = usePathname();
-  const insets = useSafeAreaInsets();
 
   const [busy, setBusy] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
@@ -428,9 +426,6 @@ export function MoreOptionsSheet() {
   if (!entity) {
     return (
       <>
-        <Modal visible={false} transparent>
-          <View />
-        </Modal>
         {detailsAlbum && (
           <AlbumDetailsModal
             album={detailsAlbum}
@@ -476,28 +471,7 @@ export function MoreOptionsSheet() {
 
   return (
     <>
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-        onRequestClose={handleClose}
-      >
-        {/* Backdrop */}
-        <Pressable style={styles.backdrop} onPress={handleClose} />
-
-        {/* Sheet */}
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.card,
-              paddingBottom: Math.max(insets.bottom, 16),
-            },
-          ]}
-        >
-          {/* Handle indicator */}
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
-
+      <BottomSheet visible={visible} onClose={handleClose}>
           {source === 'player' && showAddQueueToPlaylist ? (
             <>
               {/* Section 1: Player Queue */}
@@ -1297,8 +1271,7 @@ export function MoreOptionsSheet() {
               )}
             </>
           )}
-        </View>
-      </Modal>
+      </BottomSheet>
 
       {detailsAlbum && (
         <AlbumDetailsModal
@@ -1320,23 +1293,6 @@ export function MoreOptionsSheet() {
 /* ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
   sheetTitle: {
     fontSize: 16,
     fontWeight: '700',

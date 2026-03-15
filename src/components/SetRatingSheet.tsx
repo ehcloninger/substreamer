@@ -2,14 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomSheet } from './BottomSheet';
 import { CachedImage } from './CachedImage';
 import { StarRatingInput } from './StarRating';
 import { useTheme } from '../hooks/useTheme';
@@ -37,7 +36,6 @@ export function SetRatingSheet() {
   const hide = setRatingStore((s) => s.hide);
 
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const [localRating, setLocalRating] = useState(currentRating);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -121,11 +119,6 @@ export function SetRatingSheet() {
   const dynamicStyles = useMemo(
     () =>
       StyleSheet.create({
-        sheet: {
-          backgroundColor: colors.card,
-          paddingBottom: Math.max(insets.bottom, 16),
-        },
-        handle: { backgroundColor: colors.border },
         title: { color: colors.textPrimary },
         subtitle: { color: colors.textSecondary },
         ratingLabel: { color: colors.textSecondary },
@@ -135,22 +128,12 @@ export function SetRatingSheet() {
         clearText: { color: colors.textPrimary },
         doneButton: { backgroundColor: colors.primary },
       }),
-    [colors, insets.bottom],
+    [colors],
   );
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
-      <Pressable style={styles.backdrop} onPress={handleClose} />
-
-      <View style={[styles.sheet, dynamicStyles.sheet]}>
-        <View style={[styles.handle, dynamicStyles.handle]} />
-
-        <View style={styles.header}>
+    <BottomSheet visible={visible} onClose={handleClose} closeable={!isBusy}>
+      <View style={styles.header}>
           {coverArtId && (
             <CachedImage
               coverArtId={coverArtId}
@@ -228,29 +211,11 @@ export function SetRatingSheet() {
             )}
           </Pressable>
         </View>
-      </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

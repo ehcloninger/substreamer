@@ -3,15 +3,14 @@ import { FlashList } from '@shopify/flash-list';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomSheet } from './BottomSheet';
 import { useTheme } from '../hooks/useTheme';
 import {
   searchArtists,
@@ -107,7 +106,6 @@ export function MbidSearchSheet() {
   const hide = mbidSearchStore((s) => s.hide);
 
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<MusicBrainzArtist[]>([]);
@@ -199,38 +197,23 @@ export function MbidSearchSheet() {
   const dynamicStyles = useMemo(
     () =>
       StyleSheet.create({
-        sheet: {
-          backgroundColor: colors.card,
-          paddingBottom: Math.max(insets.bottom, 16),
-        },
-        handle: { backgroundColor: colors.border },
         input: {
           backgroundColor: colors.inputBg,
           color: colors.textPrimary,
           borderColor: colors.border,
         },
       }),
-    [colors, insets.bottom],
+    [colors],
   );
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
-      <Pressable style={styles.backdrop} onPress={handleClose} />
-
-      <View style={[styles.sheet, dynamicStyles.sheet]}>
-        <View style={[styles.handle, dynamicStyles.handle]} />
-
-        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-          Set MusicBrainz ID
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-          {artistName ?? 'Search for an artist'}
-        </Text>
+    <BottomSheet visible={visible} onClose={handleClose} maxHeight="80%">
+      <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+        Set MusicBrainz ID
+      </Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+        {artistName ?? 'Search for an artist'}
+      </Text>
 
         <View style={styles.searchRow}>
           <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
@@ -275,30 +258,11 @@ export function MbidSearchSheet() {
             />
           ) : null}
         </View>
-      </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    maxHeight: '80%',
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
   title: {
     fontSize: 18,
     fontWeight: '700',

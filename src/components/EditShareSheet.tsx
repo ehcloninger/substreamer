@@ -2,15 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomSheet } from './BottomSheet';
 import { useTheme } from '../hooks/useTheme';
 import { updateShare } from '../services/subsonicService';
 import { editShareStore } from '../store/editShareStore';
@@ -52,7 +51,6 @@ export function EditShareSheet() {
   const hide = editShareStore((s) => s.hide);
 
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const [description, setDescription] = useState('');
   const [selectedExpiration, setSelectedExpiration] = useState<ExpirationDays>(null);
@@ -97,11 +95,6 @@ export function EditShareSheet() {
   const dynamicStyles = useMemo(
     () =>
       StyleSheet.create({
-        sheet: {
-          backgroundColor: colors.card,
-          paddingBottom: Math.max(insets.bottom, 16),
-        },
-        handle: { backgroundColor: colors.border },
         title: { color: colors.textPrimary },
         subtitle: { color: colors.textSecondary },
         label: { color: colors.textSecondary },
@@ -120,7 +113,7 @@ export function EditShareSheet() {
         saveButton: { backgroundColor: colors.primary },
         errorText: { color: colors.red },
       }),
-    [colors, insets.bottom],
+    [colors],
   );
 
   const shareTitle = useMemo(() => {
@@ -135,23 +128,13 @@ export function EditShareSheet() {
   }, [share]);
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
-      <Pressable style={styles.backdrop} onPress={handleClose} />
-
-      <View style={[styles.sheet, dynamicStyles.sheet]}>
-        <View style={[styles.handle, dynamicStyles.handle]} />
-
-        <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
-          Edit Share
-        </Text>
-        <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
-          {shareTitle}
-        </Text>
+    <BottomSheet visible={visible} onClose={handleClose}>
+      <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
+        Edit Share
+      </Text>
+      <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
+        {shareTitle}
+      </Text>
 
         <View style={styles.formSection}>
           <Text style={[styles.label, dynamicStyles.label]}>Description</Text>
@@ -223,29 +206,11 @@ export function EditShareSheet() {
             <Text style={[styles.cancelButtonText, { color: colors.primary }]}>Cancel</Text>
           </Pressable>
         </View>
-      </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
   title: {
     fontSize: 18,
     fontWeight: '700',

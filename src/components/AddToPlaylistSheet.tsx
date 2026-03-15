@@ -1,17 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type LayoutChangeEvent,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  runOnJS,
+  Easing,
+} from 'react-native-reanimated';
 
+import { BottomSheet } from './BottomSheet';
 import { useTheme } from '../hooks/useTheme';
 import { syncCachedItemTracks } from '../services/musicCacheService';
 import {
@@ -29,6 +36,10 @@ import { playlistLibraryStore } from '../store/playlistLibraryStore';
 import { processingOverlayStore } from '../store/processingOverlayStore';
 
 import type { Playlist } from '../services/subsonicService';
+
+const CONTENT_DELAY_MS = 750;
+const CONTENT_ANIMATE_DURATION = 1000;
+const SPINNER_HEIGHT = 48;
 
 /**
  * Resolve the song IDs to add from a target.
@@ -69,14 +80,66 @@ export function AddToPlaylistSheet() {
   const playlistsFetchError = playlistLibraryStore((s) => s.error);
 
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
 
-  // Fetch fresh playlists every time the sheet opens
+  // Animate content reveal in two phases:
+  // Phase 1 (entry animation): show spinner at a compact height.
+  // Phase 2 (after delay): mount the real content off-screen to measure it,
+  //   then animate the container height from SPINNER_HEIGHT → measured height
+  //   and fade the content in simultaneously.
+  // Phase: 'loading' → 'measuring' → 'ready'
+  // 'loading': spinner shown, compact height
+  // 'measuring': content mounted off-screen to capture its height
+  // 'ready': height + opacity animating in
+  const [phase, setPhase] = useState<'loading' | 'measuring' | 'ready'>('loading');
+  const hasMeasured = useRef(false);
+  const animatedHeight = useSharedValue(SPINNER_HEIGHT);
+  const contentOpacity = useSharedValue(0);
+
   useEffect(() => {
     if (visible) {
-      playlistLibraryStore.getState().fetchAllPlaylists();
+      setPhase('loading');
+      hasMeasured.current = false;
+      animatedHeight.value = SPINNER_HEIGHT;
+      contentOpacity.value = 0;
+      const timer = setTimeout(() => {
+        playlistLibraryStore.getState().fetchAllPlaylists();
+        setPhase('measuring');
+      }, CONTENT_DELAY_MS);
+      return () => clearTimeout(timer);
     }
-  }, [visible]);
+    return undefined;
+  }, [visible, animatedHeight, contentOpacity]);
+
+  const transitionToReady = useCallback(() => {
+    setPhase('ready');
+  }, []);
+
+  const handleContentLayout = useCallback((e: LayoutChangeEvent) => {
+    if (hasMeasured.current) return;
+    hasMeasured.current = true;
+    const targetHeight = e.nativeEvent.layout.height;
+    animatedHeight.value = withTiming(targetHeight, {
+      duration: CONTENT_ANIMATE_DURATION,
+      easing: Easing.out(Easing.cubic),
+    }, (finished) => {
+      if (finished) {
+        runOnJS(transitionToReady)();
+      }
+    });
+    contentOpacity.value = withTiming(1, {
+      duration: CONTENT_ANIMATE_DURATION,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [animatedHeight, contentOpacity, transitionToReady]);
+
+  const containerAnimatedStyle = useAnimatedStyle(() => ({
+    height: animatedHeight.value,
+    overflow: 'hidden' as const,
+  }));
+
+  const contentAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+  }));
 
   const [mode, setMode] = useState<'pick' | 'create'>('pick');
   const [name, setName] = useState('');
@@ -163,11 +226,6 @@ export function AddToPlaylistSheet() {
   const dynamicStyles = useMemo(
     () =>
       StyleSheet.create({
-        sheet: {
-          backgroundColor: colors.card,
-          paddingBottom: Math.max(insets.bottom, 16),
-        },
-        handle: { backgroundColor: colors.border },
         title: { color: colors.textPrimary },
         subtitle: { color: colors.textSecondary },
         input: {
@@ -182,32 +240,36 @@ export function AddToPlaylistSheet() {
         newPlaylistLabel: { color: colors.primary },
         separator: { backgroundColor: colors.border },
       }),
-    [colors, insets.bottom],
+    [colors],
   );
 
   const subtitle = target ? getSubtitleText(target) : '';
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
-      <Pressable style={styles.backdrop} onPress={handleClose} />
+    <BottomSheet visible={visible} onClose={handleClose} maxHeight="70%">
+      <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
+        Add to Playlist
+      </Text>
+      <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
+        {subtitle}
+      </Text>
 
-      <View style={[styles.sheet, dynamicStyles.sheet]}>
-        <View style={[styles.handle, dynamicStyles.handle]} />
-
-        <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
-          Add to Playlist
-        </Text>
-        <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
-          {subtitle}
-        </Text>
-
-        {mode === 'pick' ? (
-          <ScrollView
+      <Animated.View style={[styles.flexContainer, phase !== 'ready' && containerAnimatedStyle]}>
+        {phase === 'loading' ? (
+          <ActivityIndicator style={styles.loadingIndicator} color={colors.textSecondary} />
+        ) : (
+          <Animated.View
+            style={[
+              styles.flexContainer,
+              contentAnimatedStyle,
+              // During 'measuring', render absolutely positioned and off-screen
+              // so the content can report its natural height without affecting layout
+              phase === 'measuring' && styles.measuring,
+            ]}
+            onLayout={phase === 'measuring' ? handleContentLayout : undefined}
+          >
+          {mode === 'pick' ? (
+            <ScrollView
             style={styles.listContainer}
             contentContainerStyle={styles.listContent}
             bounces={false}
@@ -319,31 +381,15 @@ export function AddToPlaylistSheet() {
               )}
             </Pressable>
           </View>
+          )}
+          </Animated.View>
         )}
-      </View>
-    </Modal>
+      </Animated.View>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    maxHeight: '70%',
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
   title: {
     fontSize: 18,
     fontWeight: '700',
@@ -355,6 +401,9 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     marginBottom: 16,
     paddingHorizontal: 4,
+  },
+  flexContainer: {
+    flexShrink: 1,
   },
   listContainer: {
     flexShrink: 1,
@@ -451,5 +500,10 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  measuring: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
 });
