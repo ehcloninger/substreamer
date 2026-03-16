@@ -658,6 +658,7 @@ export function SettingsConnectivityScreen() {
           {trustedCertEntries.length > 0 ? (
             trustedCertEntries.map(([hostname, entry], index) => {
               const isActive = hostname === activeHostname;
+              const isExpired = !!(entry.validTo && entry.validTo !== 'Unknown' && new Date(entry.validTo) < new Date());
               return (
                 <View
                   key={hostname}
@@ -669,24 +670,27 @@ export function SettingsConnectivityScreen() {
                   <View style={styles.trustedCertInfo}>
                     <View style={styles.trustedCertHeader}>
                       <Ionicons
-                        name={isActive ? 'shield-checkmark' : 'shield-checkmark-outline'}
+                        name={isExpired ? 'shield-outline' : isActive ? 'shield-checkmark' : 'shield-checkmark-outline'}
                         size={16}
-                        color={colors.primary}
+                        color={isExpired ? colors.red : colors.primary}
                       />
                       <Text style={[styles.trustedCertHostname, { color: colors.textPrimary }]}>
                         {hostname}
                       </Text>
-                      {isActive && (
+                      {isActive && !isExpired && (
                         <View style={[styles.activeDot, { backgroundColor: colors.primary }]} />
+                      )}
+                      {isExpired && (
+                        <Text style={[styles.expiredBadge, { color: colors.red }]}>Expired</Text>
                       )}
                     </View>
                     <Text style={[styles.trustedCertFingerprint, { color: colors.textSecondary }]} numberOfLines={1}>
                       {entry.sha256.substring(0, 23)}...
                     </Text>
-                    <Text style={[styles.trustedCertDate, { color: colors.textSecondary }]}>
+                    <Text style={[styles.trustedCertDate, { color: isExpired ? colors.red : colors.textSecondary }]}>
                       Trusted {new Date(entry.acceptedAt).toLocaleDateString()}
                       {entry.validTo && entry.validTo !== 'Unknown'
-                        ? `  ·  Expires ${new Date(entry.validTo).toLocaleDateString()}`
+                        ? `  ·  ${isExpired ? 'Expired' : 'Expires'} ${new Date(entry.validTo).toLocaleDateString()}`
                         : ''}
                     </Text>
                   </View>
@@ -954,6 +958,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  expiredBadge: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   modalBackdrop: {
     flex: 1,
