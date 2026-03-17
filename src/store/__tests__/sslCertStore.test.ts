@@ -14,6 +14,18 @@ describe('sslCertStore', () => {
     expect(entry.acceptedAt).toBeGreaterThan(0);
   });
 
+  it('trustCertificate stores validTo when provided', () => {
+    sslCertStore.getState().trustCertificate('example.com', 'aa:bb:cc', '2027-01-01T00:00:00Z');
+    const entry = sslCertStore.getState().trustedCerts['example.com'];
+    expect(entry.validTo).toBe('2027-01-01T00:00:00Z');
+  });
+
+  it('trustCertificate omits validTo when not provided', () => {
+    sslCertStore.getState().trustCertificate('example.com', 'aa:bb:cc');
+    const entry = sslCertStore.getState().trustedCerts['example.com'];
+    expect(entry.validTo).toBeUndefined();
+  });
+
   it('trustCertificate overwrites existing entry', () => {
     sslCertStore.getState().trustCertificate('example.com', 'aa:bb:cc');
     sslCertStore.getState().trustCertificate('example.com', 'dd:ee:ff');
