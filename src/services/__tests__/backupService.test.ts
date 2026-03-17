@@ -62,6 +62,7 @@ jest.mock('../../store/sqliteStorage', () => require('../../store/__mocks__/sqli
 
 import { completedScrobbleStore } from '../../store/completedScrobbleStore';
 import { mbidOverrideStore } from '../../store/mbidOverrideStore';
+import { scrobbleExclusionStore } from '../../store/scrobbleExclusionStore';
 import { backupStore } from '../../store/backupStore';
 import {
   createBackup,
@@ -82,6 +83,7 @@ beforeEach(() => {
     stats: { totalPlays: 0, totalListeningSeconds: 0, uniqueArtists: {} },
   });
   mbidOverrideStore.setState({ overrides: {} });
+  scrobbleExclusionStore.setState({ excludedAlbums: {}, excludedArtists: {}, excludedPlaylists: {} });
   backupStore.setState({ autoBackupEnabled: false, lastBackupTime: null });
 });
 
@@ -101,9 +103,10 @@ describe('createBackup', () => {
       .filter(([k]) => k.endsWith('.meta.json'));
     expect(metaEntries).toHaveLength(1);
     const meta = JSON.parse(metaEntries[0][1].content);
-    expect(meta.version).toBe(2);
+    expect(meta.version).toBe(3);
     expect(meta.scrobbles).toEqual({ itemCount: 1, sizeBytes: 42 });
     expect(meta.mbidOverrides).toBeNull();
+    expect(meta.scrobbleExclusions).toBeNull();
   });
 
   it('compresses MBID overrides when present', async () => {
@@ -121,6 +124,42 @@ describe('createBackup', () => {
     expect(meta.mbidOverrides).toEqual({ itemCount: 1, sizeBytes: 30 });
   });
 
+  it('compresses scrobble exclusions when present', async () => {
+    scrobbleExclusionStore.setState({
+      excludedAlbums: { 'alb-1': { id: 'alb-1', name: 'Album 1' } },
+      excludedArtists: { 'art-1': { id: 'art-1', name: 'Artist 1' } },
+      excludedPlaylists: {},
+    });
+    mockCompressToFile.mockResolvedValue({ bytes: 25 });
+
+    await createBackup();
+
+    expect(mockCompressToFile).toHaveBeenCalledTimes(1);
+    const metaEntries = Array.from(mockFileInstances.entries())
+      .filter(([k]) => k.endsWith('.meta.json'));
+    const meta = JSON.parse(metaEntries[0][1].content);
+    expect(meta.scrobbleExclusions).toEqual({ itemCount: 2, sizeBytes: 25 });
+  });
+
+  it('creates all three datasets when all have data', async () => {
+    completedScrobbleStore.setState({
+      completedScrobbles: [{ id: 's1', song: {}, time: 1 }] as any,
+    });
+    mbidOverrideStore.setState({
+      overrides: { 'a1': { mbid: 'x' } } as any,
+    });
+    scrobbleExclusionStore.setState({
+      excludedAlbums: { 'alb-1': { id: 'alb-1', name: 'A' } },
+      excludedArtists: {},
+      excludedPlaylists: {},
+    });
+    mockCompressToFile.mockResolvedValue({ bytes: 10 });
+
+    await createBackup();
+
+    expect(mockCompressToFile).toHaveBeenCalledTimes(3);
+  });
+
   it('creates both datasets when both have data', async () => {
     completedScrobbleStore.setState({
       completedScrobbles: [{ id: 's1', song: {}, time: 1 }] as any,
@@ -135,7 +174,7 @@ describe('createBackup', () => {
     expect(mockCompressToFile).toHaveBeenCalledTimes(2);
   });
 
-  it('is a no-op when both datasets are empty', async () => {
+  it('is a no-op when all datasets are empty', async () => {
     await createBackup();
     expect(mockCompressToFile).not.toHaveBeenCalled();
     const metaEntries = Array.from(mockFileInstances.entries())
@@ -158,16 +197,18 @@ describe('createBackup', () => {
 describe('listBackups', () => {
   it('parses meta files and returns sorted entries', async () => {
     const meta1 = JSON.stringify({
-      version: 2,
+      version: 3,
       createdAt: '2025-01-01T00:00:00Z',
       scrobbles: { itemCount: 5, sizeBytes: 100 },
       mbidOverrides: null,
+      scrobbleExclusions: null,
     });
     const meta2 = JSON.stringify({
-      version: 2,
+      version: 3,
       createdAt: '2025-06-01T00:00:00Z',
       scrobbles: { itemCount: 10, sizeBytes: 200 },
       mbidOverrides: { itemCount: 2, sizeBytes: 50 },
+      scrobbleExclusions: null,
     });
 
     mockListDirectoryAsync.mockResolvedValue([
@@ -211,10 +252,11 @@ describe('listBackups', () => {
 
   it('skips entries with missing data files', async () => {
     const meta = JSON.stringify({
-      version: 2,
+      version: 3,
       createdAt: '2025-01-01',
       scrobbles: { itemCount: 5, sizeBytes: 100 },
       mbidOverrides: null,
+      scrobbleExclusions: null,
     });
     mockListDirectoryAsync.mockResolvedValue(['backup-x.meta.json']);
     mockFileInstances.set('backup-x.meta.json', { exists: true, content: meta, deleted: false });
@@ -239,6 +281,8 @@ describe('restoreBackup', () => {
       scrobbleSizeBytes: 50,
       mbidOverrideCount: 0,
       mbidOverrideSizeBytes: 0,
+      scrobbleExclusionCount: 0,
+      scrobbleExclusionSizeBytes: 0,
     });
 
     expect(result.scrobbleCount).toBe(1);
@@ -258,6 +302,8 @@ describe('restoreBackup', () => {
       scrobbleSizeBytes: 0,
       mbidOverrideCount: 1,
       mbidOverrideSizeBytes: 30,
+      scrobbleExclusionCount: 0,
+      scrobbleExclusionSizeBytes: 0,
     });
 
     expect(result.mbidOverrideCount).toBe(1);
@@ -273,6 +319,8 @@ describe('restoreBackup', () => {
         scrobbleSizeBytes: 50,
         mbidOverrideCount: 0,
         mbidOverrideSizeBytes: 0,
+        scrobbleExclusionCount: 0,
+        scrobbleExclusionSizeBytes: 0,
       }),
     ).rejects.toThrow('Scrobble backup data file not found');
   });
@@ -286,8 +334,50 @@ describe('restoreBackup', () => {
         scrobbleSizeBytes: 0,
         mbidOverrideCount: 1,
         mbidOverrideSizeBytes: 30,
+        scrobbleExclusionCount: 0,
+        scrobbleExclusionSizeBytes: 0,
       }),
     ).rejects.toThrow('MBID override backup data file not found');
+  });
+
+  it('restores scrobble exclusions from backup', async () => {
+    const exclusions = {
+      excludedAlbums: { 'alb-1': { id: 'alb-1', name: 'Album 1' } },
+      excludedArtists: { 'art-1': { id: 'art-1', name: 'Artist 1' } },
+      excludedPlaylists: {},
+    };
+    mockDecompressFromFile.mockResolvedValue(JSON.stringify(exclusions));
+    mockFileInstances.set('backup-x.exclusions.gz', { exists: true, content: '', deleted: false });
+
+    const result = await restoreBackup({
+      stem: 'backup-x',
+      createdAt: '2025-01-01',
+      scrobbleCount: 0,
+      scrobbleSizeBytes: 0,
+      mbidOverrideCount: 0,
+      mbidOverrideSizeBytes: 0,
+      scrobbleExclusionCount: 2,
+      scrobbleExclusionSizeBytes: 25,
+    });
+
+    expect(result.scrobbleExclusionCount).toBe(2);
+    expect(scrobbleExclusionStore.getState().excludedAlbums).toHaveProperty('alb-1');
+    expect(scrobbleExclusionStore.getState().excludedArtists).toHaveProperty('art-1');
+  });
+
+  it('throws when exclusion data file is missing', async () => {
+    await expect(
+      restoreBackup({
+        stem: 'backup-missing',
+        createdAt: '2025-01-01',
+        scrobbleCount: 0,
+        scrobbleSizeBytes: 0,
+        mbidOverrideCount: 0,
+        mbidOverrideSizeBytes: 0,
+        scrobbleExclusionCount: 1,
+        scrobbleExclusionSizeBytes: 10,
+      }),
+    ).rejects.toThrow('Scrobble exclusion backup data file not found');
   });
 });
 
@@ -308,10 +398,11 @@ describe('pruneBackups', () => {
 
     for (const m of metas) {
       const meta = JSON.stringify({
-        version: 2,
+        version: 3,
         createdAt: m.date,
         scrobbles: { itemCount: 1, sizeBytes: 10 },
         mbidOverrides: null,
+        scrobbleExclusions: null,
       });
       mockFileInstances.set(`${m.stem}.meta.json`, { exists: true, content: meta, deleted: false });
       mockFileInstances.set(`${m.stem}.scrobbles.gz`, { exists: true, content: '', deleted: false });
@@ -331,10 +422,11 @@ describe('pruneBackups', () => {
     mockFileInstances.set('b.meta.json', {
       exists: true,
       content: JSON.stringify({
-        version: 2,
+        version: 3,
         createdAt: '2025-01-01',
         scrobbles: { itemCount: 1, sizeBytes: 10 },
         mbidOverrides: null,
+        scrobbleExclusions: null,
       }),
       deleted: false,
     });
@@ -434,17 +526,20 @@ describe('runAutoBackupIfNeeded', () => {
       'backup-a.scrobbles.gz',
       'backup-orphan.scrobbles.gz',
       'backup-orphan.mbid.gz',
+      'backup-orphan.exclusions.gz',
     ]);
     mockFileInstances.set('backup-a.meta.json', { exists: true, content: '', deleted: false });
     mockFileInstances.set('backup-a.scrobbles.gz', { exists: true, content: '', deleted: false });
     mockFileInstances.set('backup-orphan.scrobbles.gz', { exists: true, content: '', deleted: false });
     mockFileInstances.set('backup-orphan.mbid.gz', { exists: true, content: '', deleted: false });
+    mockFileInstances.set('backup-orphan.exclusions.gz', { exists: true, content: '', deleted: false });
 
     await runAutoBackupIfNeeded();
 
     expect(mockFileInstances.get('backup-a.scrobbles.gz')?.deleted).toBeFalsy();
     expect(mockFileInstances.get('backup-orphan.scrobbles.gz')?.deleted).toBe(true);
     expect(mockFileInstances.get('backup-orphan.mbid.gz')?.deleted).toBe(true);
+    expect(mockFileInstances.get('backup-orphan.exclusions.gz')?.deleted).toBe(true);
   });
 
   it('handles listing error in cleanUpOrphanedFiles', async () => {
@@ -496,6 +591,17 @@ describe('createBackup edge cases', () => {
   it('cleans up .tmp file on compressToFile failure for mbid', async () => {
     mbidOverrideStore.setState({
       overrides: { 'a1': { mbid: 'x', name: 'A' } } as any,
+    });
+    mockCompressToFile.mockRejectedValue(new Error('compression failed'));
+
+    await expect(createBackup()).rejects.toThrow('compression failed');
+  });
+
+  it('cleans up .tmp file on compressToFile failure for exclusions', async () => {
+    scrobbleExclusionStore.setState({
+      excludedAlbums: { 'alb-1': { id: 'alb-1', name: 'A' } },
+      excludedArtists: {},
+      excludedPlaylists: {},
     });
     mockCompressToFile.mockRejectedValue(new Error('compression failed'));
 

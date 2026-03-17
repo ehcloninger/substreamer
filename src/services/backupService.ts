@@ -6,9 +6,11 @@ import { compressToFile, decompressFromFile } from 'expo-gzip';
 import { backupStore } from '../store/backupStore';
 import { completedScrobbleStore } from '../store/completedScrobbleStore';
 import { mbidOverrideStore } from '../store/mbidOverrideStore';
+import { scrobbleExclusionStore } from '../store/scrobbleExclusionStore';
 
 import { type CompletedScrobble } from '../store/completedScrobbleStore';
 import { type MbidOverride } from '../store/mbidOverrideStore';
+import { type ScrobbleExclusion } from '../store/scrobbleExclusionStore';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -20,10 +22,11 @@ interface BackupDatasetMeta {
 }
 
 interface BackupMeta {
-  version: 2;
+  version: 3;
   createdAt: string;
   scrobbles: BackupDatasetMeta | null;
   mbidOverrides: BackupDatasetMeta | null;
+  scrobbleExclusions: BackupDatasetMeta | null;
 }
 
 export interface BackupEntry {
@@ -32,6 +35,8 @@ export interface BackupEntry {
   scrobbleSizeBytes: number;
   mbidOverrideCount: number;
   mbidOverrideSizeBytes: number;
+  scrobbleExclusionCount: number;
+  scrobbleExclusionSizeBytes: number;
   stem: string;
 }
 
@@ -77,6 +82,10 @@ function mbidFileName(stem: string): string {
   return `${stem}.mbid.gz`;
 }
 
+function exclusionsFileName(stem: string): string {
+  return `${stem}.exclusions.gz`;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Create backup                                                      */
 /* ------------------------------------------------------------------ */
@@ -88,6 +97,7 @@ export async function createBackup(): Promise<void> {
 
   let scrobblesMeta: BackupDatasetMeta | null = null;
   let mbidMeta: BackupDatasetMeta | null = null;
+  let exclusionsMeta: BackupDatasetMeta | null = null;
 
   const scrobbles = completedScrobbleStore.getState().completedScrobbles;
   if (scrobbles.length > 0) {
@@ -128,13 +138,38 @@ export async function createBackup(): Promise<void> {
     }
   }
 
-  if (!scrobblesMeta && !mbidMeta) return;
+  const { excludedAlbums, excludedArtists, excludedPlaylists } = scrobbleExclusionStore.getState();
+  const exclusionsData = { excludedAlbums, excludedArtists, excludedPlaylists };
+  const exclusionCount =
+    Object.keys(excludedAlbums).length +
+    Object.keys(excludedArtists).length +
+    Object.keys(excludedPlaylists).length;
+  if (exclusionCount > 0) {
+    const tmpFile = new File(backupDir, exclusionsFileName(stem) + '.tmp');
+    const destFile = new File(backupDir, exclusionsFileName(stem));
+    try {
+      const { bytes } = await compressToFile(JSON.stringify(exclusionsData), tmpFile.uri);
+      if (destFile.exists) {
+        try { destFile.delete(); } catch { /* best-effort */ }
+      }
+      tmpFile.move(destFile);
+      exclusionsMeta = { itemCount: exclusionCount, sizeBytes: bytes };
+    } catch (e) {
+      if (tmpFile.exists) {
+        try { tmpFile.delete(); } catch { /* best-effort */ }
+      }
+      throw e;
+    }
+  }
+
+  if (!scrobblesMeta && !mbidMeta && !exclusionsMeta) return;
 
   const meta: BackupMeta = {
-    version: 2,
+    version: 3,
     createdAt: new Date().toISOString(),
     scrobbles: scrobblesMeta,
     mbidOverrides: mbidMeta,
+    scrobbleExclusions: exclusionsMeta,
   };
 
   const metaFile = new File(backupDir, metaFileName(stem));
@@ -167,13 +202,14 @@ export async function listBackups(): Promise<BackupEntry[]> {
       const raw = await metaFile.text();
       const meta: BackupMeta = JSON.parse(raw);
 
-      if (meta.version !== 2) continue;
+      if (meta.version !== 3) continue;
 
       const stem = name.replace(/\.meta\.json$/, '');
 
       const hasScrobbles = meta.scrobbles && new File(backupDir, scrobblesFileName(stem)).exists;
       const hasMbid = meta.mbidOverrides && new File(backupDir, mbidFileName(stem)).exists;
-      if (!hasScrobbles && !hasMbid) continue;
+      const hasExclusions = meta.scrobbleExclusions && new File(backupDir, exclusionsFileName(stem)).exists;
+      if (!hasScrobbles && !hasMbid && !hasExclusions) continue;
 
       entries.push({
         createdAt: meta.createdAt,
@@ -181,6 +217,8 @@ export async function listBackups(): Promise<BackupEntry[]> {
         scrobbleSizeBytes: meta.scrobbles?.sizeBytes ?? 0,
         mbidOverrideCount: meta.mbidOverrides?.itemCount ?? 0,
         mbidOverrideSizeBytes: meta.mbidOverrides?.sizeBytes ?? 0,
+        scrobbleExclusionCount: meta.scrobbleExclusions?.itemCount ?? 0,
+        scrobbleExclusionSizeBytes: meta.scrobbleExclusions?.sizeBytes ?? 0,
         stem,
       });
     } catch {
@@ -198,9 +236,10 @@ export async function listBackups(): Promise<BackupEntry[]> {
 
 export async function restoreBackup(
   entry: BackupEntry,
-): Promise<{ scrobbleCount: number; mbidOverrideCount: number }> {
+): Promise<{ scrobbleCount: number; mbidOverrideCount: number; scrobbleExclusionCount: number }> {
   let scrobbleCount = 0;
   let mbidOverrideCount = 0;
+  let scrobbleExclusionCount = 0;
 
   if (entry.scrobbleCount > 0) {
     const dataFile = new File(backupDir, scrobblesFileName(entry.stem));
@@ -225,7 +264,29 @@ export async function restoreBackup(
     mbidOverrideCount = Object.keys(overrides).length;
   }
 
-  return { scrobbleCount, mbidOverrideCount };
+  if (entry.scrobbleExclusionCount > 0) {
+    const dataFile = new File(backupDir, exclusionsFileName(entry.stem));
+    if (!dataFile.exists) {
+      throw new Error('Scrobble exclusion backup data file not found');
+    }
+    const json = await decompressFromFile(dataFile.uri);
+    const data: {
+      excludedAlbums: Record<string, ScrobbleExclusion>;
+      excludedArtists: Record<string, ScrobbleExclusion>;
+      excludedPlaylists: Record<string, ScrobbleExclusion>;
+    } = JSON.parse(json);
+    scrobbleExclusionStore.setState({
+      excludedAlbums: data.excludedAlbums,
+      excludedArtists: data.excludedArtists,
+      excludedPlaylists: data.excludedPlaylists,
+    });
+    scrobbleExclusionCount =
+      Object.keys(data.excludedAlbums).length +
+      Object.keys(data.excludedArtists).length +
+      Object.keys(data.excludedPlaylists).length;
+  }
+
+  return { scrobbleCount, mbidOverrideCount, scrobbleExclusionCount };
 }
 
 /* ------------------------------------------------------------------ */
@@ -242,6 +303,7 @@ export async function pruneBackups(keep = MAX_BACKUPS): Promise<void> {
       metaFileName(entry.stem),
       scrobblesFileName(entry.stem),
       mbidFileName(entry.stem),
+      exclusionsFileName(entry.stem),
     ];
     for (const name of filesToRemove) {
       try {
@@ -288,7 +350,7 @@ async function cleanUpOrphanedFiles(): Promise<void> {
     if (name.endsWith('.tmp')) continue;
     if (name.endsWith('.meta.json')) continue;
 
-    const stem = name.replace(/\.(scrobbles|mbid)\.gz$/, '');
+    const stem = name.replace(/\.(scrobbles|mbid|exclusions)\.gz$/, '');
     if (stem !== name && !metaStems.has(stem)) {
       try { new File(backupDir, name).delete(); } catch { /* best-effort */ }
     }

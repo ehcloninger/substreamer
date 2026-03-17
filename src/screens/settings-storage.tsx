@@ -282,6 +282,9 @@ export function SettingsStorageScreen() {
     if (entry.mbidOverrideCount > 0) {
       parts.push(`${entry.mbidOverrideCount.toLocaleString()} MBID overrides`);
     }
+    if (entry.scrobbleExclusionCount > 0) {
+      parts.push(`${entry.scrobbleExclusionCount.toLocaleString()} exclusions`);
+    }
     const dateStr = new Date(entry.createdAt).toLocaleString(undefined, {
       dateStyle: 'medium',
       timeStyle: 'short',
@@ -466,7 +469,7 @@ export function SettingsStorageScreen() {
           </View>
         </View>
         <Text style={[styles.backupDescription, { color: colors.textSecondary }]}>
-          Your listening history and artist MBID overrides are backed up to {Platform.OS === 'ios' ? 'iCloud' : 'Google Backup'}, as this data is only available locally.
+          Your listening history, artist MBID overrides, and scrobble exclusions are backed up to {Platform.OS === 'ios' ? 'iCloud' : 'Google Backup'}, as this data is only available locally.
         </Text>
       </View>
 
@@ -915,7 +918,7 @@ export function SettingsStorageScreen() {
               if (entry.mbidOverrideCount > 0) {
                 details.push(`${entry.mbidOverrideCount.toLocaleString()} MBID overrides`);
               }
-              const totalBytes = entry.scrobbleSizeBytes + entry.mbidOverrideSizeBytes;
+              const totalBytes = entry.scrobbleSizeBytes + entry.mbidOverrideSizeBytes + entry.scrobbleExclusionSizeBytes;
               return (
                 <Pressable
                   key={entry.stem}
