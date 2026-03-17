@@ -172,6 +172,8 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
         get { avPlayer.automaticallyWaitsToMinimizeStalling }
         set { avPlayer.automaticallyWaitsToMinimizeStalling = newValue }
     }
+
+    var isUrgentLoad: Bool = false
     
     func play() {
         playWhenReady = true
@@ -236,6 +238,11 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
     }
     
     func load() {
+        // Capture and clear the urgent flag immediately so it doesn't
+        // leak into subsequent loads.
+        let urgent = isUrgentLoad
+        isUrgentLoad = false
+
         if (state == .failed) {
             recreateAVPlayer()
         } else {
@@ -245,18 +252,51 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
             let pendingAsset = AVURLAsset(url: url, options: urlOptions)
             asset = pendingAsset
             state = .loading
-            
+
+            let playableKeys = ["playable"]
+
+            if urgent {
+                // FAST PATH: create the AVPlayerItem synchronously, skipping
+                // loadValuesAsynchronously + DispatchQueue.main.async.  This
+                // avoids the main-queue deferral that stalls background track
+                // transitions when iOS throttles the main run loop.  AVPlayer
+                // will load asset keys on-demand during buffering — the async
+                // pre-load is an optimisation, not a requirement.
+                AudioDiagnosticLog.shared.log("LOAD urgent=true url=\(url.lastPathComponent)")
+
+                let playerItem = AVPlayerItem(
+                    asset: pendingAsset,
+                    automaticallyLoadedAssetKeys: playableKeys
+                )
+                self.item = playerItem
+                playerItem.preferredForwardBufferDuration = self.bufferDuration
+                self.avPlayer.replaceCurrentItem(with: playerItem)
+                AudioDiagnosticLog.shared.log("REPLACE_ITEM urgent=true")
+                self.startObservingAVPlayer(item: playerItem)
+                self.applyAVPlayerRate()
+
+                if let initialTime = self.timeToSeekToAfterLoading {
+                    self.timeToSeekToAfterLoading = nil
+                    self.seek(to: initialTime)
+                }
+
+                AudioDiagnosticLog.shared.log("URGENT_LOAD_COMPLETE")
+                return
+            }
+
+            AudioDiagnosticLog.shared.log("LOAD urgent=false url=\(url.lastPathComponent)")
+
             // Load metadata keys asynchronously and separate from playable, to allow that to execute as quickly as it can
             let metdataKeys = ["commonMetadata", "availableChapterLocales", "availableMetadataFormats"]
             pendingAsset.loadValuesAsynchronously(forKeys: metdataKeys, completionHandler: { [weak self] in
                 guard let self = self else { return }
                 if (pendingAsset != self.asset) { return; }
-                
+
                 let commonData = pendingAsset.commonMetadata
                 if (!commonData.isEmpty) {
                     self.delegate?.AVWrapper(didReceiveCommonMetadata: commonData)
                 }
-                
+
                 if pendingAsset.availableChapterLocales.count > 0 {
                     for locale in pendingAsset.availableChapterLocales {
                         let chapters = pendingAsset.chapterMetadataGroups(withTitleLocale: locale, containingItemsWithCommonKeys: nil)
@@ -270,15 +310,14 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
                     }
                 }
             })
-            
+
             // Load playable portion of the track and commence when ready
-            let playableKeys = ["playable"]
             pendingAsset.loadValuesAsynchronously(forKeys: playableKeys, completionHandler: { [weak self] in
                 guard let self = self else { return }
-                
+
                 DispatchQueue.main.async {
                     if (pendingAsset != self.asset) { return; }
-                    
+
                     for key in playableKeys {
                         var error: NSError?
                         let keyStatus = pendingAsset.statusOfValue(forKey: key, error: &error)
@@ -293,12 +332,12 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
                         default: break
                         }
                     }
-                    
+
                     if (!pendingAsset.isPlayable) {
                         self.playbackFailed(error: AudioPlayerError.PlaybackError.itemWasUnplayable)
                         return;
                     }
-                    
+
                     let item = AVPlayerItem(
                         asset: pendingAsset,
                         automaticallyLoadedAssetKeys: playableKeys
@@ -306,9 +345,10 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
                     self.item = item;
                     item.preferredForwardBufferDuration = self.bufferDuration
                     self.avPlayer.replaceCurrentItem(with: item)
+                    AudioDiagnosticLog.shared.log("REPLACE_ITEM urgent=false (ASYNC_LOAD_COMPLETE)")
                     self.startObservingAVPlayer(item: item)
                     self.applyAVPlayerRate()
-                    
+
                     if let initialTime = self.timeToSeekToAfterLoading {
                         self.timeToSeekToAfterLoading = nil
                         self.seek(to: initialTime)
@@ -436,6 +476,9 @@ extension AVPlayerWrapper: AVPlayerObserverDelegate {
     // MARK: - AVPlayerObserverDelegate
     
     func player(didChangeTimeControlStatus status: AVPlayer.TimeControlStatus) {
+        let statusStr = status == .paused ? "paused" : status == .playing ? "playing" : "waiting"
+        AudioDiagnosticLog.shared.log("STATUS_CHANGE status=\(statusStr) playWhenReady=\(self.playWhenReady) state=\(self._state)")
+
         switch status {
         case .paused:
             let state = self.state
@@ -444,6 +487,12 @@ extension AVPlayerWrapper: AVPlayerObserverDelegate {
             } else if (state != .failed && state != .stopped) {
                 // Playback may have become paused externally for example due to a bluetooth device disconnecting:
                 if (self.playWhenReady) {
+                    // Don't reset playWhenReady during track transitions —
+                    // loading state or nil currentItem means we're between
+                    // tracks and the pause is expected, not user-initiated.
+                    if state == .loading || self.avPlayer.currentItem == nil {
+                        break
+                    }
                     // Only if we are not on the boundaries of the track, otherwise itemDidPlayToEndTime will handle it instead.
                     if (self.currentTime > 0 && self.currentTime < self.duration) {
                         self.playWhenReady = false;

@@ -497,6 +497,21 @@ async function syncStoreFromNative(): Promise<void> {
 
     const activeTrack = await TrackPlayer.getActiveTrack();
     const activeTrackIndex = await TrackPlayer.getActiveTrackIndex();
+
+    // Detect missed track transitions (e.g. native auto-advanced in
+    // background but the JS event was deferred).  This is a safety net —
+    // if the native fixes work correctly, this should never trigger.
+    const storeTrackIndex = playerStore.getState().currentTrackIndex;
+    if (
+      activeTrackIndex !== undefined &&
+      activeTrackIndex !== null &&
+      activeTrackIndex !== storeTrackIndex
+    ) {
+      console.warn(
+        `[Player] Detected background track transition: store=${storeTrackIndex}, native=${activeTrackIndex}`,
+      );
+    }
+
     if (activeTrack?.id) {
       const child = currentChildQueue.find((c) => c.id === activeTrack.id) ?? null;
       playerStore.getState().setCurrentTrack(child, activeTrackIndex ?? null);

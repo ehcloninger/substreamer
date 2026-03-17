@@ -42,7 +42,12 @@ protocol AVPlayerWrapperProtocol: AnyObject {
     var isMuted: Bool { get set }
     
     var automaticallyWaitsToMinimizeStalling: Bool { get set }
-    
+
+    /// When true, the next `load()` uses a synchronous fast-path that skips
+    /// `loadValuesAsynchronously` + `DispatchQueue.main.async`, avoiding the
+    /// main-queue deferral that stalls background track transitions on iOS.
+    var isUrgentLoad: Bool { get set }
+
     func play()
     
     func pause()

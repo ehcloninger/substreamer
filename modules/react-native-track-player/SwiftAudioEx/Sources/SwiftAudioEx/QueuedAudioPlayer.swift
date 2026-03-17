@@ -7,6 +7,7 @@
 
 import Foundation
 import MediaPlayer
+import UIKit
 
 /**
  An audio player that can keep track of a queue of AudioItems.
@@ -15,6 +16,11 @@ public class QueuedAudioPlayer: AudioPlayer, QueueManagerDelegate {
     let queue: QueueManager = QueueManager<AudioItem>()
     fileprivate var lastIndex: Int = -1
     fileprivate var lastItem: AudioItem? = nil
+
+    /// True when the player is auto-advancing to the next track after
+    /// the current one finishes.  Used to trigger the synchronous
+    /// (urgent) load path that avoids main-queue deferral in background.
+    private var isAutoAdvancing = false
 
     public override init(nowPlayingInfoController: NowPlayingInfoControllerProtocol = NowPlayingInfoController(), remoteCommandController: RemoteCommandController = RemoteCommandController()) {
         super.init(nowPlayingInfoController: nowPlayingInfoController, remoteCommandController: remoteCommandController)
@@ -187,6 +193,17 @@ public class QueuedAudioPlayer: AudioPlayer, QueueManagerDelegate {
     // MARK: - AVPlayerWrapperDelegate
 
     override func AVWrapperItemDidPlayToEndTime() {
+        AudioDiagnosticLog.shared.log("TRACK_ENDED repeatMode=\(repeatMode) index=\(currentIndex)/\(items.count)")
+
+        // Request background execution time so iOS keeps the app alive
+        // long enough for the track transition to complete, even if the
+        // main run loop would otherwise be throttled.
+        var bgTaskId: UIBackgroundTaskIdentifier = .invalid
+        bgTaskId = UIApplication.shared.beginBackgroundTask(withName: "TrackAdvance") {
+            UIApplication.shared.endBackgroundTask(bgTaskId)
+            bgTaskId = .invalid
+        }
+
         event.playbackEnd.emit(data: .playedUntilEnd)
         if (repeatMode == .track) {
             self.pause()
@@ -194,11 +211,20 @@ public class QueuedAudioPlayer: AudioPlayer, QueueManagerDelegate {
             // quick workaround for race condition - schedule a call after 2 frames
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.016 * 2) { [weak self] in self?.replay() }
         } else if (repeatMode == .queue) {
+            isAutoAdvancing = true
             _ = queue.next(wrap: true)
         } else if (currentIndex != items.count - 1) {
+            isAutoAdvancing = true
             _ = queue.next(wrap: false)
         } else {
             wrapper.state = .ended
+        }
+
+        // End the background task after a short delay to ensure load completes.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            if bgTaskId != .invalid {
+                UIApplication.shared.endBackgroundTask(bgTaskId)
+            }
         }
     }
 
@@ -207,8 +233,16 @@ public class QueuedAudioPlayer: AudioPlayer, QueueManagerDelegate {
     func onCurrentItemChanged() {
         let lastPosition = currentTime;
         if let currentItem = currentItem {
+            // When auto-advancing (track finished → next track), use the
+            // synchronous load path to avoid DispatchQueue.main.async
+            // which can be deferred when the app is backgrounded.
+            if isAutoAdvancing {
+                wrapper.isUrgentLoad = true
+            }
+            isAutoAdvancing = false
             super.load(item: currentItem)
         } else {
+            isAutoAdvancing = false
             super.clear()
         }
         event.currentItem.emit(
