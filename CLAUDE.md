@@ -132,7 +132,7 @@ A GitHub Actions workflow (`.github/workflows/store-metadata.yml`) automatically
 
 **After completing work**, run both checks again. There must be no TypeScript errors, and any new warnings introduced by your changes should be seriously considered and resolved. All tests must still pass. Always check if tests need to be updated, added, or removed to keep the test suite aligned with the changes made.
 
-**Coverage target:** Every file that has a corresponding test file must maintain **≥ 80% statement coverage and ≥ 80% branch coverage**. Run `npx jest path/to/test --coverage --coverageReporters=text` to verify after writing or updating tests.
+**Coverage target (non-negotiable):** Every source file in `src/` and `modules/` must maintain **≥ 80% statement coverage and ≥ 80% branch coverage**. If a file does not yet have a corresponding test file, create one. Run `npx jest path/to/test --coverage --coverageReporters=text` to verify after writing or updating tests.
 
 **Test real use cases, not just the happy path.** Tests should cover the scenarios users and code actually encounter:
 
