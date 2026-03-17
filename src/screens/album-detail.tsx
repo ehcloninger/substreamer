@@ -16,6 +16,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
+import { EmptyState } from '../components/EmptyState';
 import { DownloadButton } from '../components/DownloadButton';
 import { MarqueeText } from '../components/MarqueeText';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
@@ -279,9 +280,11 @@ export function AlbumDetailScreen() {
   if (error || !album) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-          {error ?? 'Album not found'}
-        </Text>
+        <EmptyState
+          icon="disc-outline"
+          title="Couldn't Load Album"
+          subtitle={`Substreamer ran into an issue loading this album.\n\n${error ?? 'Unknown error'}`}
+        />
       </View>
     );
   }
@@ -479,8 +482,5 @@ const styles = StyleSheet.create({
   emptyTracksSubtitle: {
     fontSize: 15,
     textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 16,
   },
 });

@@ -23,6 +23,7 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist';
 
 import { CachedImage } from '../components/CachedImage';
+import { EmptyState } from '../components/EmptyState';
 import { DownloadButton } from '../components/DownloadButton';
 import { MarqueeText } from '../components/MarqueeText';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
@@ -418,9 +419,11 @@ export function PlaylistDetailScreen() {
   if (error || !playlist) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-          {error ?? 'Playlist not found'}
-        </Text>
+        <EmptyState
+          icon="list-outline"
+          title="Couldn't Load Playlist"
+          subtitle={`Substreamer ran into an issue loading this playlist.\n\n${error ?? 'Unknown error'}`}
+        />
       </View>
     );
   }
@@ -645,10 +648,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
   },
-  errorText: {
-    fontSize: 16,
-  },
-
   /* ---- Edit mode ---- */
   editRow: {
     flexDirection: 'row',

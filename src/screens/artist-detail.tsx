@@ -16,6 +16,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumRow } from '../components/AlbumRow';
+import { EmptyState } from '../components/EmptyState';
 import { ArtistCard } from '../components/ArtistCard';
 import { CachedImage } from '../components/CachedImage';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
@@ -374,9 +375,11 @@ export function ArtistDetailScreen() {
   if (error || !artist) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-          {error ?? 'Artist not found'}
-        </Text>
+        <EmptyState
+          icon="person-outline"
+          title="Couldn't Load Artist"
+          subtitle={`Substreamer ran into an issue loading this artist.\n\n${error ?? 'Unknown error'}`}
+        />
       </View>
     );
   }
@@ -475,9 +478,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
   },
   headerRight: {
     flexDirection: 'row',
