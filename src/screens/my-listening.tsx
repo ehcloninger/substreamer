@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useState } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { useCallback, useContext, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActivityHeatmap } from '../components/ActivityHeatmap';
@@ -60,6 +61,7 @@ function timeAgo(ts: number): string {
 export function MyListeningScreen() {
   const { colors } = useTheme();
   const transitionComplete = useTransitionComplete();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [period, setPeriod] = useState<TimePeriod>('30d');
 
   const completedScrobbles = completedScrobbleStore((s) => s.completedScrobbles);
@@ -118,10 +120,10 @@ export function MyListeningScreen() {
     .slice(0, 20);
 
   return (
-    <GradientBackground>
+    <GradientBackground scrollable>
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: headerHeight + 8 }]}
       showsVerticalScrollIndicator={false}
     >
       {/* Period selector */}
@@ -375,7 +377,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 8,
   },
   loadingContainer: {
     flex: 1,

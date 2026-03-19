@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { HeaderHeightContext } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +18,7 @@ export function SettingsAccountScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const username = authStore((s) => s.username);
   const password = authStore((s) => s.password);
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -44,10 +46,10 @@ export function SettingsAccountScreen() {
   );
 
   return (
-    <GradientBackground>
+    <GradientBackground scrollable>
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, styles.contentGrow, { paddingBottom: Math.max(insets.bottom, 32) }]}
+      contentContainerStyle={[styles.content, styles.contentGrow, { paddingTop: headerHeight + 16, paddingBottom: Math.max(insets.bottom, 32) }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
@@ -103,7 +105,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
   },
   contentGrow: {
     flexGrow: 1,

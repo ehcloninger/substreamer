@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -86,6 +87,7 @@ function getShareSubtitle(share: Share): string {
 export function SettingsSharesScreen() {
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const offlineMode = offlineModeStore((s) => s.offlineMode);
   const serverUrl = authStore((s) => s.serverUrl);
   const shareBaseUrl = shareSettingsStore((s) => s.shareBaseUrl);
@@ -198,10 +200,10 @@ export function SettingsSharesScreen() {
 
   return (
     <>
-      <GradientBackground>
+      <GradientBackground scrollable>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           offlineMode ? undefined : (
@@ -413,7 +415,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 32,
   },
   section: {

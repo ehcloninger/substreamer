@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { File } from 'expo-file-system';
 import { Stack } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -37,6 +38,7 @@ export function isViewableFile(name: string): boolean {
 
 export function FileViewerScreen({ uri, name }: { uri: string; name: string }) {
   const { colors } = useTheme();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -83,7 +85,7 @@ export function FileViewerScreen({ uri, name }: { uri: string; name: string }) {
             ) : null,
         }}
       />
-      <GradientBackground style={styles.container}>
+      <GradientBackground style={styles.container} scrollable>
         {error ? (
           <View style={styles.center}>
             <Ionicons
@@ -108,7 +110,7 @@ export function FileViewerScreen({ uri, name }: { uri: string; name: string }) {
         ) : (
           <ScrollView
             style={[styles.scroll, { backgroundColor: colors.card }]}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingTop: headerHeight + 16 }]}
           >
             <Text
               style={[styles.fileText, { color: colors.textPrimary }]}
@@ -144,7 +146,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   fileText: {
     fontSize: 12,

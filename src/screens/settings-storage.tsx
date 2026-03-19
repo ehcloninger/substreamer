@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { HeaderHeightContext } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -59,6 +60,7 @@ export function SettingsStorageScreen() {
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
   const insets = useSafeAreaInsets();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [concurrentSheetVisible, setConcurrentSheetVisible] = useState(false);
   const [imageConcurrentSheetVisible, setImageConcurrentSheetVisible] = useState(false);
   const [dangerousExpanded, setDangerousExpanded] = useState(false);
@@ -355,10 +357,10 @@ export function SettingsStorageScreen() {
 
   return (
     <>
-    <GradientBackground>
+    <GradientBackground scrollable>
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
@@ -993,7 +995,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 32,
   },
   section: {

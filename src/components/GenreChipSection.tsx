@@ -214,15 +214,15 @@ export const GenreChipSection = memo(function GenreChipSection({
             style={({ pressed }) => [{ flex: 1 }, pressed && styles.headerPressed]}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Open Discovery Mix"
+            accessibilityLabel="Open Tuned In"
           >
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Discovery
+              Tuned In
             </Text>
           </Pressable>
         ) : (
           <Text style={[styles.title, { color: colors.textPrimary, flex: 1 }]}>
-            Discovery
+            Tuned In
           </Text>
         )}
         {online && (

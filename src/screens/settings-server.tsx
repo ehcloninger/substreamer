@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useMemo } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { useCallback, useContext, useEffect, useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -18,6 +19,7 @@ import { serverInfoStore } from '../store/serverInfoStore';
 export function SettingsServerScreen() {
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
 
   const serverInfo = serverInfoStore(
     useShallow((s) => ({
@@ -75,10 +77,10 @@ export function SettingsServerScreen() {
 
   return (
     <>
-    <GradientBackground>
+    <GradientBackground scrollable>
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
@@ -236,7 +238,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 32,
   },
   section: {

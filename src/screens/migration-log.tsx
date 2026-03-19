@@ -1,5 +1,6 @@
 import { File, Paths } from 'expo-file-system';
-import { useEffect, useState } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '../components/EmptyState';
@@ -10,6 +11,7 @@ const LOG_FILE = new File(Paths.document, 'migration-log.txt');
 
 export function MigrationLogScreen() {
   const { colors } = useTheme();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,10 +47,10 @@ export function MigrationLogScreen() {
   }
 
   return (
-    <GradientBackground>
+    <GradientBackground scrollable>
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
     >
       <View style={[styles.card, { backgroundColor: colors.card }]}>
         <Text
@@ -76,7 +78,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 32,
   },
   card: {

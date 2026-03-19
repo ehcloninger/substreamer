@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Directory, File, Paths } from 'expo-file-system';
+import { HeaderHeightContext } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -77,6 +79,7 @@ async function listDirectoryEntries(dir: Directory): Promise<Entry[]> {
 export function FileExplorerScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [path, setPath] = useState<string[] | null>(null);
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -184,54 +187,8 @@ export function FileExplorerScreen() {
     [colors, handleEntryPress],
   );
 
-  if (!path) {
-    return (
-      <GradientBackground style={styles.container}>
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          {ROOTS.map((root, index) => (
-            <Pressable
-              key={root.label}
-              onPress={() => handleRootPress(index)}
-              style={({ pressed }) => [
-                styles.row,
-                index < ROOTS.length - 1 && {
-                  borderBottomWidth: StyleSheet.hairlineWidth,
-                  borderBottomColor: colors.border,
-                },
-                pressed && styles.pressed,
-              ]}
-            >
-              <Ionicons
-                name="folder"
-                size={20}
-                color={colors.primary}
-                style={styles.icon}
-              />
-              <View style={styles.rootText}>
-                <Text style={[styles.name, { color: colors.textPrimary }]}>
-                  {root.label}
-                </Text>
-                <Text
-                  style={[styles.subtitle, { color: colors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {root.directory.uri}
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.textSecondary}
-              />
-            </Pressable>
-          ))}
-        </View>
-      </GradientBackground>
-    );
-  }
-
-  return (
-    <GradientBackground style={styles.container}>
+  const breadcrumbHeader = useMemo(
+    () => (
       <Pressable
         onPress={handleBack}
         style={({ pressed }) => [
@@ -248,7 +205,60 @@ export function FileExplorerScreen() {
           {breadcrumb}
         </Text>
       </Pressable>
+    ),
+    [handleBack, breadcrumb, colors],
+  );
 
+  if (!path) {
+    return (
+      <GradientBackground style={styles.container} scrollable>
+        <ScrollView contentContainerStyle={{ paddingTop: headerHeight + 16 }}>
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            {ROOTS.map((root, index) => (
+              <Pressable
+                key={root.label}
+                onPress={() => handleRootPress(index)}
+                style={({ pressed }) => [
+                  styles.row,
+                  index < ROOTS.length - 1 && {
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomColor: colors.border,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Ionicons
+                  name="folder"
+                  size={20}
+                  color={colors.primary}
+                  style={styles.icon}
+                />
+                <View style={styles.rootText}>
+                  <Text style={[styles.name, { color: colors.textPrimary }]}>
+                    {root.label}
+                  </Text>
+                  <Text
+                    style={[styles.subtitle, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {root.directory.uri}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      </GradientBackground>
+    );
+  }
+
+  return (
+    <GradientBackground style={styles.container} scrollable>
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
@@ -260,8 +270,9 @@ export function FileExplorerScreen() {
           data={entries}
           keyExtractor={(item) => item.uri}
           renderItem={renderEntry}
+          ListHeaderComponent={breadcrumbHeader}
           style={[styles.list, { backgroundColor: colors.card }]}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}
         />
       )}
     </GradientBackground>

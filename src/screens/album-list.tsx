@@ -1,5 +1,6 @@
+import { HeaderHeightContext } from '@react-navigation/elements';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AlbumListView } from '../components/AlbumListView';
@@ -45,6 +46,7 @@ const VALID_TYPES: AlbumListType[] = [
 
 export function AlbumListScreen() {
   const { colors } = useTheme();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const offlineMode = offlineModeStore((s) => s.offlineMode);
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ type?: string }>();
@@ -95,13 +97,14 @@ export function AlbumListScreen() {
   }, [fetchAlbums]);
 
   return (
-    <GradientBackground style={styles.container}>
+    <GradientBackground style={styles.container} scrollable>
       <AlbumListView
         albums={albums}
         loading={loading}
         error={error}
         onRefresh={offlineMode ? undefined : handleRefresh}
         refreshing={refreshing}
+        contentInsetTop={headerHeight}
       />
     </GradientBackground>
   );

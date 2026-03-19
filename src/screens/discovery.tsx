@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -531,6 +532,7 @@ const CustomMixBuilder = memo(function CustomMixBuilder({
 export function DiscoveryScreen() {
   const { colors } = useTheme();
   const transitionComplete = useTransitionComplete();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
 
   const aggregates = completedScrobbleStore((s) => s.aggregates);
   const completedScrobbles = completedScrobbleStore((s) => s.completedScrobbles);
@@ -601,10 +603,10 @@ export function DiscoveryScreen() {
   }
 
   return (
-    <GradientBackground>
+    <GradientBackground scrollable>
       <ScrollView
         style={styles.screen}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: headerHeight + 8 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* For You section */}
@@ -640,7 +642,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 8,
   },
   loadingContainer: {
     flex: 1,

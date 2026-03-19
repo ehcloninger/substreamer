@@ -1,5 +1,6 @@
+import { HeaderHeightContext } from '@react-navigation/elements';
 import { FlashList } from '@shopify/flash-list';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useContext, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '../components/EmptyState';
@@ -50,18 +51,20 @@ const ExclusionRow = memo(function ExclusionRow({
     item.type === 'album' ? 'Album' : item.type === 'artist' ? 'Artist' : 'Playlist';
 
   return (
-    <SwipeableRow rightActions={rightActions} enableFullSwipeRight>
-      <View style={[styles.row, { borderBottomColor: colors.border }]}>
-        <View style={styles.rowContent}>
-          <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={[styles.type, { color: colors.textSecondary }]} numberOfLines={1}>
-            {typeLabel}
-          </Text>
+    <View style={styles.rowWrapper}>
+      <SwipeableRow rightActions={rightActions} enableFullSwipeRight borderRadius={12}>
+        <View style={styles.row}>
+          <View style={styles.rowContent}>
+            <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text style={[styles.type, { color: colors.textSecondary }]} numberOfLines={1}>
+              {typeLabel}
+            </Text>
+          </View>
         </View>
-      </View>
-    </SwipeableRow>
+      </SwipeableRow>
+    </View>
   );
 });
 
@@ -71,6 +74,7 @@ const ExclusionRow = memo(function ExclusionRow({
 
 export function ScrobbleExclusionBrowserScreen() {
   const { colors } = useTheme();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const excludedAlbums = scrobbleExclusionStore((s) => s.excludedAlbums);
   const excludedArtists = scrobbleExclusionStore((s) => s.excludedArtists);
   const excludedPlaylists = scrobbleExclusionStore((s) => s.excludedPlaylists);
@@ -109,11 +113,12 @@ export function ScrobbleExclusionBrowserScreen() {
   }
 
   return (
-    <GradientBackground style={styles.container}>
+    <GradientBackground style={styles.container} scrollable>
       <FlashList
         data={data}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        contentContainerStyle={{ paddingTop: headerHeight, paddingBottom: 32 }}
       />
     </GradientBackground>
   );
@@ -123,11 +128,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  rowWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
   row: {
     minHeight: ROW_HEIGHT,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
     justifyContent: 'center',
   },
   rowContent: {

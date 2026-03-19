@@ -1,5 +1,6 @@
+import { HeaderHeightContext } from '@react-navigation/elements';
 import { FlashList } from '@shopify/flash-list';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useContext, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState as EmptyStateComponent } from '../components/EmptyState';
@@ -94,6 +95,7 @@ function ScrobbleEmptyState({ segment }: { segment: ScrobbleSegment }) {
 
 export function ScrobbleBrowserScreen() {
   const { colors } = useTheme();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [activeSegment, setActiveSegment] = useState<ScrobbleSegment>('completed');
 
   const pendingScrobbles = pendingScrobbleStore((s) => s.pendingScrobbles);
@@ -127,9 +129,11 @@ export function ScrobbleBrowserScreen() {
     [],
   );
 
+  const segmentHeight = 52;
+  const contentInsetTop = headerHeight + segmentHeight;
+
   return (
-    <GradientBackground style={styles.container}>
-      <SegmentControl segments={SEGMENTS} selected={activeSegment} onSelect={setActiveSegment} />
+    <GradientBackground style={styles.container} scrollable>
       <View style={styles.content}>
         {activeSegment === 'completed' && (
           <FlashList
@@ -137,7 +141,10 @@ export function ScrobbleBrowserScreen() {
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             ListEmptyComponent={completedEmpty}
-            contentContainerStyle={completedReversed.length === 0 ? styles.emptyListContent : undefined}
+            contentContainerStyle={{
+              paddingTop: contentInsetTop,
+              ...(completedReversed.length === 0 ? { flexGrow: 1 } : undefined),
+            }}
           />
         )}
         {activeSegment === 'pending' && (
@@ -146,9 +153,15 @@ export function ScrobbleBrowserScreen() {
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             ListEmptyComponent={pendingEmpty}
-            contentContainerStyle={pendingReversed.length === 0 ? styles.emptyListContent : undefined}
+            contentContainerStyle={{
+              paddingTop: contentInsetTop,
+              ...(pendingReversed.length === 0 ? { flexGrow: 1 } : undefined),
+            }}
           />
         )}
+      </View>
+      <View style={[styles.segmentOverlay, { top: headerHeight }]}>
+        <SegmentControl segments={SEGMENTS} selected={activeSegment} onSelect={setActiveSegment} />
       </View>
     </GradientBackground>
   );
@@ -164,6 +177,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  segmentOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 1,
   },
   emptyListContent: {
     flexGrow: 1,

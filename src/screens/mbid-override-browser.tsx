@@ -1,5 +1,7 @@
+import { HeaderHeightContext } from '@react-navigation/elements';
 import { FlashList } from '@shopify/flash-list';
-import { memo, useCallback, useMemo } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { memo, useCallback, useContext, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '../components/EmptyState';
@@ -65,22 +67,28 @@ const OverrideRow = memo(function OverrideRow({
   );
 
   return (
-    <SwipeableRow
-      rightActions={rightActions}
-      enableFullSwipeRight={!offlineMode}
-      onPress={handlePress}
-    >
-      <View style={[styles.row, { borderBottomColor: colors.border }]}>
-        <View style={styles.rowContent}>
-          <Text style={[styles.artistName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {override.artistName}
-          </Text>
-          <Text style={[styles.mbid, { color: colors.textSecondary }]} numberOfLines={1}>
-            {override.mbid}
-          </Text>
+    <View style={styles.rowWrapper}>
+      <SwipeableRow
+        rightActions={rightActions}
+        enableFullSwipeRight={!offlineMode}
+        onPress={handlePress}
+        borderRadius={12}
+      >
+        <View style={styles.row}>
+          <View style={styles.rowContent}>
+            <Text style={[styles.artistName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {override.artistName}
+            </Text>
+            <View style={styles.mbidRow}>
+              <Ionicons name="finger-print-outline" size={14} color={colors.primary} />
+              <Text style={[styles.mbid, { color: colors.textSecondary }]} numberOfLines={1}>
+                {override.mbid}
+              </Text>
+            </View>
+          </View>
         </View>
-      </View>
-    </SwipeableRow>
+      </SwipeableRow>
+    </View>
   );
 });
 
@@ -90,6 +98,7 @@ const OverrideRow = memo(function OverrideRow({
 
 export function MbidOverrideBrowserScreen() {
   const { colors } = useTheme();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const overrides = mbidOverrideStore((s) => s.overrides);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
@@ -120,11 +129,12 @@ export function MbidOverrideBrowserScreen() {
   }
 
   return (
-    <GradientBackground style={styles.container}>
+    <GradientBackground style={styles.container} scrollable>
       <FlashList
         data={data}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        contentContainerStyle={{ paddingTop: headerHeight, paddingBottom: 32 }}
       />
     </GradientBackground>
   );
@@ -134,11 +144,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  rowWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
   row: {
     minHeight: ROW_HEIGHT,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
     justifyContent: 'center',
   },
   rowContent: {
@@ -148,8 +162,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  mbidRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   mbid: {
     fontSize: 12,
     fontFamily: 'monospace',
+    flexShrink: 1,
   },
 });

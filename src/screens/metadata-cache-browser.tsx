@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { memo, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -129,64 +130,66 @@ const MetadataRow = memo(function MetadataRow({
   );
 
   return (
-    <SwipeableRow rightActions={rightActions} enableFullSwipeRight>
-      <View style={[styles.row, { borderBottomColor: colors.border }]}>
-        <CachedImage
-          coverArtId={entry.coverArt}
-          size={150}
-          style={[
-            styles.thumb,
-            { backgroundColor: colors.border },
-            entry.type === 'artist' && styles.thumbRound,
-          ]}
-          resizeMode="cover"
-        />
-        <View style={styles.info}>
-          <Text
-            style={[styles.name, { color: colors.textPrimary }]}
-            numberOfLines={1}
-          >
-            {entry.name}
-          </Text>
-          <Text style={[styles.typeLabel, { color: colors.textSecondary }]}>
-            {TYPE_LABELS[entry.type]}
-          </Text>
-          <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-            {formatDate(entry.retrievedAt)}
-          </Text>
-          {status === 'refreshing' && (
-            <Text style={[styles.statusText, { color: colors.primary }]}>
-              Refreshing…
+    <View style={styles.rowWrapper}>
+      <SwipeableRow rightActions={rightActions} enableFullSwipeRight borderRadius={12}>
+        <View style={styles.row}>
+          <CachedImage
+            coverArtId={entry.coverArt}
+            size={150}
+            style={[
+              styles.thumb,
+              { backgroundColor: colors.border },
+              entry.type === 'artist' && styles.thumbRound,
+            ]}
+            resizeMode="cover"
+          />
+          <View style={styles.info}>
+            <Text
+              style={[styles.name, { color: colors.textPrimary }]}
+              numberOfLines={1}
+            >
+              {entry.name}
             </Text>
-          )}
-          {status === 'success' && (
-            <Text style={[styles.statusText, { color: '#00BA7C' }]}>
-              Refreshed successfully
+            <Text style={[styles.typeLabel, { color: colors.textSecondary }]}>
+              {TYPE_LABELS[entry.type]}
             </Text>
-          )}
-          {status === 'error' && (
-            <Text style={[styles.statusText, { color: colors.red }]}>
-              Refresh failed
+            <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+              {formatDate(entry.retrievedAt)}
             </Text>
-          )}
-        </View>
-        {!offlineMode && (
-          <View style={styles.actions}>
-            {busy ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Pressable
-                onPress={() => onRefresh(entry)}
-                hitSlop={8}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <Ionicons name="refresh-outline" size={20} color={colors.primary} />
-              </Pressable>
+            {status === 'refreshing' && (
+              <Text style={[styles.statusText, { color: colors.primary }]}>
+                Refreshing…
+              </Text>
+            )}
+            {status === 'success' && (
+              <Text style={[styles.statusText, { color: '#00BA7C' }]}>
+                Refreshed successfully
+              </Text>
+            )}
+            {status === 'error' && (
+              <Text style={[styles.statusText, { color: colors.red }]}>
+                Refresh failed
+              </Text>
             )}
           </View>
-        )}
-      </View>
-    </SwipeableRow>
+          {!offlineMode && (
+            <View style={styles.actions}>
+              {busy ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Pressable
+                  onPress={() => onRefresh(entry)}
+                  hitSlop={8}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+                </Pressable>
+              )}
+            </View>
+          )}
+        </View>
+      </SwipeableRow>
+    </View>
   );
 });
 
@@ -197,6 +200,7 @@ const MetadataRow = memo(function MetadataRow({
 export function MetadataCacheBrowserScreen() {
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [entries, setEntries] = useState<MetadataEntry[]>(() => buildEntries());
   const [filter, setFilter] = useState('');
   const listRef = useRef<FlashListRef<MetadataEntry>>(null);
@@ -324,18 +328,20 @@ export function MetadataCacheBrowserScreen() {
 
   const listHeader = useMemo(
     () => (
-      <View style={[styles.filterContainer, { borderBottomColor: colors.border }]}>
-        <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
-        <TextInput
-          style={[styles.filterInput, { color: colors.textPrimary }]}
-          placeholder="Filter..."
-          placeholderTextColor={colors.textSecondary}
-          value={filter}
-          onChangeText={handleFilterChange}
-          autoCapitalize="none"
-          autoCorrect={false}
-          clearButtonMode="while-editing"
-        />
+      <View style={styles.filterContainer}>
+        <View style={[styles.filterPill, { backgroundColor: colors.inputBg }]}>
+          <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.filterIcon} />
+          <TextInput
+            style={[styles.filterInput, { color: colors.textPrimary }]}
+            placeholder="Filter..."
+            placeholderTextColor={colors.textSecondary}
+            value={filter}
+            onChangeText={handleFilterChange}
+            autoCapitalize="none"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
+        </View>
       </View>
     ),
     [colors, filter, handleFilterChange],
@@ -343,8 +349,7 @@ export function MetadataCacheBrowserScreen() {
 
   return (
     <>
-    <GradientBackground style={styles.container}>
-      {listHeader}
+    <GradientBackground style={styles.container} scrollable>
       <FlashList
         ref={listRef}
         data={filteredEntries}
@@ -353,7 +358,12 @@ export function MetadataCacheBrowserScreen() {
         extraData={statusMap}
         refreshing={refreshing}
         onRefresh={handlePullRefresh}
-        contentContainerStyle={filteredEntries.length === 0 ? styles.emptyContainer : undefined}
+        contentContainerStyle={{
+          paddingTop: headerHeight,
+          paddingBottom: 32,
+          ...(filteredEntries.length === 0 ? { flex: 1 } : undefined),
+        }}
+        ListHeaderComponent={listHeader}
         ListEmptyComponent={listEmpty}
       />
     </GradientBackground>
@@ -367,27 +377,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    gap: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    height: 38,
+    paddingHorizontal: 10,
+  },
+  filterIcon: {
+    marginRight: 6,
   },
   filterInput: {
     flex: 1,
     fontSize: 16,
-    paddingVertical: 6,
+    paddingVertical: 0,
   },
   emptyContainer: {
     flex: 1,
+  },
+  rowWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
   },
   thumb: {
     width: THUMB_SIZE,

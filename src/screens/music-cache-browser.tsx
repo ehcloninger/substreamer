@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from 'expo-router';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -146,67 +147,69 @@ const CacheRow = memo(function CacheRow({
   );
 
   return (
-    <SwipeableRow rightActions={rightActions} enableFullSwipeRight onPress={handleToggle}>
-      <View style={[styles.rowContainer, { borderBottomColor: colors.border }]}>
-        <View style={styles.row}>
-          <CachedImage
-            coverArtId={item.coverArtId}
-            size={300}
-            style={[styles.thumb, { backgroundColor: colors.border }]}
-            resizeMode="cover"
-          />
-          <View style={styles.rowContent}>
-            <Text style={[styles.rowTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-              {item.name}
-            </Text>
-            {item.artist && (
-              <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-                {item.artist}
+    <View style={styles.rowWrapper}>
+      <SwipeableRow rightActions={rightActions} enableFullSwipeRight onPress={handleToggle} borderRadius={12}>
+        <View style={styles.rowContainer}>
+          <View style={styles.row}>
+            <CachedImage
+              coverArtId={item.coverArtId}
+              size={300}
+              style={[styles.thumb, { backgroundColor: colors.border }]}
+              resizeMode="cover"
+            />
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                {item.name}
               </Text>
+              {item.artist && (
+                <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {item.artist}
+                </Text>
+              )}
+              <Text style={[styles.rowMeta, { color: colors.textSecondary }]}>
+                {item.type === 'album' ? 'Album' : 'Playlist'} · {trackLabel} · {formatBytes(item.totalBytes)}
+              </Text>
+            </View>
+            {!offlineMode && (
+              <Pressable
+                onPress={() => onRedownload(item.itemId)}
+                hitSlop={8}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <Ionicons name="refresh" size={20} color={colors.primary} />
+              </Pressable>
             )}
-            <Text style={[styles.rowMeta, { color: colors.textSecondary }]}>
-              {item.type === 'album' ? 'Album' : 'Playlist'} · {trackLabel} · {formatBytes(item.totalBytes)}
-            </Text>
+            <Ionicons
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={colors.textSecondary}
+              style={styles.chevron}
+            />
           </View>
-          {!offlineMode && (
-            <Pressable
-              onPress={() => onRedownload(item.itemId)}
-              hitSlop={8}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <Ionicons name="refresh" size={20} color={colors.primary} />
-            </Pressable>
-          )}
-          <Ionicons
-            name={expanded ? 'chevron-up' : 'chevron-down'}
-            size={16}
-            color={colors.textSecondary}
-            style={styles.chevron}
-          />
-        </View>
 
-        {expanded && (
-          <View style={[styles.trackList, { backgroundColor: colors.background }]}>
-            {tracksReady ? (
-              item.tracks.map((track) => (
-                <TrackFileRow
-                  key={track.id}
-                  track={track}
-                  itemId={item.itemId}
-                  colors={colors}
+          {expanded && (
+            <View style={[styles.trackList, { borderTopColor: colors.border }]}>
+              {tracksReady ? (
+                item.tracks.map((track) => (
+                  <TrackFileRow
+                    key={track.id}
+                    track={track}
+                    itemId={item.itemId}
+                    colors={colors}
+                  />
+                ))
+              ) : (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={styles.trackLoading}
                 />
-              ))
-            ) : (
-              <ActivityIndicator
-                size="small"
-                color={colors.primary}
-                style={styles.trackLoading}
-              />
-            )}
-          </View>
-        )}
-      </View>
-    </SwipeableRow>
+              )}
+            </View>
+          )}
+        </View>
+      </SwipeableRow>
+    </View>
   );
 });
 
@@ -219,6 +222,7 @@ export function MusicCacheBrowserScreen() {
   const navigation = useNavigation();
   const { alert, alertProps } = useThemedAlert();
   const transitionComplete = useTransitionComplete();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const cachedItems = musicCacheStore((s) => s.cachedItems);
   const [filter, setFilter] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -353,18 +357,20 @@ export function MusicCacheBrowserScreen() {
 
   const listHeader = useMemo(
     () => (
-      <View style={[styles.filterContainer, { borderBottomColor: colors.border }]}>
-        <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
-        <TextInput
-          style={[styles.filterInput, { color: colors.textPrimary }]}
-          placeholder="Filter..."
-          placeholderTextColor={colors.textSecondary}
-          value={filter}
-          onChangeText={setFilter}
-          autoCapitalize="none"
-          autoCorrect={false}
-          clearButtonMode="while-editing"
-        />
+      <View style={styles.filterContainer}>
+        <View style={[styles.filterPill, { backgroundColor: colors.inputBg }]}>
+          <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.filterIcon} />
+          <TextInput
+            style={[styles.filterInput, { color: colors.textPrimary }]}
+            placeholder="Filter..."
+            placeholderTextColor={colors.textSecondary}
+            value={filter}
+            onChangeText={setFilter}
+            autoCapitalize="none"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
+        </View>
       </View>
     ),
     [colors, filter],
@@ -372,17 +378,19 @@ export function MusicCacheBrowserScreen() {
 
   return (
     <>
-    <GradientBackground style={styles.container}>
-      {listHeader}
+    <GradientBackground style={styles.container} scrollable>
       <FlashList
         data={transitionComplete ? entries : []}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         extraData={expandedId}
+        ListHeaderComponent={listHeader}
         ListEmptyComponent={listEmpty}
-        contentContainerStyle={
-          (!transitionComplete || entries.length === 0) ? styles.emptyListContent : undefined
-        }
+        contentContainerStyle={{
+          paddingTop: headerHeight,
+          paddingBottom: 32,
+          ...((!transitionComplete || entries.length === 0) ? { flex: 1 } : undefined),
+        }}
         onScrollBeginDrag={closeOpenRow}
       />
     </GradientBackground>
@@ -400,17 +408,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    gap: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    height: 38,
+    paddingHorizontal: 10,
+  },
+  filterIcon: {
+    marginRight: 6,
   },
   filterInput: {
     flex: 1,
     fontSize: 16,
-    paddingVertical: 6,
+    paddingVertical: 0,
   },
   center: {
     flex: 1,
@@ -420,8 +434,13 @@ const styles = StyleSheet.create({
   emptyListContent: {
     flex: 1,
   },
+  rowWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
   rowContainer: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',
@@ -457,6 +476,7 @@ const styles = StyleSheet.create({
     paddingLeft: 84,
     paddingRight: 16,
     paddingBottom: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   trackLoading: {
     paddingVertical: 12,

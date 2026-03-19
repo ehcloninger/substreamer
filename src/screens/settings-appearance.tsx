@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useMemo, useState } from 'react';
+import { HeaderHeightContext } from '@react-navigation/elements';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { GradientBackground } from '../components/GradientBackground';
@@ -60,6 +61,7 @@ const ACCENT_COLORS: { label: string; hex: string }[] = [
 
 export function SettingsAppearanceScreen() {
   const { colors, preference, primaryColor, setThemePreference, setPrimaryColor } = useTheme();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const activePrimary = primaryColor ?? DEFAULT_PRIMARY_COLOR;
   const [accentOpen, setAccentOpen] = useState(false);
   const [sortOrderOpen, setSortOrderOpen] = useState(false);
@@ -135,10 +137,10 @@ export function SettingsAppearanceScreen() {
   );
 
   return (
-    <GradientBackground>
+    <GradientBackground scrollable>
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
@@ -494,7 +496,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 32,
   },
   section: {
