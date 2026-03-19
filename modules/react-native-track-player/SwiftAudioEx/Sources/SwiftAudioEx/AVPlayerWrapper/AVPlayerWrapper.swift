@@ -174,7 +174,36 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
     }
 
     var isUrgentLoad: Bool = false
-    
+
+    // MARK: - Buffer Stall Watchdog
+    //
+    // Detects and recovers from stalled buffering after a long pause.
+    //
+    // Progressive HTTP streams (used by Subsonic) have no built-in retry
+    // mechanism in AVPlayer.  Once the TCP connection dies (e.g. after the
+    // app is paused/backgrounded for several minutes), AVPlayer sits in
+    // .waitingToPlayAtSpecifiedRate forever — no error, no timeout.
+    //
+    // Additionally, a known Apple bug (rdar://25953728, rdar://29362808)
+    // causes AVPlayer to silently stop producing audio after being paused
+    // for ~2+ minutes on a stream.  The player reports no error: rate stays
+    // at 1.0, status stays .readyToPlay, but no sound comes out.  The
+    // hallmark of this bug is the contradictory state where
+    // reasonForWaitingToPlay == .toMinimizeStalls while
+    // isPlaybackBufferFull == true.
+    //
+    // The watchdog starts when the player enters buffering state with
+    // playWhenReady == true.  After `bufferStallTimeout` seconds, it checks
+    // whether the buffer position has advanced.  If not (dead connection)
+    // or if the silent failure bug is detected, it triggers
+    // reload(startFromCurrentTime:) to establish a fresh connection.
+
+    private var bufferWatchdog: DispatchWorkItem?
+    private var watchdogBufferPosition: TimeInterval = 0
+    private var bufferReloadAttempts: Int = 0
+    private let bufferStallTimeout: TimeInterval = 15.0
+    private let maxBufferReloadAttempts: Int = 3
+
     func play() {
         playWhenReady = true
     }
@@ -195,6 +224,7 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
     }
     
     func stop() {
+        stopBufferWatchdog()
         state = .stopped
         clearCurrentItem()
         playWhenReady = false
@@ -242,6 +272,13 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
         // leak into subsequent loads.
         let urgent = isUrgentLoad
         isUrgentLoad = false
+
+        // Stop any running watchdog — it will restart if the new load
+        // enters buffering.  Don't reset bufferReloadAttempts here
+        // because reload() calls load() and must preserve the counter.
+        // The counter is reset in load(from:) (new track) and when
+        // playback reaches .playing state.
+        stopBufferWatchdog()
 
         if (state == .failed) {
             recreateAVPlayer()
@@ -364,6 +401,8 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
         if self.url != url {
             self.lastPosition = 0
         }
+        // New track load — give the watchdog a fresh retry budget.
+        self.bufferReloadAttempts = 0
         self.url = url
         self.urlOptions = options
         self.load()
@@ -403,6 +442,7 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
     }
 
     func unload() {
+        stopBufferWatchdog()
         clearCurrentItem()
         lastPosition = 0
         state = .idle
@@ -469,6 +509,118 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
     private func applyAVPlayerRate() {
         avPlayer.rate = playWhenReady ? _rate : 0
     }
+
+    // MARK: - Buffer Stall Watchdog (implementation)
+
+    /// Starts monitoring buffer progress.  If the buffer does not advance
+    /// within `bufferStallTimeout` seconds, triggers an automatic reload.
+    /// No-ops if a watchdog is already running or max attempts are exceeded.
+    private func startBufferWatchdog() {
+        guard bufferWatchdog == nil else { return }
+        guard bufferReloadAttempts < maxBufferReloadAttempts else {
+            AudioDiagnosticLog.shared.log(
+                "WATCHDOG_SKIP max_retries_reached (\(maxBufferReloadAttempts))"
+            )
+            return
+        }
+
+        watchdogBufferPosition = bufferedPosition
+        AudioDiagnosticLog.shared.log(
+            "WATCHDOG_START buffered=\(String(format: "%.1f", watchdogBufferPosition))s"
+        )
+        scheduleBufferCheck()
+    }
+
+    /// Cancels any pending watchdog evaluation.
+    private func stopBufferWatchdog() {
+        guard bufferWatchdog != nil else { return }
+        bufferWatchdog?.cancel()
+        bufferWatchdog = nil
+        AudioDiagnosticLog.shared.log("WATCHDOG_STOP")
+    }
+
+    /// Schedules the next buffer health evaluation after `bufferStallTimeout`.
+    private func scheduleBufferCheck() {
+        let check = DispatchWorkItem { [weak self] in
+            self?.evaluateBufferHealth()
+        }
+        bufferWatchdog = check
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + bufferStallTimeout,
+            execute: check
+        )
+    }
+
+    /// Evaluates whether buffering is making progress or has stalled.
+    ///
+    /// Three outcomes:
+    /// 1. State is no longer buffering or playWhenReady is false → stop.
+    /// 2. Silent failure bug detected (buffer full but player still waiting)
+    ///    or buffer position has not advanced → reload.
+    /// 3. Buffer is advancing (slow connection) → reschedule check.
+    private func evaluateBufferHealth() {
+        bufferWatchdog = nil
+
+        // Self-stop if conditions no longer apply.
+        guard state == .buffering, playWhenReady else {
+            AudioDiagnosticLog.shared.log("WATCHDOG_STOP state_changed")
+            return
+        }
+
+        // Detect the known Apple silent failure bug (rdar://25953728):
+        // reasonForWaitingToPlay reports .toMinimizeStalls while the buffer
+        // is actually full.  This contradictory state means AVPlayer is
+        // internally broken and will never produce audio without a reload.
+        if let item = avPlayer.currentItem,
+           avPlayer.reasonForWaitingToPlay == .toMinimizeStalls,
+           item.isPlaybackBufferFull {
+            AudioDiagnosticLog.shared.log(
+                "WATCHDOG_SILENT_FAILURE attempt=\(bufferReloadAttempts + 1)/\(maxBufferReloadAttempts)"
+            )
+            attemptReload()
+            return
+        }
+
+        // Check if the buffer position has advanced since the last check.
+        let currentBuffered = bufferedPosition
+        if currentBuffered <= watchdogBufferPosition {
+            // Buffer has not advanced — connection is likely dead.
+            AudioDiagnosticLog.shared.log(
+                "WATCHDOG_STALL buffered=\(String(format: "%.1f", currentBuffered))s " +
+                "attempt=\(bufferReloadAttempts + 1)/\(maxBufferReloadAttempts)"
+            )
+            attemptReload()
+        } else {
+            // Buffer is advancing — connection is slow but alive.
+            // Record the new position and check again after another interval.
+            AudioDiagnosticLog.shared.log(
+                "WATCHDOG_CHECK buffered=\(String(format: "%.1f", watchdogBufferPosition))s" +
+                "→\(String(format: "%.1f", currentBuffered))s"
+            )
+            watchdogBufferPosition = currentBuffered
+            scheduleBufferCheck()
+        }
+    }
+
+    /// Reloads the current item to establish a fresh network connection.
+    /// Increments the retry counter; gives up after `maxBufferReloadAttempts`.
+    private func attemptReload() {
+        bufferReloadAttempts += 1
+        guard bufferReloadAttempts <= maxBufferReloadAttempts else {
+            AudioDiagnosticLog.shared.log(
+                "WATCHDOG_MAX_RETRIES exceeded (\(maxBufferReloadAttempts))"
+            )
+            return
+        }
+        AudioDiagnosticLog.shared.log(
+            "WATCHDOG_RELOAD attempt=\(bufferReloadAttempts)/\(maxBufferReloadAttempts) " +
+            "position=\(String(format: "%.1f", lastPosition))s"
+        )
+        reload(startFromCurrentTime: true)
+        // After reload, state goes to .loading → .buffering.
+        // The watchdog will restart when .buffering is re-entered via
+        // the .waitingToPlayAtSpecifiedRate handler.
+    }
 }
 
 extension AVPlayerWrapper: AVPlayerObserverDelegate {
@@ -487,10 +639,15 @@ extension AVPlayerWrapper: AVPlayerObserverDelegate {
             } else if (state != .failed && state != .stopped) {
                 // Playback may have become paused externally for example due to a bluetooth device disconnecting:
                 if (self.playWhenReady) {
-                    // Don't reset playWhenReady during track transitions —
-                    // loading state or nil currentItem means we're between
-                    // tracks and the pause is expected, not user-initiated.
-                    if state == .loading || self.avPlayer.currentItem == nil {
+                    // Don't reset playWhenReady during track transitions
+                    // or active buffering attempts:
+                    // - .loading / nil currentItem: between tracks, pause
+                    //   is expected, not user-initiated.
+                    // - .buffering: AVPlayer can transiently report .paused
+                    //   during a buffering stall (e.g. dead TCP connection
+                    //   after a long pause).  This is not an external pause;
+                    //   the buffer watchdog will handle recovery.
+                    if state == .loading || state == .buffering || self.avPlayer.currentItem == nil {
                         break
                     }
                     // Only if we are not on the boundaries of the track, otherwise itemDidPlayToEndTime will handle it instead.
@@ -504,9 +661,20 @@ extension AVPlayerWrapper: AVPlayerObserverDelegate {
         case .waitingToPlayAtSpecifiedRate:
             if self.asset != nil {
                 self.state = .buffering
+                // Start the buffer watchdog if we're actively trying to play
+                // and no watchdog is already running.  The watchdog will
+                // detect dead connections and the Apple silent failure bug,
+                // and trigger an automatic reload if needed.
+                if self.playWhenReady {
+                    self.startBufferWatchdog()
+                }
             }
         case .playing:
             self.state = .playing
+            // Buffering succeeded — stop the watchdog and reset the retry
+            // counter so future stalls get a fresh budget.
+            self.stopBufferWatchdog()
+            self.bufferReloadAttempts = 0
         @unknown default:
             break
         }
