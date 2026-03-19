@@ -2,7 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, LogBox, Platform, StyleSheet } from 'react-native';
+import { Appearance, BackHandler, LogBox, Platform, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Both expo-router (RouterFontUtils.swift) and react-native-screens
@@ -94,9 +94,16 @@ export default function RootLayout() {
   const [splashVisible, setSplashVisible] = useState(true);
   const rehydrated = authStore((s) => s.rehydrated);
   const isLoggedIn = authStore((s) => s.isLoggedIn);
-  const { theme, colors } = useTheme();
+  const { theme, colors, preference } = useTheme();
   const router = useRouter();
   const segments = useSegments();
+
+  // Sync the app's theme preference to the native UIKit layer so that native
+  // UI elements (e.g. iOS 26 liquid glass containers) render with the correct
+  // color scheme immediately, avoiding a white flash during navigation transitions.
+  useEffect(() => {
+    Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);
+  }, [preference]);
 
   useDownloadKeepAwake();
   useDownloadBackgroundNotification();
