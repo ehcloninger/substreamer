@@ -1,5 +1,14 @@
 # Changelog
 
+## [8.0.32] - 2026-03-19
+
+- ios: liquid glass white flash on navigation fix
+- offline mode: don't show random scroller in offline mode, never enough content
+- expo: remove some exclusions, expo caught up...
+- expo: various package updates
+- theme: ensure native elements like liquid glass get the correect theme set
+- RNTP: Work around a known AVPlayer bug when the app is suspended for more than 2mins and then tries to resume playback from a dead TCP stream.
+- ci: update coverage badge [skip ci]
 ## [8.0.31] - 2026-03-18
 
 - theming: soft background gradient based on primary theme preference on pages without hero image.
