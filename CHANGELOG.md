@@ -1,5 +1,9 @@
 # Changelog
 
+## [8.0.33] - 2026-03-20
+
+- chore: rename discovery to tunedin for consistency
+- UX: list item and scroll behaviour consistency...Gotta love testing... Recommendations: originally called this discovery but the more I see it the less I like it.  Changed to Tuned In for something substreamer distinctive to build upon
 ## [8.0.32] - 2026-03-19
 
 - ios: liquid glass white flash on navigation fix
