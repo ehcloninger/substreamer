@@ -75,7 +75,15 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
                 let currentState = self._state
                 if (currentState != newValue) {
                     self._state = newValue
-                    self.delegate?.AVWrapper(didChangeState: newValue)
+                    // Dispatch to main thread: the delegate accesses AVPlayer
+                    // properties (currentTime, duration, currentItem) which are
+                    // only safe on the main thread.  Without this, the stateQueue
+                    // callback races with main-thread AVPlayer mutations during
+                    // watchdog reloads, causing EXC_BAD_ACCESS.
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        self.delegate?.AVWrapper(didChangeState: newValue)
+                    }
                 }
             }
         }
@@ -283,7 +291,12 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
         if (state == .failed) {
             recreateAVPlayer()
         } else {
+            // Stop the player-level observer before clearing to prevent
+            // re-entrant KVO (.paused → .idle) during item replacement.
+            // recreateAVPlayer() already does this; match that behavior here.
+            playerObserver.stopObserving()
             clearCurrentItem()
+            playerObserver.startObserving()
         }
         if let url = url {
             let pendingAsset = AVURLAsset(url: url, options: urlOptions)
@@ -461,10 +474,11 @@ class AVPlayerWrapper: AVPlayerWrapperProtocol {
     private func clearCurrentItem() {
         guard let asset = asset else { return }
         stopObservingAVPlayerItem()
-        
+
         asset.cancelLoading()
         self.asset = nil
-        
+        self.item = nil
+
         avPlayer.replaceCurrentItem(with: nil)
     }
     
@@ -682,7 +696,7 @@ extension AVPlayerWrapper: AVPlayerObserverDelegate {
     
     func player(statusDidChange status: AVPlayer.Status) {
         if (status == .failed) {
-            let error = item!.error as NSError?
+            let error = item?.error as NSError?
             playbackFailed(error: error?.code == URLError.notConnectedToInternet.rawValue
                  ? AudioPlayerError.PlaybackError.notConnectedToInternet
                  : AudioPlayerError.PlaybackError.playbackFailed
