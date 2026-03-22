@@ -2,12 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { useTheme } from '../hooks/useTheme';
+import { audioDiagnosticsStore } from '../store/audioDiagnosticsStore';
 import { devOptionsStore } from '../store/devOptionsStore';
 import { searchStore } from '../store/searchStore';
 import { processingOverlayStore } from '../store/processingOverlayStore';
+import { formatBytes } from '../utils/formatters';
 import { selectionAsync, notificationAsync } from '../utils/haptics';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '?';
@@ -45,6 +47,20 @@ export function SettingsScreen() {
   const { colors } = useTheme();
   const headerHeight = searchStore((s) => s.headerHeight);
   const devEnabled = devOptionsStore((s) => s.enabled);
+  const diagEnabled = audioDiagnosticsStore((s) => s.enabled);
+  const diagLogSize = audioDiagnosticsStore((s) => s.logFileSize);
+
+  useEffect(() => {
+    if (devEnabled) audioDiagnosticsStore.getState().refreshStatus();
+  }, [devEnabled]);
+
+  const handleDiagToggle = useCallback(async (value: boolean) => {
+    await audioDiagnosticsStore.getState().setEnabled(value);
+  }, []);
+
+  const handleDiagReset = useCallback(async () => {
+    await audioDiagnosticsStore.getState().resetLog();
+  }, []);
 
   const tapTimestamps = useRef<number[]>([]);
   const countdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,6 +132,40 @@ export function SettingsScreen() {
           <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
         </Pressable>
       ))}
+      {devEnabled && (
+        <View style={styles.diagSection}>
+          <Text style={[styles.diagSectionTitle, { color: colors.label }]}>Audio Diagnostics</Text>
+          <View style={[styles.diagCard, { backgroundColor: colors.card }]}>
+            <View style={[styles.diagRow, { borderBottomColor: colors.border }]}>
+              <View style={styles.diagTextWrap}>
+                <Text style={[styles.diagLabel, { color: colors.textPrimary }]}>Diagnostic Logging</Text>
+                <Text style={[styles.diagHint, { color: colors.textSecondary }]}>
+                  Logs audio playback events to a file for debugging.
+                </Text>
+              </View>
+              <Switch
+                value={diagEnabled}
+                onValueChange={handleDiagToggle}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+            <View style={[styles.diagRow, diagLogSize == null ? styles.diagRowLast : undefined]}>
+              <Text style={[styles.diagLabel, { color: colors.textPrimary }]}>Log file</Text>
+              <Text style={[styles.diagValue, { color: colors.textSecondary }]}>
+                {diagLogSize != null ? formatBytes(diagLogSize) : 'None'}
+              </Text>
+            </View>
+            {diagLogSize != null && (
+              <Pressable
+                onPress={handleDiagReset}
+                style={({ pressed }) => [styles.diagRow, styles.diagRowLast, pressed && styles.pressed]}
+              >
+                <Text style={[styles.diagLabel, { color: colors.red }]}>Reset Log</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      )}
       <Pressable onPress={handleVersionTap}>
         <Text style={[styles.versionText, { color: colors.textSecondary }]}>
           {countdownText ?? `Version ${APP_VERSION} (${BUILD_NUMBER})`}
@@ -165,6 +215,48 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  diagSection: {
+    marginTop: 6,
+  },
+  diagSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  diagCard: {
+    borderRadius: 12,
+    padding: 16,
+    overflow: 'hidden',
+  },
+  diagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  diagRowLast: {
+    borderBottomWidth: 0,
+  },
+  diagTextWrap: {
+    flex: 1,
+    marginRight: 12,
+  },
+  diagLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  diagHint: {
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  diagValue: {
+    fontSize: 14,
   },
   versionText: {
     fontSize: 13,

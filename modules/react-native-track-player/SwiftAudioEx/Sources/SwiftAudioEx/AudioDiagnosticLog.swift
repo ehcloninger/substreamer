@@ -6,6 +6,10 @@
 //  Writes to Documents/audio-diagnostics.log, inspectable from the app's
 //  file explorer (Settings > File Explorer).
 //
+//  Logging is disabled by default.  To enable, create the flag file
+//  Documents/audio-diagnostics-enabled (the JS layer manages this via
+//  the Audio Diagnostics toggle in developer settings).
+//
 
 import Foundation
 
@@ -15,11 +19,13 @@ final class AudioDiagnosticLog {
     private let queue = DispatchQueue(label: "com.substreamer.audiolog", qos: .utility)
     private let maxSize: UInt64 = 512 * 1024  // 512KB cap
     private let logUrl: URL
+    private let enabledFlagUrl: URL
     private let formatter: ISO8601DateFormatter
 
     private init() {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         logUrl = docs.appendingPathComponent("audio-diagnostics.log")
+        enabledFlagUrl = docs.appendingPathComponent("audio-diagnostics-enabled")
         formatter = ISO8601DateFormatter()
     }
 
@@ -27,6 +33,8 @@ final class AudioDiagnosticLog {
         let timestamp = formatter.string(from: Date())
         let line = "[\(timestamp)] \(message)\n"
         queue.async { [self] in
+            // Skip if logging is not enabled (flag file absent)
+            guard FileManager.default.fileExists(atPath: enabledFlagUrl.path) else { return }
             // Rotate if over size limit
             if let attrs = try? FileManager.default.attributesOfItem(atPath: logUrl.path),
                let size = attrs[.size] as? UInt64, size > maxSize {
