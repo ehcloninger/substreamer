@@ -150,11 +150,13 @@ export default function RootLayout() {
   }, []);
 
   // --- Deferred startup: expensive filesystem scanning ---
+  // Depends on isLoggedIn so it re-runs after a logout/login cycle.
+  // The root layout stays mounted across auth transitions, so a static
+  // [] dep array would only fire once at cold start — leaving cache
+  // byte totals stale after login (the cause of inflated "used space"
+  // numbers when the user logs out and back in).
   useEffect(() => {
-    // Defer expensive filesystem scanning to after the first frame renders.
-    // useEffect fires after React commits the initial render, so the native
-    // splash hides promptly. All scanning runs on native background threads
-    // via expo-async-fs (no JS thread blocking, no setTimeout(0) needed).
+    if (!isLoggedIn) return;
     let cancelled = false;
     (async () => {
       await deferredImageCacheInit();
@@ -166,7 +168,7 @@ export default function RootLayout() {
       await runAutoBackupIfNeeded();
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isLoggedIn]);
 
   // --- Rehydrate auth from SQLite ---
   useEffect(() => {

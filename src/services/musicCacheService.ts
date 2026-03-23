@@ -883,6 +883,12 @@ export function syncCachedItemTracks(
 
 /**
  * Cancel a queued or in-progress download and remove its partial files.
+ *
+ * After deleting files, schedules a background recalculate from the
+ * filesystem to correct totalBytes/totalFiles — removeFromQueue does
+ * not subtract the bytes that addBytes() accumulated during the
+ * partial download, so without recalculation those "phantom" bytes
+ * would inflate the displayed cache size.
  */
 export function cancelDownload(queueId: string): void {
   const item = musicCacheStore.getState().downloadQueue.find(
@@ -901,6 +907,8 @@ export function cancelDownload(queueId: string): void {
     trackUriMap.delete(track.id);
     trackToItems.get(track.id)?.delete(item.itemId);
   }
+
+  scheduleRecalculate();
 }
 
 /**
@@ -924,6 +932,7 @@ export function clearDownloadQueue(): void {
       trackToItems.get(track.id)?.delete(item.itemId);
     }
   }
+  scheduleRecalculate();
   resumeIfSpaceAvailable();
 }
 
@@ -985,6 +994,18 @@ export async function getMusicCacheStats(): Promise<MusicCacheStats> {
   }
 
   return { totalBytes, itemCount, totalFiles };
+}
+
+/**
+ * Fire-and-forget filesystem recalculate. Used after cancel/clear
+ * operations to correct totalBytes/totalFiles that drifted due to
+ * addBytes() calls during partial downloads whose files were then
+ * deleted.
+ */
+function scheduleRecalculate(): void {
+  getMusicCacheStats()
+    .then((stats) => musicCacheStore.getState().recalculate(stats))
+    .catch(() => { /* non-critical: next app start will reconcile */ });
 }
 
 /* ------------------------------------------------------------------ */

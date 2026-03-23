@@ -1258,6 +1258,32 @@ describe('cancelDownload', () => {
     expect(musicCacheStore.getState().downloadQueue).toHaveLength(0);
     expect(getLocalTrackUri('t1')).toBeNull();
   });
+
+  it('schedules recalculate to correct phantom bytes from partial downloads', async () => {
+    // Simulate partial download that added bytes via addBytes
+    musicCacheStore.setState({
+      totalBytes: 5000,
+      totalFiles: 5,
+      downloadQueue: [
+        { queueId: 'q1', itemId: 'partial-album', status: 'downloading', tracks: [makeChild('t1')], totalTracks: 1, completedTracks: 0, addedAt: Date.now() },
+      ],
+    } as any);
+
+    // Mock filesystem scan to return actual disk usage (less than tracked)
+    mockGetDirectorySizeAsync.mockResolvedValue(1000);
+    mockListDirectoryAsync
+      .mockResolvedValueOnce(['other-album'])   // top-level listing
+      .mockResolvedValueOnce(['t2.mp3']);        // files in other-album
+
+    cancelDownload('q1');
+
+    // Wait for background recalculate to settle
+    await new Promise((r) => setTimeout(r, 50));
+
+    // totalBytes should be corrected to actual disk usage
+    expect(musicCacheStore.getState().totalBytes).toBe(1000);
+    expect(musicCacheStore.getState().totalFiles).toBe(1);
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -1292,6 +1318,29 @@ describe('clearDownloadQueue', () => {
 
     // Item is removed from queue but directory should be preserved
     expect(musicCacheStore.getState().downloadQueue).toHaveLength(0);
+  });
+
+  it('schedules recalculate to correct phantom bytes', async () => {
+    musicCacheStore.setState({
+      totalBytes: 8000,
+      totalFiles: 8,
+      downloadQueue: [
+        { queueId: 'q1', itemId: 'a1', status: 'downloading', tracks: [makeChild('t1')], totalTracks: 1, completedTracks: 0, addedAt: 1 },
+        { queueId: 'q2', itemId: 'a2', status: 'queued', tracks: [makeChild('t2')], totalTracks: 1, completedTracks: 0, addedAt: 2 },
+      ],
+    } as any);
+
+    mockGetDirectorySizeAsync.mockResolvedValue(2000);
+    mockListDirectoryAsync
+      .mockResolvedValueOnce(['cached-album'])
+      .mockResolvedValueOnce(['t3.mp3', 't4.mp3']);
+
+    clearDownloadQueue();
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(musicCacheStore.getState().totalBytes).toBe(2000);
+    expect(musicCacheStore.getState().totalFiles).toBe(2);
   });
 });
 
