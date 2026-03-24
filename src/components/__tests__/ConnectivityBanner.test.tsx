@@ -27,17 +27,19 @@ jest.mock('../../services/connectivityService', () => ({
 }));
 
 jest.mock('react-native-reanimated', () => {
-  const { View } = require('react-native');
+  const { View, Text } = require('react-native');
   return {
     __esModule: true,
     default: {
       View,
+      Text,
     },
     useSharedValue: (init: number) => ({ value: init }),
     useAnimatedStyle: (fn: () => object) => fn(),
     withTiming: (val: number) => val,
     withDelay: (_: number, val: number) => val,
-    Easing: { out: (e: unknown) => e, cubic: (t: number) => t },
+    withSpring: (val: number) => val,
+    Easing: { out: (e: unknown) => e, in: (e: unknown) => e, cubic: (t: number) => t },
   };
 });
 
@@ -99,7 +101,7 @@ describe('ConnectivityBanner', () => {
     expect(getByText('Certificate changed')).toBeTruthy();
   });
 
-  it('suppresses banner when offline mode is enabled', () => {
+  it('has collapsed height when offline mode suppresses banner', () => {
     offlineModeStore.setState({ offlineMode: true });
     connectivityStore.setState({
       bannerState: 'unreachable',

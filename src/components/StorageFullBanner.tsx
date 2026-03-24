@@ -1,61 +1,73 @@
 /**
- * Animated banner shown when the storage limit is reached.
+ * Animated pill banner shown when the storage limit is reached.
  *
- * Styled and positioned identically to ConnectivityBanner -- a pill
- * that expands/collapses below the header.  Tapping it navigates to
- * the Storage & Data settings screen.
+ * Styled identically to PlaybackToast — a dark capsule that springs
+ * into view below the header.  Tapping it navigates to the Storage &
+ * Data settings screen.
  */
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
-import { useTheme } from '../hooks/useTheme';
 import { storageLimitStore } from '../store/storageLimitStore';
 
-const BANNER_HEIGHT = 36;
-const INNER_HEIGHT = 28;
+const CAPSULE_HEIGHT = 44;
+const CAPSULE_BORDER_RADIUS = CAPSULE_HEIGHT / 2;
+const BANNER_HEIGHT = CAPSULE_HEIGHT + 8;
+
+const SPRING_CONFIG = { damping: 14, stiffness: 200, mass: 0.8 };
 const EXPAND_MS = 300;
 const COLLAPSE_MS = 280;
-const CONTENT_FADE_IN_MS = 200;
-const CONTENT_FADE_OUT_MS = 150;
+const SHRINK_MS = 300;
+const SHRINK_EASING = Easing.in(Easing.cubic);
 const EASING = Easing.out(Easing.cubic);
+const ERROR_RED = '#FF453A';
 
 export const StorageFullBanner = memo(function StorageFullBanner() {
-  const { colors } = useTheme();
   const router = useRouter();
   const isStorageFull = storageLimitStore((s) => s.isStorageFull);
+  const prevVisible = useRef(isStorageFull);
 
-  const height = useSharedValue(0);
-  const contentOpacity = useSharedValue(0);
-  const prevVisible = useRef(false);
+  const height = useSharedValue(isStorageFull ? BANNER_HEIGHT : 0);
+  const capsuleScale = useSharedValue(isStorageFull ? 1 : 0);
+  const capsuleOpacity = useSharedValue(isStorageFull ? 1 : 0);
 
   useEffect(() => {
     if (isStorageFull && !prevVisible.current) {
+      // Expand space, then spring the pill in
       height.value = withTiming(BANNER_HEIGHT, { duration: EXPAND_MS, easing: EASING });
-      contentOpacity.value = withDelay(80, withTiming(1, { duration: CONTENT_FADE_IN_MS }));
+      capsuleOpacity.value = withDelay(80, withTiming(1, { duration: 150 }));
+      capsuleScale.value = withDelay(80, withSpring(1, SPRING_CONFIG));
     } else if (!isStorageFull && prevVisible.current) {
-      contentOpacity.value = withTiming(0, { duration: CONTENT_FADE_OUT_MS });
-      height.value = withDelay(60, withTiming(0, { duration: COLLAPSE_MS, easing: EASING }));
+      // Shrink pill out, then collapse space
+      capsuleScale.value = withTiming(0, { duration: SHRINK_MS, easing: SHRINK_EASING });
+      capsuleOpacity.value = withTiming(0, { duration: SHRINK_MS - 50 });
+      height.value = withDelay(SHRINK_MS - 80, withTiming(0, { duration: COLLAPSE_MS, easing: EASING }));
     }
     prevVisible.current = isStorageFull;
-  }, [isStorageFull, height, contentOpacity]);
+  }, [isStorageFull, height, capsuleScale, capsuleOpacity]);
 
   const wrapperStyle = useAnimatedStyle(() => ({
     height: height.value,
     overflow: 'hidden' as const,
   }));
 
-  const contentStyle = useAnimatedStyle(() => ({
-    opacity: contentOpacity.value,
+  const capsuleStyle = useAnimatedStyle(() => ({
+    opacity: capsuleOpacity.value,
+    transform: [
+      { scaleX: capsuleScale.value },
+      { scaleY: capsuleScale.value },
+    ],
   }));
 
   const handlePress = useCallback(() => {
@@ -64,42 +76,43 @@ export const StorageFullBanner = memo(function StorageFullBanner() {
 
   return (
     <Animated.View style={wrapperStyle}>
-      <Pressable
-        onPress={handlePress}
-        style={({ pressed }) => [styles.pill, { backgroundColor: colors.inputBg }, pressed && styles.pressed]}
-      >
-        <Animated.View style={[styles.content, contentStyle]}>
-          <Ionicons name="alert-circle" size={14} color={colors.red} style={styles.icon} />
-          <Text style={[styles.text, { color: colors.textSecondary }]} numberOfLines={1}>
-            Storage limit reached
-          </Text>
-        </Animated.View>
-      </Pressable>
+      <View style={styles.pillContainer}>
+        <Pressable onPress={handlePress}>
+          <Animated.View style={[styles.capsule, capsuleStyle]}>
+            <Ionicons name="alert-circle" size={16} color={ERROR_RED} />
+            <Text style={styles.label} numberOfLines={1}>
+              Storage limit reached
+            </Text>
+          </Animated.View>
+        </Pressable>
+      </View>
     </Animated.View>
   );
 });
 
 const styles = StyleSheet.create({
-  pill: {
-    height: INNER_HEIGHT,
-    marginHorizontal: 16,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  content: {
-    height: INNER_HEIGHT,
-    flexDirection: 'row',
+  pillContainer: {
+    height: BANNER_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: {
-    marginRight: 6,
+  capsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
+    borderRadius: CAPSULE_BORDER_RADIUS,
+    height: CAPSULE_HEIGHT,
+    paddingHorizontal: 20,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  text: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  pressed: {
-    opacity: 0.8,
+  label: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
