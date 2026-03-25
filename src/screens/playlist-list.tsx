@@ -46,6 +46,14 @@ export function PlaylistListScreen({
     setRefreshing(false);
   }, [offlineMode, fetchAllPlaylists]);
 
+  const emptyProps = offlineMode
+    ? {
+        emptyIcon: 'cloud-offline-outline' as const,
+        emptyMessage: 'No downloaded playlists',
+        emptySubtitle: 'Download playlists from your library to listen offline. They will appear here when you are in offline mode.',
+      }
+    : {};
+
   return (
     <View style={styles.container}>
       <PlaylistListView
@@ -58,6 +66,7 @@ export function PlaylistListScreen({
         showAlphabetScroller
         scrollToTopTrigger={`${downloadedOnly}`}
         contentInsetTop={contentInsetTop}
+        {...emptyProps}
       />
     </View>
   );
