@@ -95,6 +95,7 @@ function childToTrack(child: Child): Track {
     album: child.album ?? undefined,
     artwork: cachedArt ?? getCoverArtUrl(child.coverArt ?? '', 600) ?? undefined,
     duration: child.duration ?? 0,
+    userAgent: 'substreamer8',
     ...(contentType ? { contentType } : {}),
   };
 }

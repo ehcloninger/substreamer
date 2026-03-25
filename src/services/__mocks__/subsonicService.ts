@@ -66,6 +66,5 @@ export const getGenres = jest.fn().mockResolvedValue(null);
 export const getSongsByGenre = jest.fn().mockResolvedValue(null);
 export const getShares = jest.fn().mockResolvedValue(null);
 export const createShare = jest.fn().mockResolvedValue(null);
-export const createShareMultiple = jest.fn().mockResolvedValue(null);
 export const updateShare = jest.fn().mockResolvedValue(undefined);
 export const deleteShare = jest.fn().mockResolvedValue(false);

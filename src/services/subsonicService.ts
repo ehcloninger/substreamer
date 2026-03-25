@@ -56,6 +56,8 @@ export async function login(
     auth: { username: username.trim(), password },
     reuseSalt: true,
     crypto: reactNativeCrypto,
+    clientName: 'substreamer8',
+    clientVersion: '1.15.0',
   });
 
   try {
@@ -103,6 +105,8 @@ export function getApiUnchecked(): SubsonicAPI | null {
     auth: { username, password },
     reuseSalt: true,
     crypto: reactNativeCrypto,
+    clientName: 'substreamer8',
+    clientVersion: '1.15.0',
   });
   cachedKey = key;
   return cachedApi;
@@ -117,12 +121,6 @@ export function clearApiCache(): void {
 }
 
 export type { AlbumID3, AlbumWithSongsID3, ArtistID3, ArtistInfo2, ArtistWithAlbumsID3, Child, Genre, Playlist, PlaylistWithSongs, ScanStatus, Share };
-
-/**
- * Extended ArtistID3 with the `userRating` field that Subsonic/Navidrome
- * servers return at runtime but the `subsonic-api` library omits from its type.
- */
-export type ArtistID3WithRating = ArtistID3 & { userRating?: number };
 
 // ------------------------------------------------------------------ //
 //  Various Artists pseudo-artist                                      //
@@ -185,8 +183,8 @@ export function getCoverArtUrl(coverArtId: string, size?: number): string | null
   const base = `${normalizeServerUrl(serverUrl)}/rest/getCoverArt.view`;
   const params = new URLSearchParams({
     id: stripCoverArtSuffix(coverArtId),
-    v: '1.16.1',
-    c: 'substreamer',
+    v: '1.15.0',
+    c: 'substreamer8',
     u: username,
     t: cachedCoverArtToken,
     s: cachedCoverArtSalt,
@@ -210,8 +208,8 @@ export function getStreamUrl(
   const base = `${normalizeServerUrl(serverUrl)}/rest/stream.view`;
   const params = new URLSearchParams({
     id: trackId,
-    v: '1.16.1',
-    c: 'substreamer',
+    v: '1.15.0',
+    c: 'substreamer8',
     u: username,
     t: cachedCoverArtToken,
     s: cachedCoverArtSalt,
@@ -251,8 +249,8 @@ export function getDownloadStreamUrl(trackId: string): string | null {
   const base = `${normalizeServerUrl(serverUrl)}/rest/stream.view`;
   const params = new URLSearchParams({
     id: trackId,
-    v: '1.16.1',
-    c: 'substreamer',
+    v: '1.15.0',
+    c: 'substreamer8',
     u: username,
     t: cachedCoverArtToken,
     s: cachedCoverArtSalt,
@@ -413,7 +411,7 @@ export async function getTopSongs(artistName: string, count = 20): Promise<Child
   const api = getApi();
   if (!api) return [];
   try {
-    const response = await api.getTopSongs({ artist: artistName, count } as any);
+    const response = await api.getTopSongs({ artist: artistName, count });
     return response.topSongs?.song ?? [];
   } catch {
     return [];
@@ -851,71 +849,20 @@ export async function getShares(): Promise<Share[] | null> {
 }
 
 export async function createShare(
-  id: string,
+  id: string | string[],
   description?: string,
   expires?: number,
 ): Promise<Share | null> {
   const api = getApi();
   if (!api) return null;
+  const ids = Array.isArray(id) ? id : [id];
+  if (ids.length === 0) return null;
   try {
-    const args: { id: string; description?: string; expires?: number } = { id };
+    const args: { id: string | string[]; description?: string; expires?: number } = { id: ids.length === 1 ? ids[0] : ids };
     if (description) args.description = description;
     if (expires != null) args.expires = expires;
     const response = await api.createShare(args);
     const shares = response.shares?.share ?? [];
-    return shares[0] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Create a share with multiple song IDs (e.g. for sharing a queue).
- * The subsonic-api library only supports a single `id`, so we build the
- * request manually using repeated `id` query parameters.
- */
-export async function createShareMultiple(
-  ids: string[],
-  description?: string,
-  expires?: number,
-): Promise<Share | null> {
-  if (ids.length === 0) return null;
-  if (ids.length === 1) return createShare(ids[0], description, expires);
-
-  const { isLoggedIn, serverUrl, username, password } = authStore.getState();
-  if (!isLoggedIn || !serverUrl || !username || !password) return null;
-
-  try {
-    const base = normalizeServerUrl(serverUrl);
-    const bytes = await getRandomBytesAsync(16);
-    const salt = Array.from(bytes)
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-    const token = await digestStringAsync(
-      CryptoDigestAlgorithm.MD5,
-      password + salt,
-      { encoding: CryptoEncoding.HEX },
-    );
-
-    const params = new URLSearchParams({
-      v: '1.16.1',
-      c: 'substreamer',
-      f: 'json',
-      u: username,
-      t: token,
-      s: salt,
-    });
-    if (description) params.set('description', description);
-    if (expires != null) params.set('expires', String(expires));
-
-    const idParams = ids.map((i) => `id=${encodeURIComponent(i)}`).join('&');
-    const url = `${base}/rest/createShare.view?${params.toString()}&${idParams}`;
-
-    const response = await fetch(url);
-    const json = await response.json();
-    const root = json['subsonic-response'];
-    if (root?.status !== 'ok') return null;
-    const shares: Share[] = root.shares?.share ?? [];
     return shares[0] ?? null;
   } catch {
     return null;

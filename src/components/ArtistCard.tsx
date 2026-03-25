@@ -9,7 +9,7 @@ import { StarRatingDisplay } from './StarRating';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { useRating } from '../hooks/useRating';
 import { useTheme } from '../hooks/useTheme';
-import { type ArtistID3WithRating } from '../services/subsonicService';
+import { type ArtistID3 } from '../services/subsonicService';
 import { moreOptionsStore } from '../store/moreOptionsStore';
 
 const COVER_SIZE = 300;
@@ -18,7 +18,7 @@ export const ArtistCard = memo(function ArtistCard({
   artist,
   width,
 }: {
-  artist: ArtistID3WithRating;
+  artist: ArtistID3;
   width?: number;
 }) {
   const { colors } = useTheme();

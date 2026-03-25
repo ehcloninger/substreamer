@@ -69,7 +69,7 @@
     "react-native-svg": "15.15.3",
     "react-native-track-player": "file:./modules/react-native-track-player",
     "react-native-worklets": "0.7.4",
-    "subsonic-api": "^3.2.0",
+    "subsonic-api": "file:./modules/subsonic-api",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
@@ -93,7 +93,8 @@
         "react-native-reanimated",
         "react-native-safe-area-context",
         "react-native-screens",
-        "react-native-worklets"
+        "react-native-worklets",
+        "subsonic-api"
       ]
     },
     "doctor": {
@@ -110,7 +111,8 @@
           "expo-ssl-trust",
           "expo-backup-exclusions",
           "expo-gzip",
-          "expo-move-to-back"
+          "expo-move-to-back",
+          "subsonic-api"
         ]
       }
     }

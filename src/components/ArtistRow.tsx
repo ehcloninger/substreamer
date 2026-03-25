@@ -10,13 +10,13 @@ import { useIsStarred } from '../hooks/useIsStarred';
 import { useRating } from '../hooks/useRating';
 import { useTheme } from '../hooks/useTheme';
 import { toggleStar } from '../services/moreOptionsService';
-import { type ArtistID3WithRating } from '../services/subsonicService';
+import { type ArtistID3 } from '../services/subsonicService';
 import { moreOptionsStore } from '../store/moreOptionsStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 
 const COVER_SIZE = 300;
 
-export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3WithRating }) {
+export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3 }) {
   const { colors } = useTheme();
   const router = useRouter();
   const starred = useIsStarred('artist', artist.id);

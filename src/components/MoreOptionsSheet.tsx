@@ -68,7 +68,7 @@ import { playerStore } from '../store/playerStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
 import { playlistLibraryStore } from '../store/playlistLibraryStore';
 import { processingOverlayStore } from '../store/processingOverlayStore';
-import { serverInfoStore } from '../store/serverInfoStore';
+import { supports } from '../services/serverCapabilityService';
 import { setRatingStore } from '../store/setRatingStore';
 
 /* ------------------------------------------------------------------ */
@@ -468,9 +468,10 @@ export function MoreOptionsSheet() {
   }
 
   const offline = offlineModeStore.getState().offlineMode;
-  const isNavidrome = serverInfoStore.getState().serverType?.toLowerCase() === 'navidrome';
   const starrable = !offline && isStarrable(entity);
-  const showRating = !offline && isNavidrome && isRatable(entity);
+  const showRating = !offline && isRatable(entity) && (
+    entity.type === 'song' || supports('albumArtistRating')
+  );
   const showArtistLink = !offline && hasArtistLink(entity);
   const showAlbumLink = hasAlbumLink(entity) &&
     (!offline || (entity.type === 'song' && entity.item.albumId != null &&
@@ -480,7 +481,7 @@ export function MoreOptionsSheet() {
   const showAddToQueue = source !== 'player' && canAddToQueue(entity);
   const showPlayMoreLikeThis = !offline && canPlayMoreLikeThis(entity);
   const showDetails = hasAlbumDetails(entity);
-  const showShare = !offline && canShare(entity);
+  const showShare = !offline && canShare(entity) && supports('shares');
   const showDownload = canDownload(entity);
   const showDelete = !offline && canDeletePlaylist(entity);
   const isVA = entity?.type === 'artist' && isVariousArtists(entity.item.name);

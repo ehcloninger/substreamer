@@ -13,6 +13,7 @@ import {
   fetchScanStatus,
   startScan as startLibraryScan,
 } from '../services/scanService';
+import { supports } from '../services/serverCapabilityService';
 import { scanStatusStore } from '../store/scanStatusStore';
 import { serverInfoStore } from '../store/serverInfoStore';
 
@@ -38,7 +39,8 @@ export function SettingsServerScreen() {
   const scanFolderCount = scanStatusStore((s) => s.folderCount);
   const scanLoading = scanStatusStore((s) => s.loading);
 
-  const isNavidrome = serverInfo.serverType?.toLowerCase() === 'navidrome';
+  const canScan = supports('scan');
+  const canFullScan = supports('fullScan');
 
   const hasAnyInfo =
     serverInfo.serverType != null ||
@@ -139,6 +141,7 @@ export function SettingsServerScreen() {
         )}
       </View>
 
+      {canScan && (
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Library scan</Text>
         <View style={[styles.card, dynamicStyles.card]}>
@@ -202,7 +205,7 @@ export function SettingsServerScreen() {
                 Quick Scan
               </Text>
             </Pressable>
-            {isNavidrome && (
+            {canFullScan && (
               <Pressable
                 onPress={handleFullScan}
                 disabled={scanScanning || scanLoading}
@@ -226,6 +229,7 @@ export function SettingsServerScreen() {
           </View>
         </View>
       </View>
+      )}
     </ScrollView>
     </GradientBackground>
     <ThemedAlert {...alertProps} />

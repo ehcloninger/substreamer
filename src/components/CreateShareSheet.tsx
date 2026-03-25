@@ -12,10 +12,7 @@ import {
 
 import { BottomSheet } from './BottomSheet';
 import { useTheme } from '../hooks/useTheme';
-import {
-  createShare,
-  createShareMultiple,
-} from '../services/subsonicService';
+import { createShare } from '../services/subsonicService';
 import { createShareStore } from '../store/createShareStore';
 import { rewriteShareUrl } from '../store/shareSettingsStore';
 import { sharesStore } from '../store/sharesStore';
@@ -72,7 +69,7 @@ export function CreateShareSheet() {
 
     let share;
     if (shareType === 'queue') {
-      share = await createShareMultiple(songIds, desc, expires);
+      share = await createShare(songIds, desc, expires);
     } else {
       if (!itemId) {
         setError('Missing item ID');

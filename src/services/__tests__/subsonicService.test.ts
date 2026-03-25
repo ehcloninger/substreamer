@@ -1105,40 +1105,47 @@ describe('createShare', () => {
   });
 });
 
-describe('createShareMultiple', () => {
-  it('delegates to createShare for single ID', async () => {
+describe('createShare with array of IDs', () => {
+  it('passes array to library for multiple IDs', async () => {
+    const { default: SubsonicAPI } = require('subsonic-api');
+    SubsonicAPI.prototype.createShare = jest.fn().mockResolvedValue({
+      shares: { share: [{ id: 'sh2' }] },
+    });
+    const { createShare, getApi } = require('../subsonicService');
+    getApi();
+    const result = await createShare(['s1', 's2'], 'desc', 9999);
+    expect(result).toEqual({ id: 'sh2' });
+    expect(SubsonicAPI.prototype.createShare).toHaveBeenCalledWith(
+      expect.objectContaining({ id: ['s1', 's2'] }),
+    );
+  });
+
+  it('unwraps single-element array to string', async () => {
     const { default: SubsonicAPI } = require('subsonic-api');
     SubsonicAPI.prototype.createShare = jest.fn().mockResolvedValue({
       shares: { share: [{ id: 'sh1' }] },
     });
-    const { createShareMultiple, getApi } = require('../subsonicService');
+    const { createShare, getApi } = require('../subsonicService');
     getApi();
-    const result = await createShareMultiple(['s1'], 'desc');
+    const result = await createShare(['s1'], 'desc');
     expect(result).toEqual({ id: 'sh1' });
+    expect(SubsonicAPI.prototype.createShare).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 's1' }),
+    );
   });
 
-  it('uses raw fetch for multiple IDs', async () => {
-    const mockFetch = jest.fn().mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
-        'subsonic-response': {
-          status: 'ok',
-          shares: { share: [{ id: 'sh2' }] },
-        },
-      }),
-    });
-    global.fetch = mockFetch;
-    const { createShareMultiple, getApi } = require('../subsonicService');
-    getApi();
-    const result = await createShareMultiple(['s1', 's2'], 'desc', 9999);
-    expect(result).toEqual({ id: 'sh2' });
-    expect(mockFetch).toHaveBeenCalled();
+  it('returns null for empty array', async () => {
+    const { createShare } = require('../subsonicService');
+    const result = await createShare([]);
+    expect(result).toBeNull();
   });
 
   it('returns null on exception for multiple IDs', async () => {
-    global.fetch = jest.fn().mockRejectedValue(new Error('network'));
-    const { createShareMultiple, getApi } = require('../subsonicService');
+    const { default: SubsonicAPI } = require('subsonic-api');
+    SubsonicAPI.prototype.createShare = jest.fn().mockRejectedValue(new Error('fail'));
+    const { createShare, getApi } = require('../subsonicService');
     getApi();
-    const result = await createShareMultiple(['s1', 's2']);
+    const result = await createShare(['s1', 's2']);
     expect(result).toBeNull();
   });
 });
@@ -1403,29 +1410,11 @@ describe('getShares (catch path)', () => {
   });
 });
 
-describe('createShareMultiple (edge cases)', () => {
-  it('returns null for empty array', async () => {
-    const { createShareMultiple } = require('../subsonicService');
-    const result = await createShareMultiple([]);
-    expect(result).toBeNull();
-  });
-
-  it('returns null when fetch response status is not ok', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
-        'subsonic-response': { status: 'failed' },
-      }),
-    });
-    const { createShareMultiple, getApi } = require('../subsonicService');
-    getApi();
-    const result = await createShareMultiple(['s1', 's2']);
-    expect(result).toBeNull();
-  });
-
-  it('returns null when not logged in for multiple IDs', async () => {
+describe('createShare with array (edge cases)', () => {
+  it('returns null when not logged in for array input', async () => {
     mockAuthStore.getState.mockReturnValue({ isLoggedIn: false } as any);
-    const { createShareMultiple } = require('../subsonicService');
-    const result = await createShareMultiple(['s1', 's2']);
+    const { createShare } = require('../subsonicService');
+    const result = await createShare(['s1', 's2']);
     expect(result).toBeNull();
   });
 });
