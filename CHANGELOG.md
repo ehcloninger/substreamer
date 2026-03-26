@@ -1,5 +1,22 @@
 # Changelog
 
+## [8.0.39] - 2026-03-26
+
+- playlists: empty state placeholder when offline with no downloaded content
+- shares: can't manage shares when offline as requires API access
+- onboarding: centered on larger screens and tablets
+- ci: update coverage badge [skip ci]
+- publishing: add favicon for web
+- ci: update coverage badge [skip ci]
+- publishing: web content update
+- ci: update coverage badge [skip ci]
+- publishing: handle ios editable version incrementing
+- ci: update coverage badge [skip ci]
+- subsonic-api: add tests to the forked package
+- docs: update supported server details everywhere
+- server compatibility: navidrome, subsonic, airsonic-advanced, gonic all properly supported now closes #33
+- logout: stop playback and clear playback state on logout
+- ci: update coverage badge [skip ci]
 ## [8.0.38] - 2026-03-24
 
 - banners: adopt pill style for banners
