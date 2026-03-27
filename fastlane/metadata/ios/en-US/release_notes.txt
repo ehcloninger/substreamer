@@ -1,3 +1,5 @@
+Max width for bottom sheets on tablets
+
 Update banner spacing animation
 Support legacy auth for Nextcloud Music & Ampache
 
