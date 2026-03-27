@@ -107,9 +107,9 @@ albumListsStore.getState().refreshAll();
 | `genreStore` | Yes | Genre data cache |
 | `onboardingStore` | Yes | Onboarding/tutorial flow state |
 | `scrobbleExclusionStore` | Yes | Scrobble exclusion rules |
+| `migrationStore` | Yes | Migration version tracking |
 | `playerStore` | No | Current track, queue, playback position |
 | `searchStore` | No | Search query and results |
-| `migrationStore` | No | Migration version tracking |
 | `addToPlaylistStore` | No | Add-to-playlist sheet state |
 | `connectivityStore` | No | Network reachability state |
 | `createShareStore` | No | Create-share sheet state |

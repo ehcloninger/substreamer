@@ -1,3 +1,5 @@
+jest.mock('../sqliteStorage', () => require('../__mocks__/sqliteStorage'));
+
 import { migrationStore } from '../migrationStore';
 
 beforeEach(() => {
@@ -18,5 +20,16 @@ describe('migrationStore', () => {
     migrationStore.getState().setCompletedVersion(1);
     migrationStore.getState().setCompletedVersion(5);
     expect(migrationStore.getState().completedVersion).toBe(5);
+  });
+
+  it('partializes to only persist completedVersion', () => {
+    const persist = (migrationStore as any).persist;
+    const options = persist?.getOptions?.();
+    if (options?.partialize) {
+      const full = { completedVersion: 3, setCompletedVersion: () => {} };
+      const result = options.partialize(full);
+      expect(result).toEqual({ completedVersion: 3 });
+      expect(result).not.toHaveProperty('setCompletedVersion');
+    }
   });
 });

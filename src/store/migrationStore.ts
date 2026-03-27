@@ -1,13 +1,7 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
-/**
- * Tracks which migration version has been completed.
- *
- * Currently **non-persisted** so migrations run on every app launch,
- * making it easy to test during development. To persist, wrap the
- * store creator with `persist` and `createJSONStorage(() => sqliteStorage)`
- * (see themeStore.ts for the pattern).
- */
+import { sqliteStorage } from './sqliteStorage';
 
 export interface MigrationState {
   /** Highest migration task ID that has completed. 0 = none. */
@@ -15,7 +9,16 @@ export interface MigrationState {
   setCompletedVersion: (version: number) => void;
 }
 
-export const migrationStore = create<MigrationState>()((set) => ({
-  completedVersion: 0,
-  setCompletedVersion: (completedVersion) => set({ completedVersion }),
-}));
+export const migrationStore = create<MigrationState>()(
+  persist(
+    (set) => ({
+      completedVersion: 0,
+      setCompletedVersion: (completedVersion) => set({ completedVersion }),
+    }),
+    {
+      name: 'substreamer-migration',
+      storage: createJSONStorage(() => sqliteStorage),
+      partialize: (state) => ({ completedVersion: state.completedVersion }),
+    },
+  ),
+);

@@ -86,6 +86,7 @@ const allStores = [
   sharesStore,
   sslCertStore,
   storageLimitStore,
+  migrationStore,
   // Non-persisted
   addToPlaylistStore,
   certPromptStore,
@@ -95,7 +96,6 @@ const allStores = [
   editShareStore,
   filterBarStore,
   mbidSearchStore,
-  migrationStore,
   moreOptionsStore,
   playbackToastStore,
   playerStore,
