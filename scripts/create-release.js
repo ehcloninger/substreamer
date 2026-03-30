@@ -12,7 +12,25 @@ const CHANGELOG_HEADER = '# Changelog\n\nAll notable changes to this project wil
 const IOS_RELEASE_NOTES = path.join(ROOT, 'fastlane/metadata/ios/en-US/release_notes.txt');
 const ANDROID_CHANGELOG = path.join(ROOT, 'fastlane/metadata/android/en-US/changelogs/default.txt');
 
-const STORE_MAX_LENGTH = 4000;
+const METADATA_DIR = path.join(ROOT, 'fastlane/metadata');
+
+// Character limits per filename — applied across all locales
+const ANDROID_FILE_LIMITS = {
+  'title.txt': 30,
+  'short_description.txt': 80,
+  'full_description.txt': 4000,
+  'video.txt': 500,
+};
+const ANDROID_CHANGELOG_LIMIT = 500;
+
+const IOS_FILE_LIMITS = {
+  'name.txt': 30,
+  'subtitle.txt': 30,
+  'keywords.txt': 100,
+  'promotional_text.txt': 170,
+  'description.txt': 4000,
+  'release_notes.txt': 4000,
+};
 const EXCLUDED_PREFIXES = [
   'ci', 'test', 'tests', 'docs', 'chore', 'build', 'style',
   'release', 'publishing', 'clean up', 'refactor',
@@ -137,6 +155,69 @@ function updateChangelog(entry) {
 
 // --- Store Changelog ---
 
+function validateStoreMetadata() {
+  const errors = [];
+
+  // Android: locale directories under fastlane/metadata/android/
+  const androidDir = path.join(METADATA_DIR, 'android');
+  if (fs.existsSync(androidDir)) {
+    for (const locale of fs.readdirSync(androidDir)) {
+      const localeDir = path.join(androidDir, locale);
+      if (!fs.statSync(localeDir).isDirectory()) continue;
+
+      // Standard metadata files
+      for (const [filename, max] of Object.entries(ANDROID_FILE_LIMITS)) {
+        const filePath = path.join(localeDir, filename);
+        if (!fs.existsSync(filePath)) continue;
+        const length = fs.readFileSync(filePath, 'utf-8').trim().length;
+        if (length > max) {
+          errors.push({ filePath, max, length });
+        }
+      }
+
+      // Changelogs (default.txt and version-specific)
+      const changelogDir = path.join(localeDir, 'changelogs');
+      if (fs.existsSync(changelogDir)) {
+        for (const file of fs.readdirSync(changelogDir)) {
+          if (!file.endsWith('.txt')) continue;
+          const filePath = path.join(changelogDir, file);
+          const length = fs.readFileSync(filePath, 'utf-8').trim().length;
+          if (length > ANDROID_CHANGELOG_LIMIT) {
+            errors.push({ filePath, max: ANDROID_CHANGELOG_LIMIT, length });
+          }
+        }
+      }
+    }
+  }
+
+  // iOS: locale directories under fastlane/metadata/ios/
+  const iosDir = path.join(METADATA_DIR, 'ios');
+  if (fs.existsSync(iosDir)) {
+    for (const locale of fs.readdirSync(iosDir)) {
+      const localeDir = path.join(iosDir, locale);
+      if (!fs.statSync(localeDir).isDirectory()) continue;
+      for (const [filename, max] of Object.entries(IOS_FILE_LIMITS)) {
+        const filePath = path.join(localeDir, filename);
+        if (!fs.existsSync(filePath)) continue;
+        const length = fs.readFileSync(filePath, 'utf-8').trim().length;
+        if (length > max) {
+          errors.push({ filePath, max, length });
+        }
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('\n  Store metadata exceeds character limits:\n');
+    for (const { filePath, length, max } of errors) {
+      const rel = path.relative(ROOT, filePath);
+      console.error(`    ${rel}: ${length}/${max} chars (+${length - max} over)`);
+    }
+    console.error('\n  Trim the file(s) above, then re-run the release script.\n');
+    process.exit(1);
+  }
+}
+
 function filterStoreCommits(commits) {
   const seen = new Set();
   return commits.filter((msg) => {
@@ -176,7 +257,7 @@ function formatStoreCommit(msg) {
   return text;
 }
 
-function updateStoreChangelog(commits, filePath) {
+function updateStoreChangelog(commits, filePath, maxLength) {
   const filtered = filterStoreCommits(commits);
   if (filtered.length === 0) return false;
 
@@ -201,11 +282,6 @@ function updateStoreChangelog(commits, filePath) {
     content = content + '\n\n' + existing;
   }
 
-  // Truncate to store limit
-  if (content.length > STORE_MAX_LENGTH) {
-    content = content.substring(0, STORE_MAX_LENGTH - 3).trimEnd() + '...';
-  }
-
   fs.writeFileSync(filePath, content + '\n');
   return true;
 }
@@ -228,6 +304,7 @@ if (!type || !VALID_TYPES.includes(type)) {
 }
 
 checkPrerequisites();
+validateStoreMetadata();
 
 const appJson = readJSON(APP_JSON);
 const currentVersion = appJson.expo.version;
@@ -246,8 +323,8 @@ const entry = buildChangelogEntry(newVersion, commits);
 updateChangelog(entry);
 console.log('  ✓ Updated CHANGELOG.md');
 
-const iosUpdated = updateStoreChangelog(commits, IOS_RELEASE_NOTES);
-const androidUpdated = updateStoreChangelog(commits, ANDROID_CHANGELOG);
+const iosUpdated = updateStoreChangelog(commits, IOS_RELEASE_NOTES, IOS_FILE_LIMITS['release_notes.txt']);
+const androidUpdated = updateStoreChangelog(commits, ANDROID_CHANGELOG, ANDROID_CHANGELOG_LIMIT);
 if (iosUpdated || androidUpdated) {
   console.log('  ✓ Updated store release notes');
 } else {
