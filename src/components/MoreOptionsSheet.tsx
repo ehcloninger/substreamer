@@ -2,7 +2,7 @@
  * MoreOptionsSheet – unified bottom sheet for all entity types.
  *
  * Reads from `moreOptionsStore` and renders entity-specific options:
- *   - Song/Track: Favorite, Add to Playlist, Play More Like This, Add to Queue, Go to Album, Go to Artist
+ *   - Song/Track: Favorite, Add to Playlist, Play More Like This, Add to Queue, Go to Album, Go to Artist, Track Details
  *   - Album: Favorite, Add to Queue, Go to Artist, Album Details
  *   - Artist: Favorite, Save Top Songs Playlist, Play Similar Artists
  *   - Playlist: Add to Queue
@@ -23,6 +23,7 @@ import {
 
 import { AlbumDetailsModal } from './AlbumDetailsModal';
 import { BottomSheet } from './BottomSheet';
+import { TrackDetailsModal } from './TrackDetailsModal';
 import { CachedImage } from './CachedImage';
 import { ThemedAlert } from './ThemedAlert';
 import { useThemedAlert } from '../hooks/useThemedAlert';
@@ -134,6 +135,10 @@ function hasAlbumDetails(entity: MoreOptionsEntity): boolean {
   return entity.type === 'album';
 }
 
+function hasTrackDetails(entity: MoreOptionsEntity): boolean {
+  return entity.type === 'song';
+}
+
 function canShare(entity: MoreOptionsEntity): boolean {
   return entity.type === 'album' || entity.type === 'playlist';
 }
@@ -220,6 +225,7 @@ export function MoreOptionsSheet() {
   const [busy, setBusy] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [detailsAlbum, setDetailsAlbum] = useState<AlbumID3 | null>(null);
+  const [detailsTrack, setDetailsTrack] = useState<Child | null>(null);
 
   const handleClose = useCallback(() => {
     hide();
@@ -368,6 +374,14 @@ export function MoreOptionsSheet() {
     setTimeout(() => setDetailsVisible(true), 300);
   }, [entity, handleClose]);
 
+  const handleShowTrackDetails = useCallback(() => {
+    if (entity?.type === 'song') {
+      setDetailsTrack(entity.item as Child);
+    }
+    handleClose();
+    setTimeout(() => setDetailsVisible(true), 300);
+  }, [entity, handleClose]);
+
   const handleDownload = useCallback(async () => {
     if (!entity || !canDownload(entity)) return;
     handleClose();
@@ -486,6 +500,16 @@ export function MoreOptionsSheet() {
             }}
           />
         )}
+        {detailsTrack && (
+          <TrackDetailsModal
+            track={detailsTrack}
+            visible={detailsVisible}
+            onClose={() => {
+              setDetailsVisible(false);
+              setDetailsTrack(null);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -504,6 +528,7 @@ export function MoreOptionsSheet() {
   const showAddToQueue = !isPlayerSource && canAddToQueue(entity);
   const showPlayMoreLikeThis = !offline && canPlayMoreLikeThis(entity);
   const showDetails = hasAlbumDetails(entity);
+  const showTrackDetails = hasTrackDetails(entity);
   const showShare = !offline && canShare(entity) && supports('shares');
   const showDownload = canDownload(entity);
   const showDelete = !offline && canDeletePlaylist(entity);
@@ -518,7 +543,7 @@ export function MoreOptionsSheet() {
     starrable || showRating || showAddToPlaylist || showAddQueueToPlaylist ||
     showAddToQueue || showPlayMoreLikeThis || showPlaySimilarArtistsMix ||
     showPlayMoreByArtist || showDownload ||
-    showAlbumLink || showArtistLink || showShare || showDetails || showDelete ||
+    showAlbumLink || showArtistLink || showShare || showDetails || showTrackDetails || showDelete ||
     showSaveTopSongsPlaylist || showSetMbid || showScrobbleExclusion;
 
   return (
@@ -842,6 +867,27 @@ export function MoreOptionsSheet() {
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                     Album Details
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Track Details */}
+              {showTrackDetails && (
+                <Pressable
+                  onPress={handleShowTrackDetails}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Track Details
                   </Text>
                 </Pressable>
               )}
@@ -1264,6 +1310,27 @@ export function MoreOptionsSheet() {
                 </Pressable>
               )}
 
+              {/* Track Details */}
+              {showTrackDetails && (
+                <Pressable
+                  onPress={handleShowTrackDetails}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={22}
+                    color={colors.textPrimary}
+                    style={styles.optionIcon}
+                  />
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                    Track Details
+                  </Text>
+                </Pressable>
+              )}
+
               {/* Set MusicBrainz ID (artist/album) */}
               {showSetMbid && (
                 <Pressable
@@ -1388,6 +1455,16 @@ export function MoreOptionsSheet() {
           onClose={() => {
             setDetailsVisible(false);
             setDetailsAlbum(null);
+          }}
+        />
+      )}
+      {detailsTrack && (
+        <TrackDetailsModal
+          track={detailsTrack}
+          visible={detailsVisible}
+          onClose={() => {
+            setDetailsVisible(false);
+            setDetailsTrack(null);
           }}
         />
       )}
