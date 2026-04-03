@@ -13,6 +13,7 @@ import { offlineModeStore } from '../store/offlineModeStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
 import { playlistLibraryStore } from '../store/playlistLibraryStore';
 import { processingOverlayStore } from '../store/processingOverlayStore';
+import { shuffleArray } from '../utils/arrayHelpers';
 import { addToQueue, playTrack, removeFromQueue } from './playerService';
 import {
   createNewPlaylist,
@@ -239,14 +240,6 @@ const MORE_BY_ARTIST_COUNT = 20;
 const MORE_BY_ARTIST_MIN = 5;
 
 /** Fisher-Yates (Knuth) in-place shuffle. */
-function shuffleArray<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
 /**
  * Build a shuffled queue of songs by a specific artist and start playback.
  * Online: fetches all albums by the artist, collects songs, shuffles.
@@ -319,8 +312,7 @@ export async function playMoreByArtist(artistId: string, artistName: string): Pr
       }
     }
 
-    shuffleArray(songs);
-    const queue = songs.slice(0, MORE_BY_ARTIST_COUNT);
+    const queue = shuffleArray(songs).slice(0, MORE_BY_ARTIST_COUNT);
     await playTrack(queue[0], queue);
     processingOverlayStore.getState().showSuccess(`Playing ${artistName} mix`);
   } catch {

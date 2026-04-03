@@ -21,6 +21,7 @@ import { type ThemeColors } from '../constants/theme';
 import { getOfflineSongsByGenre, getOfflineSongsAll } from '../services/searchService';
 import { getRandomSongs, type Child } from '../services/subsonicService';
 import { playTrack } from '../services/playerService';
+import { shuffleArray } from '../utils/arrayHelpers';
 import { connectivityStore } from '../store/connectivityStore';
 import { genreStore } from '../store/genreStore';
 import { offlineModeStore } from '../store/offlineModeStore';
@@ -51,14 +52,6 @@ function genreColor(genre: string): string {
 }
 
 /** Fisher-Yates shuffle (in-place, returns same array). */
-function shuffle<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
 function isOnline(): boolean {
   const { offlineMode } = offlineModeStore.getState();
   if (offlineMode) return false;
@@ -73,7 +66,7 @@ async function playGenre(genre: string): Promise<boolean> {
     songs = await getRandomSongs(20, genre);
   } else {
     songs = getOfflineSongsByGenre(genre);
-    if (songs) shuffle(songs);
+    if (songs) songs = shuffleArray(songs);
   }
 
   if (!songs || songs.length === 0) return false;
@@ -190,8 +183,7 @@ const MixItUpChip = memo(function MixItUpChip({ colors }: { colors: ThemeColors 
         songs = await getRandomSongs(20);
       } else {
         songs = getOfflineSongsAll();
-        if (songs) shuffle(songs);
-        songs = songs?.slice(0, 20) ?? null;
+        if (songs) songs = shuffleArray(songs).slice(0, 20);
       }
       if (songs && songs.length > 0) {
         await playTrack(songs[0], songs);

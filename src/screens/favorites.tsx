@@ -1,12 +1,18 @@
 import { useIsFocused } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AlbumListView } from '../components/AlbumListView';
+import { DownloadButton } from '../components/DownloadButton';
 import { EmptyState } from '../components/EmptyState';
 import { ArtistListView } from '../components/ArtistListView';
 import { SegmentControl } from '../components/SegmentControl';
 import { SongListView } from '../components/SongListView';
+import { useTheme } from '../hooks/useTheme';
+import { shuffleArray } from '../utils/arrayHelpers';
+import { formatCompactDuration } from '../utils/formatters';
+import { playTrack } from '../services/playerService';
 import {
   STARRED_SONGS_ITEM_ID,
   enqueueStarredSongsDownload,
@@ -37,6 +43,7 @@ const SEGMENTS = [
 /* ------------------------------------------------------------------ */
 
 export function FavoritesScreen() {
+  const { colors } = useTheme();
   const isFocused = useIsFocused();
   const headerHeight = searchStore((s) => s.headerHeight);
   const [activeSegment, setActiveSegment] = useState<FavoritesSegment>('songs');
@@ -108,33 +115,16 @@ export function FavoritesScreen() {
     });
     store.setHideDownloaded(activeSegment === 'artists');
     store.setHideFavorites(false);
-
-    const showDownloadButton =
-      activeSegment === 'songs' && songs.length > 0 && (!offlineMode || starredSongsDownloaded);
-    store.setDownloadButtonConfig(
-      showDownloadButton
-        ? {
-            itemId: STARRED_SONGS_ITEM_ID,
-            type: 'playlist',
-            onDownload: handleDownloadStarred,
-            onDelete: handleDeleteStarred,
-          }
-        : null,
-    );
+    store.setDownloadButtonConfig(null);
   }, [
     isFocused,
     activeSegment,
-    songs.length,
-    offlineMode,
-    cachedItems,
     favSongLayout,
     favAlbumLayout,
     favArtistLayout,
     toggleSongLayout,
     toggleAlbumLayout,
     toggleArtistLayout,
-    handleDownloadStarred,
-    handleDeleteStarred,
   ]);
 
   const filteredSongs = useMemo(() => {
@@ -174,6 +164,72 @@ export function FavoritesScreen() {
   const segmentHeight = 52;
   const contentInsetTop = headerHeight + segmentHeight;
 
+  const totalDuration = useMemo(
+    () => filteredSongs.reduce((sum, s) => sum + (s.duration ?? 0), 0),
+    [filteredSongs],
+  );
+
+  const songsActionBar = useMemo(() => {
+    if (filteredSongs.length === 0) return null;
+    return (
+      <View style={styles.actionBar}>
+        {(!offlineMode || starredSongsDownloaded) && (
+          <DownloadButton
+            itemId={STARRED_SONGS_ITEM_ID}
+            type="playlist"
+            size={30}
+            onDownload={handleDownloadStarred}
+            onDelete={handleDeleteStarred}
+          />
+        )}
+        <View style={styles.meta}>
+          <View style={styles.metaLine}>
+            <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
+            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+              {filteredSongs.length} {filteredSongs.length === 1 ? 'song' : 'songs'}
+            </Text>
+          </View>
+          <View style={styles.metaLine}>
+            <Ionicons name="time-outline" size={14} color={colors.primary} />
+            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+              {formatCompactDuration(totalDuration)}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.actionButtons}>
+          {filteredSongs.length > 1 && (
+            <Pressable
+              onPress={() => {
+                const shuffled = shuffleArray(filteredSongs);
+                playTrack(shuffled[0], shuffled);
+              }}
+              style={({ pressed }) => [
+                styles.shufflePlayButton,
+                pressed && styles.buttonPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Shuffle play"
+            >
+              <Ionicons name="shuffle" size={18} color="#000" />
+            </Pressable>
+          )}
+          <Pressable
+            onPress={() => playTrack(filteredSongs[0], filteredSongs)}
+            style={({ pressed }) => [
+              styles.playAllButton,
+              { backgroundColor: colors.primary },
+              pressed && styles.buttonPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Play all"
+          >
+            <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
+          </Pressable>
+        </View>
+      </View>
+    );
+  }, [filteredSongs, totalDuration, colors, offlineMode, starredSongsDownloaded, handleDownloadStarred, handleDeleteStarred]);
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -196,6 +252,7 @@ export function FavoritesScreen() {
               : 'heart-outline'}
             scrollToTopTrigger={`${downloadedOnly}`}
             contentInsetTop={contentInsetTop}
+            listHeaderExtra={songsActionBar}
           />
         )}
         {activeSegment === 'albums' && (
@@ -267,5 +324,50 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1,
+  },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: -8,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  meta: {
+    flex: 1,
+    gap: 4,
+  },
+  metaLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  shufflePlayButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  playAllButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playAllIcon: {
+    marginLeft: 3,
+  },
+  buttonPressed: {
+    opacity: 0.7,
   },
 });

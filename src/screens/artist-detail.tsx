@@ -37,7 +37,8 @@ import { useTheme } from '../hooks/useTheme';
 import { mixHexColors } from '../utils/colors';
 import { useTransitionComplete } from '../hooks/useTransitionComplete';
 import { refreshCachedImage } from '../services/imageCacheService';
-import { toggleStar } from '../services/moreOptionsService';
+import { playMoreByArtist, toggleStar } from '../services/moreOptionsService';
+import { shuffleArray } from '../utils/arrayHelpers';
 import { minDelay } from '../utils/stringHelpers';
 import { playTrack } from '../services/playerService';
 import { artistDetailStore } from '../store/artistDetailStore';
@@ -271,6 +272,42 @@ export function ArtistDetailScreen() {
               {artist.albumCount === 1 ? '1 album' : `${artist.albumCount} albums`}
             </Text>
           </View>
+        </View>
+        <View style={styles.heroButtons}>
+          <Pressable
+            onPress={() => {
+              if (topSongs.length > 1) {
+                const shuffled = shuffleArray(topSongs);
+                playTrack(shuffled[0], shuffled);
+              } else if (artist) {
+                playMoreByArtist(artist.id, artist.name);
+              }
+            }}
+            style={({ pressed }) => [
+              styles.shufflePlayButton,
+              pressed && styles.shufflePlayButtonPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Shuffle play"
+          >
+            <Ionicons name="shuffle" size={18} color="#000" />
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              if (topSongs.length > 0) {
+                playTrack(topSongs[0], topSongs);
+              } else if (artist) {
+                playMoreByArtist(artist.id, artist.name);
+              }
+            }}
+            style={({ pressed }) => [
+              styles.playAllButton,
+              { backgroundColor: colors.primary },
+              pressed && styles.playAllButtonPressed,
+            ]}
+          >
+            <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
+          </Pressable>
         </View>
 
         {/* Heavy sections deferred until after the navigation animation */}
@@ -545,6 +582,37 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 14,
     marginLeft: 4,
+  },
+  heroButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 10,
+    paddingHorizontal: 16,
+  },
+  shufflePlayButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  shufflePlayButtonPressed: {
+    opacity: 0.7,
+  },
+  playAllButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playAllButtonPressed: {
+    opacity: 0.7,
+  },
+  playAllIcon: {
+    marginLeft: 3,
   },
 
   /* Sections */

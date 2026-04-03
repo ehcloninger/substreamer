@@ -38,6 +38,7 @@ import { useTransitionComplete } from '../hooks/useTransitionComplete';
 import { refreshCachedImage } from '../services/imageCacheService';
 import { toggleStar } from '../services/moreOptionsService';
 import { enqueueAlbumDownload } from '../services/musicCacheService';
+import { shuffleArray } from '../utils/arrayHelpers';
 import { minDelay } from '../utils/stringHelpers';
 import { playTrack } from '../services/playerService';
 import { albumDetailStore } from '../store/albumDetailStore';
@@ -235,31 +236,49 @@ export function AlbumDetailScreen() {
           </View>
         </View>
         <View style={styles.info}>
-          <View style={styles.infoText}>
-            <MarqueeText style={[styles.albumName, { color: colors.textPrimary }]}>
-              {album.name}
-            </MarqueeText>
-            <Text style={[styles.artistName, { color: colors.textSecondary }]}>
-              {album.artist ?? album.displayArtist ?? 'Unknown Artist'}
-            </Text>
-            {album.year ? (
-              <Text style={[styles.albumYear, { color: colors.textSecondary }]}>
-                {album.year}
+          <MarqueeText style={[styles.albumName, { color: colors.textPrimary }]}>
+            {album.name}
+          </MarqueeText>
+          <View style={styles.subtitleRow}>
+            <View style={styles.subtitleText}>
+              <Text style={[styles.artistName, { color: colors.textSecondary }]}>
+                {album.artist ?? album.displayArtist ?? 'Unknown Artist'}
               </Text>
-            ) : null}
+              {album.year ? (
+                <Text style={[styles.albumYear, { color: colors.textSecondary }]}>
+                  {album.year}
+                </Text>
+              ) : null}
+            </View>
+            {allSongs.length > 1 && (
+              <Pressable
+                onPress={() => {
+                  const shuffled = shuffleArray(allSongs);
+                  playTrack(shuffled[0], shuffled);
+                }}
+                style={({ pressed }) => [
+                  styles.shufflePlayButton,
+                  pressed && styles.shufflePlayButtonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Shuffle play"
+              >
+                <Ionicons name="shuffle" size={18} color="#000" />
+              </Pressable>
+            )}
+            {allSongs.length > 0 && (
+              <Pressable
+                onPress={() => playTrack(allSongs[0], allSongs)}
+                style={({ pressed }) => [
+                  styles.playAllButton,
+                  { backgroundColor: colors.primary },
+                  pressed && styles.playAllButtonPressed,
+                ]}
+              >
+                <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
+              </Pressable>
+            )}
           </View>
-          {allSongs.length > 0 && (
-            <Pressable
-              onPress={() => playTrack(allSongs[0], allSongs)}
-              style={({ pressed }) => [
-                styles.playAllButton,
-                { backgroundColor: colors.primary },
-                pressed && styles.playAllButtonPressed,
-              ]}
-            >
-              <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
-            </Pressable>
-          )}
         </View>
         <View style={styles.trackListSpacer} />
       </>
@@ -422,14 +441,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   info: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 8,
-  },
-  infoText: {
-    flex: 1,
   },
   headerRight: {
     flexDirection: 'row',
@@ -440,13 +454,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  subtitleText: {
+    flex: 1,
+  },
+  shufflePlayButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginLeft: 10,
+  },
+  shufflePlayButtonPressed: {
+    opacity: 0.7,
+  },
   playAllButton: {
     width: 52,
     height: 52,
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 16,
+    marginLeft: 10,
   },
   playAllButtonPressed: {
     opacity: 0.7,
@@ -465,7 +499,6 @@ const styles = StyleSheet.create({
   },
   artistName: {
     fontSize: 16,
-    marginTop: 4,
   },
   trackItemWrap: {
     paddingHorizontal: 16,

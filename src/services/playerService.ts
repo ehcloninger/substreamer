@@ -22,6 +22,7 @@ import {
 import { playbackToastStore } from '../store/playbackToastStore';
 import { playerStore, type PlaybackStatus } from '../store/playerStore';
 import { serverInfoStore } from '../store/serverInfoStore';
+import { shuffleArray } from '../utils/arrayHelpers';
 import { addCompletedScrobble, sendNowPlaying } from './scrobbleService';
 import { getCachedImageUri } from './imageCacheService';
 import { getLocalTrackUri } from './musicCacheService';
@@ -890,13 +891,7 @@ export async function shuffleQueue(): Promise<void> {
   try {
     await TrackPlayer.pause();
 
-    // Fisher-Yates shuffle on a copy.
-    const shuffled = [...currentChildQueue];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
+    const shuffled = shuffleArray(currentChildQueue);
     currentChildQueue = shuffled;
     playerStore.getState().setQueue(shuffled);
 

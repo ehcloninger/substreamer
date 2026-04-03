@@ -45,6 +45,7 @@ import { cacheAllSizes, refreshCachedImage } from '../services/imageCacheService
 import { enqueuePlaylistDownload, syncCachedPlaylistTracks } from '../services/musicCacheService';
 import { playTrack } from '../services/playerService';
 import { updatePlaylistOrder } from '../services/subsonicService';
+import { shuffleArray } from '../utils/arrayHelpers';
 import { minDelay } from '../utils/stringHelpers';
 import { moreOptionsStore } from '../store/moreOptionsStore';
 import { musicCacheStore } from '../store/musicCacheStore';
@@ -361,44 +362,62 @@ export function PlaylistDetailScreen() {
           </View>
         </View>
         <View style={styles.info}>
-          <View style={styles.infoText}>
-            <MarqueeText style={[styles.playlistName, { color: colors.textPrimary }]}>
-              {playlist.name}
-            </MarqueeText>
-            {playlist.owner && (
-              <Text style={[styles.ownerName, { color: colors.textSecondary }]}>
-                by {playlist.owner}
-              </Text>
-            )}
-            {playlist.comment ? (
-              <Text style={[styles.comment, { color: colors.textSecondary }]}>
-                {playlist.comment}
-              </Text>
-            ) : null}
-            <View style={styles.meta}>
-              <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                {songCount} {songCount === 1 ? 'song' : 'songs'}
-              </Text>
-              <View style={styles.metaSpacer} />
-              <Ionicons name="time-outline" size={14} color={colors.primary} />
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                {formatCompactDuration(duration)}
-              </Text>
+          <MarqueeText style={[styles.playlistName, { color: colors.textPrimary }]}>
+            {playlist.name}
+          </MarqueeText>
+          <View style={styles.subtitleRow}>
+            <View style={styles.subtitleText}>
+              {playlist.owner && (
+                <Text style={[styles.ownerName, { color: colors.textSecondary }]}>
+                  by {playlist.owner}
+                </Text>
+              )}
+              {playlist.comment ? (
+                <Text style={[styles.comment, { color: colors.textSecondary }]}>
+                  {playlist.comment}
+                </Text>
+              ) : null}
+              <View style={styles.meta}>
+                <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                  {songCount} {songCount === 1 ? 'song' : 'songs'}
+                </Text>
+                <View style={styles.metaSpacer} />
+                <Ionicons name="time-outline" size={14} color={colors.primary} />
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                  {formatCompactDuration(duration)}
+                </Text>
+              </View>
             </View>
+            {!editing && displayTracks.length > 1 && (
+              <Pressable
+                onPress={() => {
+                  const shuffled = shuffleArray(displayTracks);
+                  playTrack(shuffled[0], shuffled, id);
+                }}
+                style={({ pressed }) => [
+                  styles.shufflePlayButton,
+                  pressed && styles.shufflePlayButtonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Shuffle play"
+              >
+                <Ionicons name="shuffle" size={18} color="#000" />
+              </Pressable>
+            )}
+            {!editing && displayTracks.length > 0 && (
+              <Pressable
+                onPress={() => playTrack(displayTracks[0], displayTracks, id)}
+                style={({ pressed }) => [
+                  styles.playAllButton,
+                  { backgroundColor: colors.primary },
+                  pressed && styles.playAllButtonPressed,
+                ]}
+              >
+                <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
+              </Pressable>
+            )}
           </View>
-          {!editing && displayTracks.length > 0 && (
-            <Pressable
-              onPress={() => playTrack(displayTracks[0], displayTracks, id)}
-              style={({ pressed }) => [
-                styles.playAllButton,
-                { backgroundColor: colors.primary },
-                pressed && styles.playAllButtonPressed,
-              ]}
-            >
-              <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
-            </Pressable>
-          )}
         </View>
         <View style={styles.trackListSpacer} />
       </View>
@@ -592,14 +611,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   info: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 8,
-  },
-  infoText: {
-    flex: 1,
   },
   headerRight: {
     flexDirection: 'row',
@@ -615,13 +629,33 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '400',
   },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  subtitleText: {
+    flex: 1,
+  },
+  shufflePlayButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginLeft: 10,
+  },
+  shufflePlayButtonPressed: {
+    opacity: 0.7,
+  },
   playAllButton: {
     width: 52,
     height: 52,
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 16,
+    marginLeft: 10,
   },
   playAllButtonPressed: {
     opacity: 0.7,
@@ -635,7 +669,6 @@ const styles = StyleSheet.create({
   },
   ownerName: {
     fontSize: 16,
-    marginTop: 4,
   },
   comment: {
     fontSize: 14,

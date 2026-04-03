@@ -1,5 +1,5 @@
 import { FlashList } from '@shopify/flash-list';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -49,6 +49,8 @@ export interface SongListViewProps {
   scrollToTopTrigger?: string;
   /** Extra top padding so content starts below a floating header but scrolls behind it */
   contentInsetTop?: number;
+  /** Extra content rendered after the inset spacer in the list header */
+  listHeaderExtra?: ReactNode;
 }
 
 export function SongListView({
@@ -63,6 +65,7 @@ export function SongListView({
   emptyIcon,
   scrollToTopTrigger,
   contentInsetTop = 0,
+  listHeaderExtra,
 }: SongListViewProps) {
   const { colors } = useTheme();
   const gridColumns = useGridColumns();
@@ -151,17 +154,22 @@ export function SongListView({
       onScroll={contentInsetTop > 0 && Platform.OS === 'ios' ? handleScroll : undefined}
       scrollEventThrottle={contentInsetTop > 0 && Platform.OS === 'ios' ? 16 : undefined}
       ListHeaderComponent={
-        contentInsetTop > 0 ? (
-          Platform.OS === 'ios' ? (
-            <InsetRefreshSpacer
-              height={contentInsetTop}
-              refreshing={refreshing}
-              scrollY={scrollY}
-              color={colors.primary}
-            />
-          ) : (
-            <View style={{ height: contentInsetTop }} />
-          )
+        contentInsetTop > 0 || listHeaderExtra ? (
+          <>
+            {contentInsetTop > 0 && (
+              Platform.OS === 'ios' ? (
+                <InsetRefreshSpacer
+                  height={contentInsetTop}
+                  refreshing={refreshing}
+                  scrollY={scrollY}
+                  color={colors.primary}
+                />
+              ) : (
+                <View style={{ height: contentInsetTop }} />
+              )
+            )}
+            {listHeaderExtra}
+          </>
         ) : undefined
       }
       refreshControl={
