@@ -193,20 +193,50 @@ class QueuedAudioPlayer(
     }
 
     /**
-     * Skip to the previous item in the queue, which may depend on the current repeat mode.
-     * Does nothing if there is no previous item to skip to.
+     * Skip to the previous item in the queue using the industry-standard
+     * 3-second threshold: if playback position is >= 3 seconds, restart
+     * the current track; if < 3 seconds, go to the actual previous track.
      */
     fun previous() {
         val lastIdx = currentIndex
         val lastPosition = exoPlayer.currentPosition
         val wasActive = playerState.isActive
-        exoPlayer.seekToPreviousMediaItem()
-        exoPlayer.prepare()
-        if (wasActive && (lastIdx != currentIndex || repeatMode == RepeatMode.ALL)) {
+
+        // Repeat-one: always restart current track
+        if (repeatMode == RepeatMode.ONE) {
+            exoPlayer.seekTo(0L)
+            return
+        }
+
+        // Past threshold: restart current track
+        if (exoPlayer.currentPosition >= PREVIOUS_THRESHOLD_MS) {
+            exoPlayer.seekTo(0L)
+            return
+        }
+
+        // Under threshold: go to previous track
+        if (currentIndex > 0) {
+            exoPlayer.seekToPreviousMediaItem()
+            exoPlayer.prepare()
+        } else if (repeatMode == RepeatMode.ALL && exoPlayer.mediaItemCount > 1) {
+            // First track + repeat all: wrap to last
+            exoPlayer.seekToDefaultPosition(exoPlayer.mediaItemCount - 1)
+            exoPlayer.prepare()
+        } else {
+            // First track + repeat off: restart (nowhere to go)
+            exoPlayer.seekTo(0L)
+            return
+        }
+
+        if (wasActive) {
             playerEventHolder.updatePlaybackEnd(PlaybackEndEvent(
                 PlaybackEndedReason.SKIPPED_TO_PREVIOUS, lastIdx, lastPosition
             ))
         }
+    }
+
+    companion object {
+        private const val PREVIOUS_THRESHOLD_MS = 3000L
     }
 
     /**

@@ -607,13 +607,11 @@ export function canSkipToNext(): boolean {
   return currentTrackIndex < queue.length - 1;
 }
 
-/** Whether skip-to-previous is possible given current queue position and repeat mode. */
+/** Whether skip-to-previous is possible. Always true when a track is loaded,
+ *  since the native layer will restart the current track if there is no previous. */
 export function canSkipToPrevious(): boolean {
   const { currentTrackIndex, queue } = playerStore.getState();
-  const { repeatMode } = playbackSettingsStore.getState();
-  if (currentTrackIndex == null || queue.length === 0) return false;
-  if (repeatMode !== 'off') return true;
-  return currentTrackIndex > 0;
+  return currentTrackIndex != null && queue.length > 0;
 }
 
 /**

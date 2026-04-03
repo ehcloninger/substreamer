@@ -14,12 +14,8 @@ export function useCanSkip(): { canSkipNext: boolean; canSkipPrevious: boolean }
     return { canSkipNext: false, canSkipPrevious: false };
   }
 
-  if (repeatMode !== 'off') {
-    return { canSkipNext: true, canSkipPrevious: true };
-  }
-
   return {
-    canSkipNext: currentTrackIndex < queueLength - 1,
-    canSkipPrevious: currentTrackIndex > 0,
+    canSkipNext: repeatMode !== 'off' || currentTrackIndex < queueLength - 1,
+    canSkipPrevious: true,
   };
 }

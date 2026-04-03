@@ -119,14 +119,41 @@ public class QueuedAudioPlayer: AudioPlayer, QueueManagerDelegate {
         }
     }
 
+    /// Threshold in seconds: if playback position is at or past this value,
+    /// tapping previous restarts the current track instead of skipping back.
+    private static let previousThresholdSeconds: TimeInterval = 3.0
+
     /**
-     Step to the previous item in the queue.
+     Skip to the previous item in the queue using the industry-standard
+     3-second threshold: if playback position is >= 3 seconds, restart
+     the current track; if < 3 seconds, go to the actual previous track.
      */
     public func previous() {
         let lastIndex = currentIndex
-        let playbackWasActive = wrapper.playbackActive;
+        let playbackWasActive = wrapper.playbackActive
+
+        // Repeat-one: always restart current track
+        if repeatMode == .track {
+            seek(to: 0)
+            return
+        }
+
+        // Past threshold: restart current track
+        if currentTime >= Self.previousThresholdSeconds {
+            seek(to: 0)
+            return
+        }
+
+        // Under threshold: go to previous track
         _ = queue.previous(wrap: repeatMode == .queue)
-        if (playbackWasActive && lastIndex != currentIndex || repeatMode == .queue) {
+
+        if lastIndex == currentIndex && repeatMode != .queue {
+            // At first track with no wrap — restart instead
+            seek(to: 0)
+            return
+        }
+
+        if playbackWasActive && (lastIndex != currentIndex || repeatMode == .queue) {
             event.playbackEnd.emit(data: .skippedToPrevious)
         }
     }

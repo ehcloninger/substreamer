@@ -137,6 +137,8 @@ import {
   shuffleQueue,
   skipByInterval,
   updateRemoteCapabilities,
+  canSkipToNext,
+  canSkipToPrevious,
 } from '../playerService';
 import { getCoverArtUrl, getStreamUrl, type Child } from '../subsonicService';
 
@@ -320,6 +322,61 @@ describe('skipToNext / skipToPrevious', () => {
   it('delegates skipToPrevious to TrackPlayer', async () => {
     await skipToPrevious();
     expect(mockTP.skipToPrevious).toHaveBeenCalled();
+  });
+});
+
+describe('canSkipToPrevious', () => {
+  it('returns false when no track is loaded', () => {
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrackIndex: null,
+      queue: [],
+    });
+    expect(canSkipToPrevious()).toBe(false);
+  });
+
+  it('returns false when queue is empty', () => {
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrackIndex: 0,
+      queue: [],
+    });
+    expect(canSkipToPrevious()).toBe(false);
+  });
+
+  it('returns true at first track with repeat off', () => {
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrackIndex: 0,
+      queue: [{ id: '1' }],
+    });
+    playbackSettingsStore.setState({ repeatMode: 'off' } as any);
+    expect(canSkipToPrevious()).toBe(true);
+  });
+
+  it('returns true at middle of queue', () => {
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrackIndex: 1,
+      queue: [{ id: '1' }, { id: '2' }, { id: '3' }],
+    });
+    playbackSettingsStore.setState({ repeatMode: 'off' } as any);
+    expect(canSkipToPrevious()).toBe(true);
+  });
+
+  it('returns true with repeat all', () => {
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue({
+      ...defaultPlayerState(),
+      currentTrackIndex: 0,
+      queue: [{ id: '1' }, { id: '2' }],
+    });
+    playbackSettingsStore.setState({ repeatMode: 'all' } as any);
+    expect(canSkipToPrevious()).toBe(true);
   });
 });
 
