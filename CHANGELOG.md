@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.46] - 2026-04-05
+
+- publishing: changelog trimmed
+- ci: update coverage badge [skip ci]
+- fix(android): resolve top 3 crash causes (57.6% of reported crashes)
+- playlists: dynamic playlists, artist top songs, home screen lists (recently played, recently added etc) now all have dynamic length.  The length of lists can be configured in settings.
+- ci: update coverage badge [skip ci]
 ## [8.0.45] - 2026-04-05
 
 - publishing: trim changelogs

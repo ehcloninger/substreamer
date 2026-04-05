@@ -1,3 +1,6 @@
+Resolve top 3 crash causes (57.6% of reported crashes)
+Dynamic playlists, artist top songs, home screen lists (recently played, recently added etc) now all have dynamic length.  The length of lists can be configured in settings.
+
 • Fix miniplayer title wrapping
 • Stop playback when app killed
 • Translation support with initial translations
