@@ -269,8 +269,6 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     marginLeft: 10,
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
   title: {
     fontSize: 14,

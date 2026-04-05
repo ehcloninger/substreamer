@@ -11,6 +11,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   type LayoutChangeEvent,
+  ScrollView,
   StyleSheet,
   Text,
   type TextProps,
@@ -121,7 +122,9 @@ export const MarqueeText = memo(function MarqueeText({
       {/*
         The inner Animated.View is always set wide enough for the full
         text so it never wraps. The outer container clips via
-        overflow: 'hidden' – no numberOfLines or ellipsis needed.
+        overflow: 'hidden'. numberOfLines={1} prevents Android from
+        inflating the container height when the inner view is wider
+        than the clipping container (a documented Yoga/Android quirk).
       */}
       <Animated.View
         style={[
@@ -129,17 +132,23 @@ export const MarqueeText = memo(function MarqueeText({
           shouldScroll ? { transform: [{ translateX }] } : undefined,
         ]}
       >
-        <Text {...rest} style={style}>
+        <Text {...rest} numberOfLines={1} style={style}>
           {children}
         </Text>
       </Animated.View>
 
       {/*
         Hidden text for measuring the full, unwrapped width.
-        Placed inside a very wide wrapper so it never wraps at the
-        container boundary – onLayout will report the true text width.
+        A horizontal ScrollView provides unbounded width so the text
+        never wraps on any platform – unlike an absolutely-positioned
+        wide View, which Android can still constrain.
       */}
-      <View style={styles.hiddenWrapper} pointerEvents="none">
+      <ScrollView
+        horizontal
+        scrollEnabled={false}
+        style={styles.hiddenScroll}
+        pointerEvents="none"
+      >
         <Text
           key={childrenKey}
           {...rest}
@@ -148,7 +157,7 @@ export const MarqueeText = memo(function MarqueeText({
         >
           {children}
         </Text>
-      </View>
+      </ScrollView>
     </View>
   );
 });
@@ -157,11 +166,8 @@ const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
   },
-  hiddenWrapper: {
+  hiddenScroll: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 10000,
     opacity: 0,
   },
   hiddenText: {
