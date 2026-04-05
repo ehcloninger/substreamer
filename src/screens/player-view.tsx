@@ -32,6 +32,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Pressable as GHPressable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { AlbumInfoContent } from '../components/AlbumInfoContent';
 import { CachedImage } from '../components/CachedImage';
@@ -78,7 +79,7 @@ import { mixHexColors } from '../utils/colors';
 
 const HERO_PADDING = 32;
 const HERO_COVER_SIZE = 600;
-const HEADER_BAR_HEIGHT = 44;
+const HEADER_BAR_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 
 const TAB_FADE_DURATION = 300;
 const TAB_FADE_EASING = Easing.out(Easing.cubic);
@@ -86,6 +87,7 @@ const TAB_SLIDE_DISTANCE = 12;
 
 export function PlayerView() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { alert, alertProps } = useThemedAlert();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -207,12 +209,12 @@ export function PlayerView() {
 
   const handleClearQueue = useCallback(() => {
     alert(
-      'Clear Queue',
-      'This will stop playback and clear the queue.',
+      t('clearQueue'),
+      t('clearQueueMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('clear'),
           style: 'destructive',
           onPress: () => {
             onClose();
@@ -320,8 +322,8 @@ export function PlayerView() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <EmptyState
           icon="musical-notes-outline"
-          title="Nothing Playing"
-          subtitle="It's quiet in here… pick something good and hit play!"
+          title={t('nothingPlaying')}
+          subtitle={t('nothingPlayingSubtitle')}
         />
       </View>
     );
@@ -361,7 +363,7 @@ export function PlayerView() {
         <View style={styles.contentArea}>
           {/* Player tab — vertically centered across full area */}
           <Animated.View
-            style={[styles.tabPanel, playerAnimatedStyle]}
+            style={[styles.tabPanel, Platform.OS === 'android' && { top: headerTopPadding }, playerAnimatedStyle]}
             pointerEvents={activeTab === 'player' ? 'auto' : 'none'}
           >
             <PlayerContent
@@ -410,7 +412,7 @@ export function PlayerView() {
               <View style={styles.lyricsPlaceholder}>
                 <MaterialCommunityIcons name="comment-quote-outline" size={48} color={colors.textSecondary} />
                 <Text style={[styles.lyricsPlaceholderText, { color: colors.textSecondary }]}>
-                  Lyrics coming soon
+                  {t('lyricsComingSoon')}
                 </Text>
               </View>
             )}
@@ -433,7 +435,7 @@ export function PlayerView() {
                 <Ionicons name="shuffle" size={32} color={colors.primary} />
               </Animated.View>
               <Text style={[styles.shuffleText, { color: colors.textPrimary }]}>
-                Shuffling…
+                {t('shuffling')}
               </Text>
             </View>
           </Animated.View>
@@ -455,6 +457,7 @@ const FavoriteButton = memo(function FavoriteButton({
   trackId: string;
   colors: { red: string; textSecondary: string };
 }) {
+  const { t } = useTranslation();
   const starred = useIsStarred('song', trackId);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
@@ -468,7 +471,7 @@ const FavoriteButton = memo(function FavoriteButton({
       disabled={offlineMode}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel={starred ? 'Remove from favorites' : 'Add to favorites'}
+      accessibilityLabel={starred ? t('removeFromFavorites') : t('addToFavorites')}
       style={({ pressed }) => [
         styles.favoriteButton,
         pressed && !offlineMode && styles.pressed,
@@ -501,6 +504,7 @@ const PlayerContent = memo(function PlayerContent({
   queueLoading,
   handleSeek,
 }: PlayerContentProps) {
+  const { t } = useTranslation();
   const playbackState = playerStore((s) => s.playbackState);
   const position = playerStore((s) => s.position);
   const duration = playerStore((s) => s.duration);
@@ -526,7 +530,7 @@ const PlayerContent = memo(function PlayerContent({
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.textSecondary} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Loading...
+          {t('loading')}
         </Text>
       </View>
     );
@@ -534,6 +538,7 @@ const PlayerContent = memo(function PlayerContent({
 
   return (
     <View style={styles.playerContentContainer}>
+      <View style={styles.playerSpacer} />
       {/* Hero cover art */}
       <View style={styles.hero}>
         <View style={styles.heroImageWrap}>
@@ -557,7 +562,7 @@ const PlayerContent = memo(function PlayerContent({
               style={[styles.trackArtist, { color: colors.textSecondary }]}
               numberOfLines={1}
             >
-              {currentTrack.artist ?? 'Unknown Artist'}
+              {currentTrack.artist ?? t('unknownArtist')}
             </Text>
           </View>
           <FavoriteButton trackId={currentTrack.id} colors={colors} />
@@ -648,6 +653,7 @@ const PlayerContent = memo(function PlayerContent({
           <RepeatButton />
         </View>
       </View>
+      <View style={styles.playerSpacer} />
     </View>
   );
 });
@@ -673,13 +679,14 @@ const QueueHeader = memo(function QueueHeader({
   shuffling,
   queueLength,
 }: QueueHeaderProps) {
+  const { t } = useTranslation();
   if (queueLength === 0) return null;
 
   return (
     <View style={styles.queueSection}>
       <View style={styles.queueHeaderRow}>
         <Text style={[styles.queueHeaderText, { color: colors.textPrimary }]}>
-          Queue
+          {t('queue')}
         </Text>
         <View style={styles.queueActions}>
           <ShuffleButton
@@ -690,7 +697,7 @@ const QueueHeader = memo(function QueueHeader({
             onPress={handleShareQueue}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Share queue"
+            accessibilityLabel={t('shareQueue')}
             style={({ pressed }) => [
               styles.queueActionButton,
               pressed && styles.pressed,
@@ -702,7 +709,7 @@ const QueueHeader = memo(function QueueHeader({
             onPress={handleClearQueue}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Clear queue"
+            accessibilityLabel={t('clearQueue')}
             style={({ pressed }) => [
               styles.queueActionButton,
               pressed && styles.pressed,
@@ -711,7 +718,7 @@ const QueueHeader = memo(function QueueHeader({
             <Text
               style={[styles.clearButtonText, { color: colors.textPrimary }]}
             >
-              Clear
+              {t('clear')}
             </Text>
           </Pressable>
         </View>
@@ -825,7 +832,9 @@ const styles = StyleSheet.create({
   },
   playerContentContainer: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  playerSpacer: {
+    flex: 1,
   },
   hero: {
     width: '100%',

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { useCallback, useContext, useEffect, useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 
 import { GradientBackground } from '../components/GradientBackground';
@@ -19,6 +20,7 @@ import { serverInfoStore } from '../store/serverInfoStore';
 
 export function SettingsServerScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { alert, alertProps } = useThemedAlert();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
 
@@ -58,14 +60,14 @@ export function SettingsServerScreen() {
 
   const handleFullScan = useCallback(() => {
     alert(
-      'Full Scan',
-      'Full scans re-read all files and may take a long time. Continue?',
+      t('fullScan'),
+      t('fullScanConfirmMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Start', onPress: () => startLibraryScan(true) },
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('start'), onPress: () => startLibraryScan(true) },
       ],
     );
-  }, []);
+  }, [t]);
 
   const dynamicStyles = useMemo(
     () =>
@@ -86,40 +88,40 @@ export function SettingsServerScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Server information</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('serverInformation')}</Text>
         {hasAnyInfo ? (
           <View style={[styles.card, dynamicStyles.card]}>
             <InfoRow
-              label="Server type"
+              label={t('serverType')}
               value={serverInfo.serverType ?? (serverInfo.apiVersion != null ? 'Subsonic' : null)}
               labelColor={colors.textPrimary}
               valueColor={colors.textSecondary}
               borderColor={colors.border}
             />
             <InfoRow
-              label="Server version"
+              label={t('serverVersion')}
               value={serverInfo.serverVersion}
               labelColor={colors.textPrimary}
               valueColor={colors.textSecondary}
               borderColor={colors.border}
             />
             <InfoRow
-              label="API version"
+              label={t('apiVersion')}
               value={serverInfo.apiVersion}
               labelColor={colors.textPrimary}
               valueColor={colors.textSecondary}
               borderColor={colors.border}
             />
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>OpenSubsonic</Text>
+              <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('openSubsonic')}</Text>
               <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-                {serverInfo.openSubsonic ? 'Yes' : 'No'}
+                {serverInfo.openSubsonic ? t('yes') : t('no')}
               </Text>
             </View>
             {serverInfo.extensions.length > 0 && (
               <View style={[styles.extensionsBlock, { borderTopColor: colors.border }]}>
                 <Text style={[styles.extensionsTitle, { color: colors.label }]}>
-                  Supported extensions
+                  {t('supportedExtensions')}
                 </Text>
                 {serverInfo.extensions.map((ext) => (
                   <View key={ext.name} style={styles.extensionRow}>
@@ -136,23 +138,23 @@ export function SettingsServerScreen() {
           </View>
         ) : (
           <Text style={[styles.placeholder, dynamicStyles.placeholder]}>
-            No server information available. Log in to see details.
+            {t('noServerInfoAvailable')}
           </Text>
         )}
       </View>
 
       {canScan && (
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Library scan</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('libraryScan')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <InfoRow
-            label="Status"
+            label={t('status')}
             value={
               scanScanning
                 ? scanCount > 0
-                  ? `Scanning\u2026 (${scanCount.toLocaleString()} items)`
-                  : 'Scanning\u2026'
-                : 'Idle'
+                  ? t('scanningWithCount', { count: scanCount.toLocaleString() })
+                  : t('scanning')
+                : t('idle')
             }
             labelColor={colors.textPrimary}
             valueColor={scanScanning ? colors.primary : colors.textSecondary}
@@ -160,7 +162,7 @@ export function SettingsServerScreen() {
           />
           {scanCount > 0 && (
             <InfoRow
-              label="Track count"
+              label={t('trackCount')}
               value={scanCount.toLocaleString()}
               labelColor={colors.textPrimary}
               valueColor={colors.textSecondary}
@@ -169,7 +171,7 @@ export function SettingsServerScreen() {
           )}
           {scanLastScan != null && (
             <InfoRow
-              label="Last scan"
+              label={t('lastScan')}
               value={new Date(scanLastScan).toLocaleString()}
               labelColor={colors.textPrimary}
               valueColor={colors.textSecondary}
@@ -178,7 +180,7 @@ export function SettingsServerScreen() {
           )}
           {scanFolderCount != null && (
             <InfoRow
-              label="Media folders"
+              label={t('mediaFolders')}
               value={String(scanFolderCount)}
               labelColor={colors.textPrimary}
               valueColor={colors.textSecondary}
@@ -202,7 +204,7 @@ export function SettingsServerScreen() {
                 <Ionicons name="refresh-outline" size={18} color="#fff" />
               )}
               <Text style={styles.scanButtonText}>
-                Quick Scan
+                {t('quickScan')}
               </Text>
             </Pressable>
             {canFullScan && (
@@ -222,7 +224,7 @@ export function SettingsServerScreen() {
                   <Ionicons name="search-outline" size={18} color="#fff" />
                 )}
                 <Text style={styles.scanButtonText}>
-                  Full Scan
+                  {t('fullScan')}
                 </Text>
               </Pressable>
             )}

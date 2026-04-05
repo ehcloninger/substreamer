@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
 import { StarRatingDisplay } from './StarRating';
@@ -18,6 +19,7 @@ const COVER_SIZE = 300;
 
 export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const starred = useIsStarred('artist', artist.id);
   const rating = useRating(artist.id, artist.userRating);
@@ -43,11 +45,11 @@ export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3
             {
               icon: starred ? 'heart' : 'heart-outline',
               color: colors.red,
-              label: starred ? 'Remove' : 'Add',
+              label: starred ? t('remove') : t('add'),
               onPress: handleToggleStar,
             },
           ],
-    [starred, colors.red, handleToggleStar, offlineMode],
+    [starred, colors.red, handleToggleStar, offlineMode, t],
   );
 
   return (
@@ -71,7 +73,7 @@ export const ArtistRow = memo(function ArtistRow({ artist }: { artist: ArtistID3
             <View style={styles.metaLeft}>
               <Ionicons name="disc-outline" size={14} color={colors.primary} />
               <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                {artist.albumCount === 1 ? '1 album' : `${artist.albumCount} albums`}
+                {t('albumCount', { count: artist.albumCount })}
               </Text>
             </View>
             {rating > 0 && (

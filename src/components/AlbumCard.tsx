@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
@@ -24,6 +25,7 @@ export const AlbumCard = memo(function AlbumCard({
   width?: number;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const starred = useIsStarred('album', album.id);
   const downloaded = useDownloadStatus('album', album.id) === 'complete';
@@ -69,7 +71,7 @@ export const AlbumCard = memo(function AlbumCard({
           style={[styles.artistName, { color: colors.textSecondary }]}
           numberOfLines={1}
         >
-          {album.artist ?? 'Unknown Artist'}
+          {album.artist ?? t('unknownArtist')}
         </Text>
       </View>
     </LongPressable>

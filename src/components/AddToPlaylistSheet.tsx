@@ -17,6 +17,7 @@ import Animated, {
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 import { BottomSheet } from './BottomSheet';
 import { CachedImage } from './CachedImage';
@@ -63,18 +64,18 @@ function getTargetCoverArt(target: AddToPlaylistTarget): string | undefined {
   return target.songs[0]?.coverArt;
 }
 
-function getSubtitleText(target: AddToPlaylistTarget): string {
+function getSubtitleText(target: AddToPlaylistTarget, t: (key: string, options?: Record<string, unknown>) => string): string {
   if (target.type === 'song') {
-    const title = target.item.title ?? 'Unknown Song';
-    const artist = target.item.artist ?? 'Unknown Artist';
+    const title = target.item.title ?? t('unknownSong');
+    const artist = target.item.artist ?? t('unknownArtist');
     return `${title} — ${artist}`;
   }
   if (target.type === 'queue') {
     const count = target.songs.length;
-    return count === 1 ? '1 track from queue' : `${count} tracks from queue`;
+    return t('tracksFromQueue', { count });
   }
-  const name = target.item.name ?? 'Unknown Album';
-  const artist = target.item.artist ?? 'Unknown Artist';
+  const name = target.item.name ?? t('unknownAlbum');
+  const artist = target.item.artist ?? t('unknownArtist');
   return `${name} — ${artist}`;
 }
 
@@ -87,6 +88,7 @@ export function AddToPlaylistSheet() {
   const playlistsFetchError = playlistLibraryStore((s) => s.error);
 
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   // Animate content reveal in two phases:
   // Phase 1 (entry animation): show spinner at a compact height.
@@ -167,7 +169,7 @@ export function AddToPlaylistSheet() {
       setBusy(true);
       setError(null);
       handleClose();
-      processingOverlayStore.getState().show('Adding…');
+      processingOverlayStore.getState().show(t('adding'));
 
       try {
         const songIds = await resolveSongIds(target);
@@ -184,9 +186,9 @@ export function AddToPlaylistSheet() {
         }
 
         playlistLibraryStore.getState().fetchAllPlaylists();
-        processingOverlayStore.getState().showSuccess('Added to Playlist');
+        processingOverlayStore.getState().showSuccess(t('addedToPlaylist'));
       } catch {
-        processingOverlayStore.getState().showError('Failed to add to playlist');
+        processingOverlayStore.getState().showError(t('failedToAddToPlaylist'));
       }
     },
     [target, busy, handleClose],
@@ -196,7 +198,7 @@ export function AddToPlaylistSheet() {
     if (!target || busy) return;
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Please enter a playlist name');
+      setError(t('pleaseEnterPlaylistName'));
       return;
     }
     setBusy(true);
@@ -211,11 +213,11 @@ export function AddToPlaylistSheet() {
 
       handleClose();
       playlistLibraryStore.getState().fetchAllPlaylists();
-      processingOverlayStore.getState().show('Creating…');
-      processingOverlayStore.getState().showSuccess('Playlist Created');
+      processingOverlayStore.getState().show(t('creating'));
+      processingOverlayStore.getState().showSuccess(t('playlistCreated'));
     } catch {
       setBusy(false);
-      setError('Failed to create playlist');
+      setError(t('failedToCreatePlaylist'));
     }
   }, [target, busy, name, handleClose]);
 
@@ -250,7 +252,7 @@ export function AddToPlaylistSheet() {
     [colors],
   );
 
-  const subtitle = target ? getSubtitleText(target) : '';
+  const subtitle = target ? getSubtitleText(target, t) : '';
   const coverArtId = target ? getTargetCoverArt(target) : undefined;
 
   return (
@@ -261,7 +263,7 @@ export function AddToPlaylistSheet() {
         )}
         <View style={styles.headerText}>
           <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
-            Add to Playlist
+            {t('addToPlaylist')}
           </Text>
           <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
             {subtitle}
@@ -300,7 +302,7 @@ export function AddToPlaylistSheet() {
             >
               <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
               <Text style={[styles.newPlaylistLabel, dynamicStyles.newPlaylistLabel]}>
-                New Playlist
+                {t('newPlaylist')}
               </Text>
             </Pressable>
 
@@ -325,7 +327,7 @@ export function AddToPlaylistSheet() {
                     {playlist.name}
                   </Text>
                   <Text style={[styles.playlistCount, dynamicStyles.playlistCount]}>
-                    {playlist.songCount === 1 ? '1 track' : `${playlist.songCount ?? 0} tracks`}
+                    {t('trackWithCount', { count: playlist.songCount ?? 0 })}
                   </Text>
                 </View>
               </Pressable>
@@ -337,13 +339,13 @@ export function AddToPlaylistSheet() {
 
             {playlists.length === 0 && !playlistsLoading && !playlistsFetchError && (
               <Text style={[styles.emptyText, dynamicStyles.playlistCount]}>
-                No playlists yet
+                {t('noPlaylistsYet')}
               </Text>
             )}
 
             {playlistsFetchError && playlists.length === 0 && !playlistsLoading && (
               <Text style={[styles.emptyText, dynamicStyles.errorText]}>
-                Failed to load playlists
+                {t('failedToLoadPlaylists')}
               </Text>
             )}
 
@@ -356,15 +358,15 @@ export function AddToPlaylistSheet() {
             {/* Back arrow */}
             <Pressable onPress={handleBackToPick} style={styles.backButton}>
               <Ionicons name="arrow-back" size={20} color={colors.primary} />
-              <Text style={[styles.backLabel, { color: colors.primary }]}>Back</Text>
+              <Text style={[styles.backLabel, { color: colors.primary }]}>{t('back')}</Text>
             </Pressable>
 
-            <Text style={[styles.label, dynamicStyles.subtitle]}>Playlist Name</Text>
+            <Text style={[styles.label, dynamicStyles.subtitle]}>{t('playlistName')}</Text>
             <TextInput
               style={[styles.input, dynamicStyles.input]}
               value={name}
               onChangeText={setName}
-              placeholder="Enter playlist name…"
+              placeholder={t('enterPlaylistNamePlaceholder')}
               placeholderTextColor={colors.textSecondary}
               returnKeyType="done"
               autoFocus
@@ -391,7 +393,7 @@ export function AddToPlaylistSheet() {
               ) : (
                 <>
                   <Ionicons name="add-outline" size={18} color="#fff" />
-                  <Text style={styles.createButtonText}>Create Playlist</Text>
+                  <Text style={styles.createButtonText}>{t('createPlaylist')}</Text>
                 </>
               )}
             </Pressable>

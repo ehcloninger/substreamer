@@ -2,6 +2,7 @@ import { memo, useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedProps, withTiming, withDelay } from 'react-native-reanimated';
 import Svg, { Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
 import { type ThemeColors } from '../constants/theme';
 
@@ -69,6 +70,7 @@ const ArcSegment = memo(function ArcSegment({
 });
 
 export const GenreChart = memo(function GenreChart({ data, totalPlays, colors }: GenreChartProps) {
+  const { t } = useTranslation();
   if (data.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -122,7 +124,7 @@ export const GenreChart = memo(function GenreChart({ data, totalPlays, colors }:
         </Svg>
         <View style={styles.centerLabel}>
           <Text style={[styles.centerValue, { color: colors.textPrimary }]}>{totalPlays}</Text>
-          <Text style={[styles.centerUnit, { color: colors.textSecondary }]}>plays</Text>
+          <Text style={[styles.centerUnit, { color: colors.textSecondary }]}>{t('plays')}</Text>
         </View>
       </View>
 

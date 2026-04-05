@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   ScrollView,
@@ -39,6 +40,7 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
   onCancel,
 }: CertificatePromptModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const handleTrust = useCallback(() => {
     onTrust();
@@ -64,29 +66,21 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
               color={isRotation ? '#F44336' : isManualAdd && !certInfo.isSelfSigned ? colors.primary : '#FF9800'}
             />
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-              {isRotation ? 'Certificate Changed' : isManualAdd && !certInfo.isSelfSigned ? 'Certificate Details' : 'Untrusted Certificate'}
+              {isRotation ? t('certChangedTitle') : isManualAdd && !certInfo.isSelfSigned ? t('certDetailsTitle') : t('untrustedCertificateTitle')}
             </Text>
           </View>
 
           {isRotation ? (
             <Text style={[styles.warning, { color: '#F44336' }]}>
-              WARNING: The SSL certificate for this server has changed since you
-              last connected. This could indicate a server reconfiguration, but
-              could also mean someone is intercepting your connection. Only
-              proceed if you trust this server.
+              {t('certChangedWarning')}
             </Text>
           ) : isManualAdd && !certInfo.isSelfSigned ? (
             <Text style={[styles.description, { color: colors.textSecondary }]}>
-              The server at {hostname} has a valid certificate signed by a
-              trusted authority. You can add it to your trusted list to pin this
-              specific certificate for extra security.
+              {t('certValidDescription', { hostname })}
             </Text>
           ) : (
             <Text style={[styles.description, { color: colors.textSecondary }]}>
-              The server at {hostname} is presenting a certificate that is not
-              trusted by your device. This is common for self-hosted servers
-              using self-signed certificates. Review the details below before
-              deciding to trust it.
+              {t('certUntrustedDescription', { hostname })}
             </Text>
           )}
 
@@ -95,37 +89,37 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
             style={[styles.detailsCard, { backgroundColor: colors.background }]}
           >
             <DetailRow
-              label="Server"
+              label={t('certDetailServer')}
               value={hostname}
               colors={colors}
             />
             <DetailRow
-              label="Subject"
+              label={t('certDetailSubject')}
               value={certInfo.subject}
               colors={colors}
             />
             <DetailRow
-              label="Issuer"
+              label={t('certDetailIssuer')}
               value={certInfo.issuer}
               colors={colors}
             />
             <DetailRow
-              label="Self-Signed"
-              value={certInfo.isSelfSigned ? 'Yes' : 'No'}
+              label={t('certDetailSelfSigned')}
+              value={certInfo.isSelfSigned ? t('yes') : t('no')}
               colors={colors}
             />
             <DetailRow
-              label="Valid From"
+              label={t('certDetailValidFrom')}
               value={formatDate(certInfo.validFrom)}
               colors={colors}
             />
             <DetailRow
-              label="Valid To"
+              label={t('certDetailValidTo')}
               value={formatDate(certInfo.validTo)}
               colors={colors}
             />
             <DetailRow
-              label="Serial"
+              label={t('certDetailSerial')}
               value={certInfo.serialNumber}
               colors={colors}
               mono
@@ -136,7 +130,7 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
           <Text
             style={[styles.fingerprintLabel, { color: colors.textSecondary }]}
           >
-            SHA-256 Fingerprint
+            {t('sha256Fingerprint')}
           </Text>
           <View
             style={[
@@ -171,8 +165,8 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
             />
             <Text style={styles.trustButtonText}>
               {isRotation
-                ? 'Trust New Certificate'
-                : 'Trust This Certificate'}
+                ? t('trustNewCertificate')
+                : t('trustThisCertificate')}
             </Text>
           </Pressable>
 
@@ -185,7 +179,7 @@ export const CertificatePromptModal = memo(function CertificatePromptModal({
             onPress={handleCancel}
           >
             <Text style={[styles.cancelButtonText, { color: colors.textPrimary }]}>
-              Cancel
+              {t('cancel')}
             </Text>
           </Pressable>
         </ScrollView>

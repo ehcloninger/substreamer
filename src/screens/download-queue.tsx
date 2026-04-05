@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import DraggableFlatList, {
   ScaleDecorator,
   ShadowDecorator,
@@ -50,6 +51,7 @@ const DownloadStatsCard = memo(function DownloadStatsCard({
   colors: ReturnType<typeof useTheme>['colors'];
   queuedCount: number;
 }) {
+  const { t } = useTranslation();
   const [speed, setSpeed] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const maxConcurrent = musicCacheStore((s) => s.maxConcurrentDownloads);
@@ -77,7 +79,7 @@ const DownloadStatsCard = memo(function DownloadStatsCard({
             {formatSpeed(speed)}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            speed
+            {t('speed')}
           </Text>
         </View>
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -89,7 +91,7 @@ const DownloadStatsCard = memo(function DownloadStatsCard({
             {activeCount} / {maxConcurrent}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            threads
+            {t('threads')}
           </Text>
         </View>
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -101,7 +103,7 @@ const DownloadStatsCard = memo(function DownloadStatsCard({
             {queuedCount}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            in queue
+            {t('inQueue')}
           </Text>
         </View>
       </View>
@@ -126,6 +128,7 @@ const QueueRow = memo(function QueueRow({
   onRemove: (queueId: string) => void;
   onRetry: (queueId: string) => void;
 }) {
+  const { t } = useTranslation();
   const isDownloading = item.status === 'downloading';
   const isQueued = item.status === 'queued';
   const isError = item.status === 'error';
@@ -150,8 +153,8 @@ const QueueRow = memo(function QueueRow({
   }, [item.queueId, onRemove]);
 
   const rightActions: SwipeAction[] = useMemo(
-    () => [{ icon: 'trash-outline', color: colors.red, label: 'Remove', onPress: handleRemove, removesRow: true }],
-    [colors.red, handleRemove],
+    () => [{ icon: 'trash-outline', color: colors.red, label: t('remove'), onPress: handleRemove, removesRow: true }],
+    [colors.red, handleRemove, t],
   );
 
   return (
@@ -186,7 +189,7 @@ const QueueRow = memo(function QueueRow({
               {isDownloading && (
                 <View style={styles.progressSection}>
                   <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-                    {item.completedTracks} of {item.totalTracks} tracks
+                    {t('downloadProgress', { completed: item.completedTracks, total: item.totalTracks })}
                   </Text>
                   <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
                     {progress > 0 && (
@@ -203,13 +206,13 @@ const QueueRow = memo(function QueueRow({
 
               {isQueued && (
                 <Text style={[styles.statusText, { color: colors.textSecondary }]}>
-                  {item.totalTracks} {item.totalTracks === 1 ? 'track' : 'tracks'} · Queued
+                  {t('trackWithCount', { count: item.totalTracks })} · {t('queued')}
                 </Text>
               )}
 
               {isError && (
                 <Text style={[styles.statusText, { color: colors.red }]}>
-                  {item.error ?? 'Download failed'}
+                  {item.error ?? t('downloadFailed')}
                 </Text>
               )}
             </View>
@@ -243,6 +246,7 @@ const QueueRow = memo(function QueueRow({
 
 export function DownloadQueueScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { alert, alertProps } = useThemedAlert();
   const navigation = useNavigation();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
@@ -266,12 +270,12 @@ export function DownloadQueueScreen() {
 
   const handleClearAll = useCallback(() => {
     alert(
-      'Clear Download Queue',
-      'This will cancel all downloads and remove partially downloaded files. Continue?',
+      t('clearDownloadQueue'),
+      t('clearDownloadQueueMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('clear'),
           style: 'destructive',
           onPress: () => clearDownloadQueue(),
         },
@@ -303,7 +307,7 @@ export function DownloadQueueScreen() {
             hitSlop={8}
             style={({ pressed }) => pressed && styles.pressed}
           >
-            <Text style={[styles.clearText, { color: colors.textPrimary }]}>Clear</Text>
+            <Text style={[styles.clearText, { color: colors.textPrimary }]}>{t('clear')}</Text>
           </Pressable>
         </View>
       ),
@@ -323,10 +327,10 @@ export function DownloadQueueScreen() {
     if (!item) return;
 
     if (item.status === 'downloading') {
-      alert('Cancel Download', `Cancel the download of "${item.name}"?`, [
-        { text: 'Keep', style: 'cancel' },
+      alert(t('cancelDownload'), t('cancelDownloadMessage', { name: item.name }), [
+        { text: t('keep'), style: 'cancel' },
         {
-          text: 'Cancel Download',
+          text: t('cancelDownload'),
           style: 'destructive',
           onPress: () => cancelDownload(queueId),
         },
@@ -384,7 +388,7 @@ export function DownloadQueueScreen() {
 
   const listEmpty = useMemo(
     () => (
-      <EmptyState icon="cloud-download-outline" title="No downloads in queue" subtitle="Downloads you start will be tracked here" />
+      <EmptyState icon="cloud-download-outline" title={t('noDownloadsInQueue')} subtitle={t('noDownloadsInQueueSubtitle')} />
     ),
     [],
   );

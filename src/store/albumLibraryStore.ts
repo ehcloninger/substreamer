@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import i18n from 'i18next';
+
 import { sqliteStorage } from './sqliteStorage';
 
 import {
@@ -80,7 +82,7 @@ export const albumLibraryStore = create<AlbumLibraryState>()(
         } catch (e) {
           set({
             loading: false,
-            error: e instanceof Error ? e.message : 'Failed to load albums',
+            error: e instanceof Error ? e.message : i18n.t('failedToLoadAlbums'),
           });
         }
       },

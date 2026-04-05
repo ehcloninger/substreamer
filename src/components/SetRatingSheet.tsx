@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BottomSheet } from './BottomSheet';
 import { CachedImage } from './CachedImage';
@@ -36,6 +37,7 @@ export function SetRatingSheet() {
   const hide = setRatingStore((s) => s.hide);
 
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const [localRating, setLocalRating] = useState(currentRating);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -108,13 +110,13 @@ export function SetRatingSheet() {
 
   const typeLabel =
     entityType === 'song'
-      ? 'Song'
+      ? t('song')
       : entityType === 'album'
-        ? 'Album'
-        : 'Artist';
+        ? t('album')
+        : t('artist');
 
   const ratingLabel =
-    localRating > 0 ? `${localRating} of 5` : 'Not rated';
+    localRating > 0 ? t('ratingOfFive', { rating: localRating }) : t('notRated');
 
   const dynamicStyles = useMemo(
     () =>
@@ -144,7 +146,7 @@ export function SetRatingSheet() {
           )}
           <View style={styles.headerText}>
             <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
-              Rate {typeLabel}
+              {t('rateEntity', { type: typeLabel })}
             </Text>
             <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
               {entityName}
@@ -178,7 +180,7 @@ export function SetRatingSheet() {
             ]}
           >
             <Text style={[styles.clearText, dynamicStyles.clearText]}>
-              Clear Rating
+              {t('clearRating')}
             </Text>
           </Pressable>
 
@@ -203,11 +205,11 @@ export function SetRatingSheet() {
               <View style={styles.doneErrorContent}>
                 <Ionicons name="alert-circle" size={20} color="#fff" />
                 <Text style={styles.doneText}>
-                  Failed to save — tap to retry
+                  {t('failedToSaveTapToRetry')}
                 </Text>
               </View>
             ) : (
-              <Text style={styles.doneText}>Save</Text>
+              <Text style={styles.doneText}>{t('save')}</Text>
             )}
           </Pressable>
         </View>

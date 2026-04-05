@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import BootSplash from 'react-native-bootsplash';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import AnimatedWaveformLogo from './AnimatedWaveformLogo';
 import { getPendingTasks, runMigrations } from '../services/migrationService';
@@ -54,6 +55,7 @@ type Props = {
 };
 
 export default function AnimatedSplashScreen({ onFinish }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   const containerOpacity = useSharedValue(1);
@@ -342,7 +344,7 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
         style={[styles.statusWrap, { bottom: statusBottom }, statusStyle]}
         pointerEvents="none"
       >
-        <Text style={styles.titleText}>Starting up</Text>
+        <Text style={styles.titleText}>{t('startingUp')}</Text>
 
         {/* Indicator row — fixed height for dots/checkmark swap */}
         <View style={styles.indicatorRow}>

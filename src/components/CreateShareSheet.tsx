@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BottomSheet } from './BottomSheet';
 import { CachedImage } from './CachedImage';
@@ -19,12 +20,12 @@ import { rewriteShareUrl } from '../store/shareSettingsStore';
 import { sharesStore } from '../store/sharesStore';
 
 const EXPIRATION_OPTIONS = [
-  { label: 'Never', days: null },
-  { label: '1 day', days: 1 },
-  { label: '7 days', days: 7 },
-  { label: '30 days', days: 30 },
-  { label: '90 days', days: 90 },
-  { label: '1 year', days: 365 },
+  { labelKey: 'expiresNever', days: null },
+  { labelKey: 'expires1Day', days: 1 },
+  { labelKey: 'expires7Days', days: 7 },
+  { labelKey: 'expires30Days', days: 30 },
+  { labelKey: 'expires90Days', days: 90 },
+  { labelKey: 'expires1Year', days: 365 },
 ] as const;
 
 type ExpirationDays = (typeof EXPIRATION_OPTIONS)[number]['days'];
@@ -44,6 +45,7 @@ export function CreateShareSheet() {
   const hide = createShareStore((s) => s.hide);
 
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const [description, setDescription] = useState('');
   const [selectedExpiration, setSelectedExpiration] = useState<ExpirationDays>(null);
@@ -74,7 +76,7 @@ export function CreateShareSheet() {
       share = await createShare(songIds, desc, expires);
     } else {
       if (!itemId) {
-        setError('Missing item ID');
+        setError(t('missingItemId'));
         setCreating(false);
         return;
       }
@@ -86,7 +88,7 @@ export function CreateShareSheet() {
       setShareUrl(rewriteShareUrl(share.url));
       sharesStore.getState().fetchShares();
     } else {
-      setError('Failed to create share. The server may not support sharing.');
+      setError(t('failedToCreateShare'));
     }
   }, [shareType, itemId, songIds, description, selectedExpiration]);
 
@@ -97,7 +99,7 @@ export function CreateShareSheet() {
     setTimeout(() => setCopied(false), 2000);
   }, [shareUrl]);
 
-  const typeLabel = shareType === 'queue' ? 'Queue' : shareType === 'playlist' ? 'Playlist' : 'Album';
+  const typeLabel = shareType === 'queue' ? t('queue') : shareType === 'playlist' ? t('playlist') : t('album');
 
   const dynamicStyles = useMemo(
     () =>
@@ -139,7 +141,7 @@ export function CreateShareSheet() {
         )}
         <View style={styles.headerText}>
           <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
-            Share {typeLabel}
+            {t('shareEntity', { type: typeLabel })}
           </Text>
           <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
             {itemName}
@@ -152,7 +154,7 @@ export function CreateShareSheet() {
             <View style={styles.successHeader}>
               <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
               <Text style={[styles.successLabel, dynamicStyles.title]}>
-                Share created
+                {t('shareCreated')}
               </Text>
             </View>
 
@@ -172,36 +174,36 @@ export function CreateShareSheet() {
             >
               <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={18} color="#fff" />
               <Text style={styles.copyButtonText}>
-                {copied ? 'Copied!' : 'Copy to Clipboard'}
+                {copied ? t('copied') : t('copyToClipboard')}
               </Text>
             </Pressable>
 
             <Pressable onPress={handleClose} style={styles.doneButton}>
-              <Text style={[styles.doneButtonText, { color: colors.primary }]}>Done</Text>
+              <Text style={[styles.doneButtonText, { color: colors.primary }]}>{t('done')}</Text>
             </Pressable>
           </View>
         ) : (
           <View style={styles.formSection}>
-            <Text style={[styles.label, dynamicStyles.label]}>Description (optional)</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>{t('descriptionOptional')}</Text>
             <TextInput
               style={[styles.input, dynamicStyles.input]}
               value={description}
               onChangeText={setDescription}
-              placeholder="Add a note..."
+              placeholder={t('addANotePlaceholder')}
               placeholderTextColor={colors.textSecondary}
               returnKeyType="done"
               editable={!creating}
             />
 
             <Text style={[styles.label, dynamicStyles.label, styles.expirationLabel]}>
-              Expires
+              {t('expires')}
             </Text>
             <View style={styles.chipRow}>
               {EXPIRATION_OPTIONS.map((opt) => {
                 const selected = selectedExpiration === opt.days;
                 return (
                   <Pressable
-                    key={opt.label}
+                    key={opt.labelKey}
                     onPress={() => setSelectedExpiration(opt.days)}
                     disabled={creating}
                     style={[
@@ -216,7 +218,7 @@ export function CreateShareSheet() {
                         selected ? dynamicStyles.chipTextSelected : dynamicStyles.chipTextDefault,
                       ]}
                     >
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                   </Pressable>
                 );
@@ -242,7 +244,7 @@ export function CreateShareSheet() {
               ) : (
                 <>
                   <Ionicons name="share-outline" size={18} color="#fff" />
-                  <Text style={styles.createButtonText}>Create Share</Text>
+                  <Text style={styles.createButtonText}>{t('createShare')}</Text>
                 </>
               )}
             </Pressable>

@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { useGridColumns, getGridItemPadding, GRID_GAP, LIST_PADDING } from '../hooks/useGridColumns';
@@ -62,14 +63,17 @@ export function AlbumListView({
   error = null,
   onRefresh,
   refreshing = false,
-  emptyMessage = 'No albums found',
-  emptySubtitle = 'Try adjusting your filters, or pull to refresh',
+  emptyMessage,
+  emptySubtitle,
   emptyIcon,
   showAlphabetScroller = false,
   scrollToTopTrigger,
   contentInsetTop = 0,
 }: AlbumListViewProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
+  const resolvedEmptyMessage = emptyMessage ?? t('noAlbumsFound');
+  const resolvedEmptySubtitle = emptySubtitle ?? t('tryAdjustingFilters');
   const gridColumns = useGridColumns();
   const listRef = useRef<FlashListRef<AlbumID3>>(null);
   const scrollY = useSharedValue(0);
@@ -113,11 +117,11 @@ export function AlbumListView({
     () => (
       <EmptyState
         icon={(emptyIcon as any) ?? 'albums-outline'}
-        title={emptyMessage}
-        subtitle={emptySubtitle}
+        title={resolvedEmptyMessage}
+        subtitle={resolvedEmptySubtitle}
       />
     ),
-    [emptyIcon, emptyMessage, emptySubtitle]
+    [emptyIcon, resolvedEmptyMessage, resolvedEmptySubtitle]
   );
 
   /* ---- Alphabet scroller support ---- */

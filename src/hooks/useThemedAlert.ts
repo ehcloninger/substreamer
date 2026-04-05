@@ -1,5 +1,6 @@
 import { Alert, Platform } from 'react-native';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useTheme } from './useTheme';
 
@@ -28,6 +29,7 @@ interface AlertState {
  */
 export function useThemedAlert() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [state, setState] = useState<AlertState>({
     visible: false,
     title: '',
@@ -41,7 +43,7 @@ export function useThemedAlert() {
 
   const alert = useCallback(
     (title: string, message?: string, buttons?: AlertButton[]) => {
-      const resolvedButtons = buttons ?? [{ text: 'OK', style: 'default' as const }];
+      const resolvedButtons = buttons ?? [{ text: t('ok'), style: 'default' as const }];
 
       if (Platform.OS === 'ios') {
         Alert.alert(title, message, resolvedButtons);

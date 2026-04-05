@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { useTheme } from '../hooks/useTheme';
@@ -15,15 +16,16 @@ import {
   type SkipInterval,
 } from '../store/playbackSettingsStore';
 
-const INTERVAL_OPTIONS: { value: SkipInterval; label: string }[] =
-  SKIP_INTERVALS.map((v) => ({ value: v, label: `${v} seconds` }));
+const INTERVAL_OPTIONS: { value: SkipInterval }[] =
+  SKIP_INTERVALS.map((v) => ({ value: v }));
 
-const REMOTE_OPTIONS: { value: RemoteControlMode; label: string; subtitle: string }[] = [
-  { value: 'skip-track', label: 'Next / Previous Track', subtitle: 'Skip to the next or previous track' },
-  { value: 'skip-interval', label: 'Skip Forward / Backward', subtitle: 'Jump forward or backward by the intervals set above' },
+const REMOTE_OPTIONS: { value: RemoteControlMode; labelKey: string; subtitleKey: string }[] = [
+  { value: 'skip-track', labelKey: 'remoteNextPreviousTrack', subtitleKey: 'remoteNextPreviousTrackSubtitle' },
+  { value: 'skip-interval', labelKey: 'remoteSkipForwardBackward', subtitleKey: 'remoteSkipForwardBackwardSubtitle' },
 ];
 
 export function SettingsPlaybackScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
@@ -56,12 +58,12 @@ export function SettingsPlaybackScreen() {
 
   const handleResetDefaults = useCallback(() => {
     alert(
-      'Reset to Defaults',
-      'This will reset all playback settings to their default values. Continue?',
+      t('resetToDefaults'),
+      t('resetPlaybackSettingsMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Reset',
+          text: t('reset'),
           style: 'destructive',
           onPress: () => {
             setShowSkipIntervalButtons(false);
@@ -95,15 +97,15 @@ export function SettingsPlaybackScreen() {
         >
           {/* Player Controls */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Player Controls</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('playerControls')}</Text>
             <View style={[styles.card, { backgroundColor: colors.card }]}>
               <View style={[styles.toggleRow, { borderBottomColor: colors.border }]}>
                 <View style={styles.toggleTextWrap}>
                   <Text style={[styles.label, { color: colors.textPrimary }]}>
-                    Show skip interval buttons
+                    {t('showSkipIntervalButtons')}
                   </Text>
                   <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                    Adds forward and backward skip buttons to the player for seeking within a track.
+                    {t('showSkipIntervalButtonsHint')}
                   </Text>
                 </View>
                 <Switch
@@ -117,7 +119,7 @@ export function SettingsPlaybackScreen() {
 
           {/* Skip Intervals */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Skip Intervals</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('skipIntervals')}</Text>
             <View style={[styles.card, { backgroundColor: colors.card }]}>
               {/* Skip backward dropdown */}
               <Pressable
@@ -128,7 +130,7 @@ export function SettingsPlaybackScreen() {
                   pressed && styles.pressed,
                 ]}
               >
-                <Text style={[styles.label, { color: colors.textPrimary }]}>Skip backward</Text>
+                <Text style={[styles.label, { color: colors.textPrimary }]}>{t('skipBackward')}</Text>
                 <View style={styles.dropdownRight}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>
                     {skipBackwardInterval}s
@@ -159,7 +161,7 @@ export function SettingsPlaybackScreen() {
                         ]}
                       >
                         <Text style={[styles.label, { color: colors.textPrimary }]}>
-                          {opt.label}
+                          {t('secondsValue', { count: opt.value })}
                         </Text>
                         {isActive && (
                           <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -178,7 +180,7 @@ export function SettingsPlaybackScreen() {
                   pressed && styles.pressed,
                 ]}
               >
-                <Text style={[styles.label, { color: colors.textPrimary }]}>Skip forward</Text>
+                <Text style={[styles.label, { color: colors.textPrimary }]}>{t('skipForward')}</Text>
                 <View style={styles.dropdownRight}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>
                     {skipForwardInterval}s
@@ -209,7 +211,7 @@ export function SettingsPlaybackScreen() {
                         ]}
                       >
                         <Text style={[styles.label, { color: colors.textPrimary }]}>
-                          {opt.label}
+                          {t('secondsValue', { count: opt.value })}
                         </Text>
                         {isActive && (
                           <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -224,9 +226,9 @@ export function SettingsPlaybackScreen() {
 
           {/* Remote Controls */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Remote Controls</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('remoteControls')}</Text>
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
-              Choose which controls appear on the lock screen and Control Center.
+              {t('remoteControlsHint')}
             </Text>
             <View style={[styles.card, { backgroundColor: colors.card }]}>
               {REMOTE_OPTIONS.map((opt, index) => {
@@ -244,10 +246,10 @@ export function SettingsPlaybackScreen() {
                   >
                     <View style={styles.radioTextWrap}>
                       <Text style={[styles.label, { color: colors.textPrimary }]}>
-                        {opt.label}
+                        {t(opt.labelKey)}
                       </Text>
                       <Text style={[styles.radioSubtitle, { color: colors.textSecondary }]}>
-                        {opt.subtitle}
+                        {t(opt.subtitleKey)}
                       </Text>
                     </View>
                     {isActive && (
@@ -270,7 +272,7 @@ export function SettingsPlaybackScreen() {
             >
               <Ionicons name="refresh-outline" size={16} color={colors.textPrimary} />
               <Text style={[styles.resetButtonText, { color: colors.textPrimary }]}>
-                Reset to defaults
+                {t('resetToDefaults')}
               </Text>
             </Pressable>
           )}

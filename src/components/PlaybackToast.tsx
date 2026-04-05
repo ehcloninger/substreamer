@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useSegments } from 'expo-router';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import Animated, {
   Easing,
@@ -36,6 +37,7 @@ export function PlaybackToast() {
   const segments = useSegments();
   const isDetailScreen = DETAIL_SEGMENTS.has(segments[0] as string);
 
+  const { t } = useTranslation();
   const status = playbackToastStore((s) => s.status);
   const hide = playbackToastStore((s) => s.hide);
   const { colors } = useTheme();
@@ -137,7 +139,7 @@ export function PlaybackToast() {
     transform: [{ scale: resultScale.value }],
   }));
 
-  const label = getLabel(status);
+  const label = getLabel(status, t);
   const icon = getIcon(status);
 
   return (
@@ -174,14 +176,14 @@ export function PlaybackToast() {
   );
 }
 
-function getLabel(status: PlaybackToastStatus): string {
+function getLabel(status: PlaybackToastStatus, t: (key: string) => string): string {
   switch (status) {
     case 'loading':
-      return 'Starting playback…';
+      return t('startingPlayback');
     case 'success':
-      return 'Now Playing';
+      return t('nowPlaying');
     case 'error':
-      return 'Playback Error';
+      return t('playbackError');
     default:
       return '';
   }

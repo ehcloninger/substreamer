@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -82,6 +83,7 @@ function genreColor(genre: string): string {
 /* ------------------------------------------------------------------ */
 
 function useMixCardPlayback(mix: MixDefinition, index: number) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,12 +137,12 @@ function useMixCardPlayback(mix: MixDefinition, index: number) {
     try {
       const songs = await fetchMixSongs(mix.fetchStrategy);
       if (songs.length === 0) {
-        setError('No songs found');
+        setError(t('noSongsFound'));
         return;
       }
       await playTrack(songs[0], songs);
     } catch {
-      setError('Failed to load');
+      setError(t('failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -328,6 +330,7 @@ const BuildMixButton = memo(function BuildMixButton({
   colors: ThemeColors;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   // Entrance animation
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(16);
@@ -358,9 +361,9 @@ const BuildMixButton = memo(function BuildMixButton({
           <Ionicons name="options-outline" size={22} color={colors.primary} />
         </LinearGradient>
         <View style={styles.buildMixTextCol}>
-          <Text style={[styles.buildMixTitle, { color: colors.textPrimary }]}>Build a mix</Text>
+          <Text style={[styles.buildMixTitle, { color: colors.textPrimary }]}>{t('buildAMix')}</Text>
           <Text style={[styles.buildMixSubtitle, { color: colors.textSecondary }]}>
-            Pick genres, decades & more
+            {t('pickGenresDecadesMore')}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -380,6 +383,7 @@ const JumpBackInItem = memo(function JumpBackInItem({
   album: { id: string; name?: string; coverArt?: string };
   colors: ThemeColors;
 }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
 
   const handlePress = useCallback(async () => {
@@ -414,7 +418,7 @@ const JumpBackInItem = memo(function JumpBackInItem({
         style={[styles.jumpTitle, { color: colors.textPrimary }]}
         numberOfLines={1}
       >
-        {album.name ?? 'Unknown Album'}
+        {album.name ?? t('unknownAlbum')}
       </Text>
     </Pressable>
   );
@@ -559,6 +563,7 @@ const BuildMixSheetContent = memo(function BuildMixSheetContent({
   colors: ThemeColors;
   availableGenres: string[];
 }) {
+  const { t } = useTranslation();
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedDecadeIndex, setSelectedDecadeIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -650,7 +655,7 @@ const BuildMixSheetContent = memo(function BuildMixSheetContent({
     <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
       {/* Genre chips */}
       <Text style={[styles.builderLabel, { color: colors.textSecondary }]}>
-        Genres {selectedGenres.length > 0 ? `(${selectedGenres.length}/${MAX_SELECTED_GENRES})` : ''}
+        {selectedGenres.length > 0 ? t('genresWithCount', { selected: selectedGenres.length, max: MAX_SELECTED_GENRES }) : t('genres')}
       </Text>
 
       {/* Genre search input */}
@@ -658,7 +663,7 @@ const BuildMixSheetContent = memo(function BuildMixSheetContent({
         <Ionicons name="search" size={16} color={colors.textSecondary} />
         <TextInput
           style={[styles.searchInput, { color: colors.textPrimary }]}
-          placeholder="Search genres..."
+          placeholder={t('searchGenresPlaceholder')}
           placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -707,7 +712,7 @@ const BuildMixSheetContent = memo(function BuildMixSheetContent({
 
       {/* Decade selector */}
       <Text style={[styles.builderLabel, { color: colors.textSecondary, marginTop: 16 }]}>
-        Decade
+        {t('decade')}
       </Text>
       <ScrollView
         horizontal
@@ -717,7 +722,7 @@ const BuildMixSheetContent = memo(function BuildMixSheetContent({
         {DECADES.map((decade, i) => (
           <DecadePill
             key={decade.label}
-            label={decade.label}
+            label={decade.label === 'Any' ? t('decadeAny') : decade.label}
             selected={selectedDecadeIndex === i}
             onPress={() => handleDecadePress(i)}
             colors={colors}
@@ -739,7 +744,7 @@ const BuildMixSheetContent = memo(function BuildMixSheetContent({
         ) : (
           <>
             <Ionicons name="play" size={18} color="#fff" />
-            <Text style={styles.playMixButtonText}>Play Mix</Text>
+            <Text style={styles.playMixButtonText}>{t('playMix')}</Text>
           </>
         )}
       </Pressable>
@@ -755,6 +760,7 @@ const BuildMixSheetContent = memo(function BuildMixSheetContent({
 
 export function TunedInScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const transitionComplete = useTransitionComplete();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
 
@@ -879,7 +885,7 @@ export function TunedInScreen() {
         {/* For You section */}
         {mixes.length > 0 && (
           <View style={styles.section}>
-            <SectionTitle title="For You" color={colors.textSecondary} />
+            <SectionTitle title={t('forYou')} color={colors.textSecondary} />
             <View style={styles.mixList}>
               {/* Hero card */}
               {heroMix && <HeroMixCard mix={heroMix} index={0} />}
@@ -904,7 +910,7 @@ export function TunedInScreen() {
         {/* Create section */}
         {hasBuilder && (
           <View style={styles.section}>
-            <SectionTitle title="Create" color={colors.textSecondary} />
+            <SectionTitle title={t('create')} color={colors.textSecondary} />
             <BuildMixButton colors={colors} onPress={handleOpenSheet} />
           </View>
         )}
@@ -912,7 +918,7 @@ export function TunedInScreen() {
         {/* Jump back in section */}
         {showJumpBackIn && (
           <View style={styles.section}>
-            <SectionTitle title="Jump back in" color={colors.textSecondary} />
+            <SectionTitle title={t('jumpBackIn')} color={colors.textSecondary} />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -930,7 +936,7 @@ export function TunedInScreen() {
 
       {/* Build a Mix bottom sheet */}
       <BottomSheet visible={sheetOpen} onClose={handleCloseSheet} maxHeight="75%">
-        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>Build a Mix</Text>
+        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>{t('buildAMix')}</Text>
         <BuildMixSheetContent colors={colors} availableGenres={builderGenres} />
       </BottomSheet>
     </GradientBackground>

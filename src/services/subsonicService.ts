@@ -14,6 +14,8 @@ import SubsonicAPI, {
   type Share,
 } from 'subsonic-api';
 
+import i18n from 'i18next';
+
 import { authStore } from '../store/authStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { playbackSettingsStore } from '../store/playbackSettingsStore';
@@ -69,7 +71,7 @@ export async function login(
     if (response.status !== 'ok') {
       const err = (response as { error?: { code?: number; message?: string } }).error;
       const message =
-        err?.message ?? (err?.code === 40 ? 'Wrong username or password' : 'Authentication failed');
+        err?.message ?? (err?.code === 40 ? i18n.t('wrongUsernameOrPassword') : i18n.t('authenticationFailed'));
       return { success: false, error: message };
     }
 
@@ -79,7 +81,7 @@ export async function login(
         : response.version;
     return { success: true, version: version ?? response.version };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Connection failed';
+    const message = err instanceof Error ? err.message : i18n.t('connectionFailed');
     return { success: false, error: message };
   }
 }
@@ -136,6 +138,16 @@ export const VARIOUS_ARTISTS_BIO =
   'Various Artists collects compilation albums, soundtracks, tribute records and other ' +
   'releases that feature songs from multiple artists.\n\n' +
   'Browse the albums below to discover what\'s in your collection.';
+
+/** Translated display name for Various Artists. Use for UI display only. */
+export function getVariousArtistsName(): string {
+  return i18n.t('variousArtists');
+}
+
+/** Translated bio for Various Artists. Use for UI display only. */
+export function getVariousArtistsBio(): string {
+  return i18n.t('variousArtistsBio');
+}
 
 /** Sentinel coverArtId — CachedImage maps this to the bundled asset. */
 export const VARIOUS_ARTISTS_COVER_ART_ID = '__various_artists_cover__';
@@ -869,14 +881,14 @@ export type GetSharesResult =
 
 export async function getShares(): Promise<GetSharesResult> {
   const api = getApi();
-  if (!api) return { ok: false, reason: 'error', message: 'Not connected to a server.' };
+  if (!api) return { ok: false, reason: 'error', message: i18n.t('notConnectedToServer') };
   try {
     const response = await api.getShares();
     if (response.status === 'failed' || response.status === 'fail') {
       const err = (response as Record<string, unknown>).error as
         | { code?: number; message?: string }
         | undefined;
-      return { ok: false, reason: 'not-available', message: err?.message ?? 'Sharing is not available on this server.' };
+      return { ok: false, reason: 'not-available', message: err?.message ?? i18n.t('sharingNotAvailableOnServer') };
     }
     return { ok: true, shares: response.shares?.share ?? [] };
   } catch (e) {
@@ -884,7 +896,7 @@ export async function getShares(): Promise<GetSharesResult> {
        rather than returning a Subsonic-level error response. Treat as
        not-available since we know the server is otherwise reachable. */
     const msg = e instanceof Error ? e.message : '';
-    return { ok: false, reason: 'not-available', message: msg || 'Sharing is not available on this server.' };
+    return { ok: false, reason: 'not-available', message: msg || i18n.t('sharingNotAvailableOnServer') };
   }
 }
 

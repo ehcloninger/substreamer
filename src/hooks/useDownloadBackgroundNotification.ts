@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { musicCacheStore } from '../store/musicCacheStore';
 
@@ -25,6 +26,7 @@ Notifications.setNotificationHandler({
 });
 
 export function useDownloadBackgroundNotification() {
+  const { t } = useTranslation();
   const notificationId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -38,8 +40,8 @@ export function useDownloadBackgroundNotification() {
 
         notificationId.current = await Notifications.scheduleNotificationAsync({
           content: {
-            title: 'Downloads in Progress',
-            body: 'Return to Substreamer within a few minutes to avoid download interruption.',
+            title: t('downloadsInProgress'),
+            body: t('downloadsInProgressBody'),
             ...(Platform.OS === 'android' && { channelId: CHANNEL_ID }),
           },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
@@ -51,5 +53,5 @@ export function useDownloadBackgroundNotification() {
     });
 
     return () => sub.remove();
-  }, []);
+  }, [t]);
 }

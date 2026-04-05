@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Appearance, BackHandler, Dimensions, LogBox, Platform, StyleSheet, View } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { I18nextProvider } from 'react-i18next';
 import { Easing, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 // Both expo-router (RouterFontUtils.swift) and react-native-screens
@@ -77,6 +78,7 @@ import { playerStore } from '../store/playerStore';
 import { serverInfoStore } from '../store/serverInfoStore';
 import { sqliteStorage } from '../store/sqliteStorage';
 import { tabletLayoutStore } from '../store/tabletLayoutStore';
+import i18n from '../i18n/i18n';
 
 // react-native-bootsplash keeps the native splash visible by default
 // until BootSplash.hide() is called. AnimatedSplashScreen handles the
@@ -418,6 +420,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+      <I18nextProvider i18n={i18n}>
       <ThemeProvider value={navigationTheme}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <SplitLayout
@@ -436,13 +439,13 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="album-list"
-          options={{ ...blurHeaderOptions, title: 'Albums', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('albums'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="album/[id]"
           options={{
             title: '',
-            headerBackTitle: 'Back',
+            headerBackTitle: i18n.t('back'),
             headerTransparent: true,
             headerStyle: { backgroundColor: 'transparent' },
             contentStyle: { backgroundColor: 'transparent' },
@@ -452,7 +455,7 @@ export default function RootLayout() {
           name="artist/[id]"
           options={{
             title: '',
-            headerBackTitle: 'Back',
+            headerBackTitle: i18n.t('back'),
             headerTransparent: true,
             headerStyle: { backgroundColor: 'transparent' },
             contentStyle: { backgroundColor: 'transparent' },
@@ -462,7 +465,7 @@ export default function RootLayout() {
           name="playlist/[id]"
           options={{
             title: '',
-            headerBackTitle: 'Back',
+            headerBackTitle: i18n.t('back'),
             headerTransparent: true,
             headerStyle: { backgroundColor: 'transparent' },
             contentStyle: { backgroundColor: 'transparent' },
@@ -470,48 +473,48 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="image-cache-browser"
-          options={{ ...blurHeaderOptions, title: 'Image Cache', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('imageCache'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="metadata-cache-browser"
-          options={{ ...blurHeaderOptions, title: 'Metadata Cache', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('metadataCache'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="music-cache-browser"
-          options={{ ...blurHeaderOptions, title: 'Downloaded Music', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('downloadedMusic'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="download-queue"
-          options={{ ...blurHeaderOptions, title: 'Downloads', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('downloads'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="settings-server"
-          options={{ ...blurHeaderOptions, title: 'Server Management', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('serverManagement'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="settings-appearance"
-          options={{ ...blurHeaderOptions, title: 'Appearance & Layout', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('appearanceLayout'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="settings-connectivity"
-          options={{ ...blurHeaderOptions, title: 'Connectivity', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('connectivity'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="settings-storage"
-          options={{ ...blurHeaderOptions, title: 'Storage & Data', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('storageData'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="settings-shares"
-          options={{ ...blurHeaderOptions, title: 'Shares', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('shares'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="settings-account"
-          options={{ ...blurHeaderOptions, title: 'Account', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('account'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="player"
           options={{
-            title: 'Now Playing',
+            title: i18n.t('nowPlaying'),
             headerTransparent: true,
             headerStyle: { backgroundColor: 'transparent' },
             contentStyle: { backgroundColor: 'transparent' },
@@ -522,43 +525,43 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="mbid-override-browser"
-          options={{ ...blurHeaderOptions, title: 'MBID Overrides', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('mbidOverrides'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="scrobble-browser"
-          options={{ ...blurHeaderOptions, title: 'Scrobbles', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('scrobbles'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="scrobble-exclusion-browser"
-          options={{ ...blurHeaderOptions, title: 'Scrobble Exclusions', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('scrobbleExclusions'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="my-listening"
-          options={{ ...blurHeaderOptions, title: 'My Listening', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('myListening'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="tuned-in"
-          options={{ ...blurHeaderOptions, title: 'Tuned In', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('tunedIn'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="settings-audio-quality"
-          options={{ ...blurHeaderOptions, title: 'Audio Quality', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('audioQuality'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="settings-playback"
-          options={{ ...blurHeaderOptions, title: 'Playback', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('playback'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="file-explorer"
-          options={{ ...blurHeaderOptions, title: 'File Explorer', headerBackTitle: 'Settings' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('fileExplorer'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="file-viewer"
-          options={{ ...blurHeaderOptions, title: '', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: '', headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
           name="migration-log"
-          options={{ ...blurHeaderOptions, title: 'Migration Log', headerBackTitle: 'Back' }}
+          options={{ ...blurHeaderOptions, title: i18n.t('migrationLog'), headerBackTitle: i18n.t('back') }}
         />
             </Stack>
           </View>
@@ -612,6 +615,7 @@ export default function RootLayout() {
         <AnimatedSplashScreen onFinish={handleSplashFinish} />
       )}
       </ThemeProvider>
+      </I18nextProvider>
     </GestureHandlerRootView>
   );
 }

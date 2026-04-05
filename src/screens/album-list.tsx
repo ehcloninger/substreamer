@@ -2,6 +2,7 @@ import { HeaderHeightContext } from '@react-navigation/elements';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AlbumListView } from '../components/AlbumListView';
 import { GradientBackground } from '../components/GradientBackground';
@@ -29,11 +30,11 @@ const TYPE_TO_GETTER: Record<
   randomSelection: getRandomAlbums,
 };
 
-const TYPE_TO_TITLE: Record<AlbumListType, string> = {
-  recentlyAdded: 'Recently Added',
-  recentlyPlayed: 'Recently Played',
-  frequentlyPlayed: 'Frequently Played',
-  randomSelection: 'Random Selection',
+const TYPE_TO_TITLE_KEY: Record<AlbumListType, string> = {
+  recentlyAdded: 'recentlyAdded',
+  recentlyPlayed: 'recentlyPlayed',
+  frequentlyPlayed: 'frequentlyPlayed',
+  randomSelection: 'randomSelection',
 };
 
 const VALID_TYPES: AlbumListType[] = [
@@ -44,6 +45,7 @@ const VALID_TYPES: AlbumListType[] = [
 ];
 
 export function AlbumListScreen() {
+  const { t } = useTranslation();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const offlineMode = offlineModeStore((s) => s.offlineMode);
   const navigation = useNavigation();
@@ -58,8 +60,8 @@ export function AlbumListScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    navigation.setOptions({ title: TYPE_TO_TITLE[type] });
-  }, [type, navigation]);
+    navigation.setOptions({ title: t(TYPE_TO_TITLE_KEY[type]) });
+  }, [type, navigation, t]);
 
   const fetchAlbums = useCallback(async () => {
     try {
@@ -69,7 +71,7 @@ export function AlbumListScreen() {
       setAlbums(list);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load albums');
+      setError(e instanceof Error ? e.message : t('failedToLoadAlbums'));
     }
   }, [type]);
 

@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { useGridColumns, getGridItemPadding, GRID_GAP, LIST_PADDING } from '../hooks/useGridColumns';
@@ -61,14 +62,17 @@ export function ArtistListView({
   error = null,
   onRefresh,
   refreshing = false,
-  emptyMessage = 'No artists found',
-  emptySubtitle = 'Try adjusting your filters, or pull to refresh',
+  emptyMessage,
+  emptySubtitle,
   emptyIcon,
   showAlphabetScroller = false,
   scrollToTopTrigger,
   contentInsetTop = 0,
 }: ArtistListViewProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
+  const resolvedEmptyMessage = emptyMessage ?? t('noArtistsFound');
+  const resolvedEmptySubtitle = emptySubtitle ?? t('tryAdjustingFilters');
   const gridColumns = useGridColumns();
   const listRef = useRef<FlashListRef<ArtistID3>>(null);
   const scrollY = useSharedValue(0);
@@ -112,11 +116,11 @@ export function ArtistListView({
     () => (
       <EmptyState
         icon={(emptyIcon as any) ?? 'people-outline'}
-        title={emptyMessage}
-        subtitle={emptySubtitle}
+        title={resolvedEmptyMessage}
+        subtitle={resolvedEmptySubtitle}
       />
     ),
-    [emptyIcon, emptyMessage, emptySubtitle]
+    [emptyIcon, resolvedEmptyMessage, resolvedEmptySubtitle]
   );
 
   /* ---- Alphabet scroller support ---- */

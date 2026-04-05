@@ -21,6 +21,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 import { EditShareSheet } from '../components/EditShareSheet';
 import { EmptyState } from '../components/EmptyState';
@@ -69,22 +70,23 @@ function isExpired(share: Share): boolean {
   return d.getTime() < Date.now();
 }
 
-function getShareTitle(share: Share): string {
+function getShareTitle(share: Share, t: (key: string, options?: Record<string, unknown>) => string): string {
   if (share.description) return share.description;
   const entries = share.entry ?? [];
-  if (entries.length === 0) return `Share ${share.id}`;
-  const first = entries[0].title ?? entries[0].album ?? 'Untitled';
-  return entries.length > 1 ? `${first} + ${entries.length - 1} more` : first;
+  if (entries.length === 0) return t('shareId', { id: share.id });
+  const first = entries[0].title ?? entries[0].album ?? t('untitled');
+  return entries.length > 1 ? t('shareEntryPlusMore', { title: first, count: entries.length - 1 }) : first;
 }
 
-function getShareSubtitle(share: Share): string {
+function getShareSubtitle(share: Share, t: (key: string, options?: Record<string, unknown>) => string): string {
   const entries = share.entry ?? [];
-  if (entries.length === 0) return 'No items';
+  if (entries.length === 0) return t('noItems');
   if (entries.length === 1) return entries[0].artist ?? '';
-  return `${entries.length} items`;
+  return t('itemCount', { count: entries.length });
 }
 
 export function SettingsSharesScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
@@ -150,11 +152,11 @@ export function SettingsSharesScreen() {
 
   const handleDelete = useCallback(
     (share: Share) => {
-      const title = getShareTitle(share);
-      alert('Delete Share', `Delete "${title}"? This cannot be undone.`, [
-        { text: 'Cancel', style: 'cancel' },
+      const title = getShareTitle(share, t);
+      alert(t('deleteShare'), t('deleteShareMessage', { title }), [
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('delete'),
           style: 'destructive',
           onPress: async () => {
             setDeletingId(share.id);
@@ -169,7 +171,7 @@ export function SettingsSharesScreen() {
             cancelAnimation(deleteAnim);
             setDeletingId(null);
             if (!success) {
-              alert('Error', 'Failed to delete share.');
+              alert(t('error'), t('failedToDeleteShare'));
             }
           },
         },
@@ -220,13 +222,12 @@ export function SettingsSharesScreen() {
         {/* Share URL Settings */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
-            Share URL
+            {t('shareUrl')}
           </Text>
           <View style={[styles.card, dynamicStyles.card]}>
             <View style={styles.cardContent}>
               <Text style={[styles.hint, dynamicStyles.hint]}>
-                Set an alternate URL for share links (e.g., a public domain name).
-                Defaults to your server address{serverUrl ? ` (${serverUrl})` : ''}.
+                {serverUrl ? t('shareUrlHintWithServer', { serverUrl }) : t('shareUrlHint')}
               </Text>
               <TextInput
                 style={[styles.input, dynamicStyles.input]}
@@ -250,7 +251,7 @@ export function SettingsSharesScreen() {
                   ]}
                 >
                   <Text style={styles.urlButtonText}>
-                    {urlSaved ? 'Saved!' : 'Save'}
+                    {urlSaved ? t('saved') : t('save')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -263,7 +264,7 @@ export function SettingsSharesScreen() {
                   ]}
                 >
                   <Text style={[styles.resetButtonText, { color: colors.textPrimary }]}>
-                    Reset to Default
+                    {t('resetToDefault')}
                   </Text>
                 </Pressable>
               </View>
@@ -274,7 +275,7 @@ export function SettingsSharesScreen() {
         {/* Shares */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
-            Shares
+            {t('shares')}
           </Text>
           {loading && shares.length === 0 ? (
             <View style={styles.loadingContainer}>
@@ -283,8 +284,8 @@ export function SettingsSharesScreen() {
           ) : notAvailable ? (
             <EmptyState
               icon="close-circle-outline"
-              title="Sharing not available"
-              subtitle={error ?? 'Sharing may be disabled on this server or not supported by your account.'}
+              title={t('sharingNotAvailable')}
+              subtitle={error ?? t('sharingNotAvailableHint')}
             />
           ) : error && shares.length === 0 ? (
             <View style={[styles.card, dynamicStyles.card]}>
@@ -295,8 +296,8 @@ export function SettingsSharesScreen() {
           ) : shares.length === 0 ? (
             <EmptyState
               icon="share-social-outline"
-              title="No shares yet"
-              subtitle="Share an album, playlist, or queue to create one."
+              title={t('noSharesYet')}
+              subtitle={t('noSharesYetHint')}
             />
           ) : (
             <View style={[styles.card, dynamicStyles.card]}>
@@ -318,21 +319,21 @@ export function SettingsSharesScreen() {
                     <View style={styles.shareTitleRow}>
                       {isExpired(share) && (
                         <View style={[styles.expiredBadge, dynamicStyles.expiredBadge]}>
-                          <Text style={styles.expiredBadgeText}>Expired</Text>
+                          <Text style={styles.expiredBadgeText}>{t('expired')}</Text>
                         </View>
                       )}
                       <Text
                         style={[styles.shareTitle, dynamicStyles.shareTitle]}
                         numberOfLines={1}
                       >
-                        {getShareTitle(share)}
+                        {getShareTitle(share, t)}
                       </Text>
                     </View>
                     <Text
                       style={[styles.shareSubtitle, dynamicStyles.shareSubtitle]}
                       numberOfLines={1}
                     >
-                      {getShareSubtitle(share)}
+                      {getShareSubtitle(share, t)}
                     </Text>
                     <View style={styles.metaRow}>
                       <View style={styles.metaItem}>
@@ -344,7 +345,7 @@ export function SettingsSharesScreen() {
                       <View style={styles.metaItem}>
                         <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
                         <Text style={[styles.metaText, dynamicStyles.shareMeta]}>
-                          {share.expires ? formatDate(share.expires) : 'Never'}
+                          {share.expires ? formatDate(share.expires) : t('never')}
                         </Text>
                       </View>
                       <View style={styles.metaItem}>
@@ -356,7 +357,7 @@ export function SettingsSharesScreen() {
                     </View>
                     {share.lastVisited && (
                       <Text style={[styles.lastVisited, dynamicStyles.shareMeta]}>
-                        Last visited: {formatDateTime(share.lastVisited)}
+                        {t('lastVisited', { date: formatDateTime(share.lastVisited) })}
                       </Text>
                     )}
                   </View>

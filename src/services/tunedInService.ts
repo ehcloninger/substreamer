@@ -1,4 +1,5 @@
 import { type Ionicons } from '@expo/vector-icons';
+import i18n from 'i18next';
 
 import {
   getRandomSongs,
@@ -38,36 +39,36 @@ export interface MixDefinition {
 /* ------------------------------------------------------------------ */
 
 interface TimeSlot {
-  label: string;
+  labelKey: string;
   range: [number, number];
 }
 
 const TIME_SLOTS: TimeSlot[] = [
-  { label: 'Early Morning', range: [5, 8] },
-  { label: 'Morning', range: [8, 11] },
-  { label: 'Midday', range: [11, 14] },
-  { label: 'Afternoon', range: [14, 17] },
-  { label: 'Evening', range: [17, 20] },
-  { label: 'Night', range: [20, 23] },
-  { label: 'Late Night', range: [23, 5] },
+  { labelKey: 'earlyMorning', range: [5, 8] },
+  { labelKey: 'morning', range: [8, 11] },
+  { labelKey: 'midday', range: [11, 14] },
+  { labelKey: 'afternoon', range: [14, 17] },
+  { labelKey: 'evening', range: [17, 20] },
+  { labelKey: 'night', range: [20, 23] },
+  { labelKey: 'lateNight', range: [23, 5] },
 ];
 
 export function getTimeOfDayLabel(hour: number): string {
   for (const slot of TIME_SLOTS) {
     const [start, end] = slot.range;
     if (start < end) {
-      if (hour >= start && hour < end) return slot.label;
+      if (hour >= start && hour < end) return i18n.t(slot.labelKey);
     } else {
-      if (hour >= start || hour < end) return slot.label;
+      if (hour >= start || hour < end) return i18n.t(slot.labelKey);
     }
   }
-  return 'Late Night';
+  return i18n.t('lateNight');
 }
 
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
 function getDayOfWeek(): string {
-  return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][
-    new Date().getDay()
-  ];
+  return i18n.t(DAY_KEYS[new Date().getDay()]);
 }
 
 /**
@@ -196,7 +197,7 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
   const topGenreForHour = getTopGenreForHour(hourBuckets, genreCounts, scrobbles);
 
   if (topGenreForHour) {
-    const subtitle = `${topGenreForHour} for your ${dayOfWeek} ${timeLabel.toLowerCase()}`;
+    const subtitle = i18n.t('genreForTimeSlot', { genre: topGenreForHour, dayOfWeek, timeSlot: timeLabel.toLowerCase() });
     mixes.push({
       id: 'right-now',
       name: timeLabel,
@@ -211,7 +212,7 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
     mixes.push({
       id: 'right-now',
       name: timeLabel,
-      subtitle: `A random mix for your ${dayOfWeek} ${timeLabel.toLowerCase()}`,
+      subtitle: i18n.t('randomMixForTimeSlot', { dayOfWeek, timeSlot: timeLabel.toLowerCase() }),
       icon: getTimeIcon(currentHour),
       gradientColors: getTimeGradient(currentHour),
       fetchStrategy: isOnline
@@ -253,8 +254,8 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
       if (picked.artistId) {
         mixes.push({
           id: 'deep-cuts',
-          name: 'Deep Cuts',
-          subtitle: `Artists like ${picked.name} you might love`,
+          name: i18n.t('deepCuts'),
+          subtitle: i18n.t('artistsLikeYouMightLove', { artist: picked.name }),
           icon: 'compass-outline',
           gradientColors: ['#7C3AED', '#4338CA'],
           fetchStrategy: { type: 'similarToArtist', artistId: picked.artistId, count: 20 },
@@ -262,8 +263,8 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
       } else {
         mixes.push({
           id: 'deep-cuts',
-          name: 'Surprise Me',
-          subtitle: 'A random selection from your library',
+          name: i18n.t('surpriseMe'),
+          subtitle: i18n.t('randomSelectionFromLibrary'),
           icon: 'shuffle-outline',
           gradientColors: ['#7C3AED', '#4338CA'],
           fetchStrategy: { type: 'random', size: 20 },
@@ -272,8 +273,8 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
     } else {
       mixes.push({
         id: 'deep-cuts',
-        name: 'Surprise Me',
-        subtitle: 'A random selection from your library',
+        name: i18n.t('surpriseMe'),
+        subtitle: i18n.t('randomSelectionFromLibrary'),
         icon: 'shuffle-outline',
         gradientColors: ['#7C3AED', '#4338CA'],
         fetchStrategy: { type: 'random', size: 20 },
@@ -288,8 +289,8 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
       const decadeLabel = `${pickedDecade.decade}s`;
       mixes.push({
         id: 'time-machine',
-        name: `The ${decadeLabel}`,
-        subtitle: 'Your favorite era, reshuffled',
+        name: i18n.t('theDecade', { decade: decadeLabel }),
+        subtitle: i18n.t('yourFavoriteEraReshuffled'),
         icon: 'time-outline',
         gradientColors: ['#D97706', '#EA580C'],
         fetchStrategy: {
@@ -302,8 +303,8 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
     } else {
       mixes.push({
         id: 'time-machine',
-        name: 'Time Machine',
-        subtitle: 'Random songs from across the decades',
+        name: i18n.t('timeMachine'),
+        subtitle: i18n.t('randomSongsAcrossDecades'),
         icon: 'time-outline',
         gradientColors: ['#D97706', '#EA580C'],
         fetchStrategy: { type: 'random', size: 20 },
@@ -314,8 +315,8 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
   // 3b. "Mix It Up" — Completely random songs (always shown)
   mixes.push({
     id: 'mix-it-up',
-    name: 'Mix It Up',
-    subtitle: 'A completely random mix from your library',
+    name: i18n.t('mixItUp'),
+    subtitle: i18n.t('completelyRandomMix'),
     icon: 'shuffle',
     gradientColors: ['#3B82F6', '#6366F1'],
     fetchStrategy: isOnline
@@ -328,8 +329,8 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
     const randomStar = starredSongs[Math.floor(Math.random() * starredSongs.length)];
     mixes.push({
       id: 'favorites-radio',
-      name: 'Favorites Radio',
-      subtitle: `Inspired by ${randomStar.title}`,
+      name: i18n.t('favoritesRadio'),
+      subtitle: i18n.t('inspiredBy', { title: randomStar.title }),
       icon: 'heart',
       gradientColors: ['#E11D48', '#DB2777'],
       fetchStrategy: { type: 'similarToSong', songId: randomStar.id, count: 20 },
@@ -347,7 +348,7 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
     mixes.push({
       id: 'genre-blend',
       name: `${genre1} \u00D7 ${genre2}`,
-      subtitle: 'A crossover of your top genres',
+      subtitle: i18n.t('crossoverOfTopGenres'),
       icon: 'git-merge-outline',
       gradientColors: ['#059669', '#0D9488'],
       fetchStrategy: isOnline
@@ -385,8 +386,8 @@ export function generateMixes(input: GenerateMixesInput): MixDefinition[] {
   if (heavyRotationSongs.length >= 5) {
     mixes.push({
       id: 'heavy-rotation',
-      name: 'Heavy Rotation',
-      subtitle: 'Your most played this week',
+      name: i18n.t('heavyRotation'),
+      subtitle: i18n.t('mostPlayedThisWeek'),
       icon: 'repeat',
       gradientColors: ['#6366F1', '#4F46E5'],
       fetchStrategy: { type: 'recentTopSongs', songs: heavyRotationSongs },

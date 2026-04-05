@@ -3,6 +3,7 @@ import { HeaderHeightContext } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
 import { useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '../components/GradientBackground';
@@ -18,6 +19,7 @@ import { resetAllStores } from '../store/resetAllStores';
 export function SettingsAccountScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const username = authStore((s) => s.username);
@@ -55,14 +57,14 @@ export function SettingsAccountScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Credentials</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('credentials')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.fieldRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.fieldLabel, { color: colors.textPrimary }]}>Username</Text>
+            <Text style={[styles.fieldLabel, { color: colors.textPrimary }]}>{t('username')}</Text>
             <Text style={[styles.fieldValue, { color: colors.textSecondary }]}>{username ?? '—'}</Text>
           </View>
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.textPrimary }]}>Password</Text>
+            <Text style={[styles.fieldLabel, { color: colors.textPrimary }]}>{t('password')}</Text>
             <View style={styles.passwordValue}>
               <Text style={[styles.fieldValue, { color: colors.textSecondary }]}>
                 {password ? (passwordVisible ? password : maskedPassword) : '—'}
@@ -94,7 +96,7 @@ export function SettingsAccountScreen() {
           ]}
           onPress={handleLogout}
         >
-          <Text style={[styles.logoutButtonText, dynamicStyles.logoutButtonText]}>Log out</Text>
+          <Text style={[styles.logoutButtonText, dynamicStyles.logoutButtonText]}>{t('logOut')}</Text>
         </Pressable>
       </View>
     </ScrollView>

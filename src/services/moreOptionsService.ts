@@ -5,6 +5,7 @@
  * Keeps star/queue logic in one place so row and card components stay thin.
  */
 
+import i18n from 'i18next';
 import { albumDetailStore } from '../store/albumDetailStore';
 import { artistDetailStore } from '../store/artistDetailStore';
 import { favoritesStore } from '../store/favoritesStore';
@@ -153,19 +154,19 @@ export async function removeItemFromQueue(index: number): Promise<void> {
  * Uses processing overlay for progress, success, and error feedback.
  */
 export async function playMoreLikeThis(song: Child): Promise<void> {
-  processingOverlayStore.getState().show('Loading…');
+  processingOverlayStore.getState().show(i18n.t('loading'));
 
   try {
     const tracks = await getSimilarSongs(song.id, 20);
     if (tracks.length === 0) {
-      processingOverlayStore.getState().showError('No similar songs found');
+      processingOverlayStore.getState().showError(i18n.t('noSimilarSongsFound'));
       return;
     }
 
     await playTrack(tracks[0], tracks);
-    processingOverlayStore.getState().showSuccess('Playing similar songs');
+    processingOverlayStore.getState().showSuccess(i18n.t('playingSimilarSongs'));
   } catch {
-    processingOverlayStore.getState().showError('Failed to load similar songs');
+    processingOverlayStore.getState().showError(i18n.t('failedToLoadSimilarSongs'));
   }
 }
 
@@ -178,19 +179,19 @@ export async function playMoreLikeThis(song: Child): Promise<void> {
  * Uses processing overlay for progress, success, and error feedback.
  */
 export async function playSimilarArtistsMix(artist: ArtistID3): Promise<void> {
-  processingOverlayStore.getState().show('Loading…');
+  processingOverlayStore.getState().show(i18n.t('loading'));
 
   try {
     const tracks = await getSimilarSongs2(artist.id, 20);
     if (tracks.length === 0) {
-      processingOverlayStore.getState().showError('No similar artists mix available');
+      processingOverlayStore.getState().showError(i18n.t('noSimilarArtistsMixAvailable'));
       return;
     }
 
     await playTrack(tracks[0], tracks);
-    processingOverlayStore.getState().showSuccess('Playing similar artists mix');
+    processingOverlayStore.getState().showSuccess(i18n.t('playingSimilarArtistsMix'));
   } catch {
-    processingOverlayStore.getState().showError('Failed to load similar artists mix');
+    processingOverlayStore.getState().showError(i18n.t('failedToLoadSimilarArtistsMix'));
   }
 }
 
@@ -204,7 +205,7 @@ export async function playSimilarArtistsMix(artist: ArtistID3): Promise<void> {
  * Shows processing overlay for feedback; refreshes playlist library on success.
  */
 export async function saveArtistTopSongsPlaylist(artist: ArtistID3): Promise<void> {
-  processingOverlayStore.getState().show('Creating…');
+  processingOverlayStore.getState().show(i18n.t('creating'));
 
   try {
     let topSongs = artistDetailStore.getState().artists[artist.id]?.topSongs;
@@ -214,21 +215,21 @@ export async function saveArtistTopSongsPlaylist(artist: ArtistID3): Promise<voi
     }
 
     if (topSongs.length === 0) {
-      processingOverlayStore.getState().showError('No top songs available');
+      processingOverlayStore.getState().showError(i18n.t('noTopSongsAvailable'));
       return;
     }
 
     const songIds = topSongs.map((s) => s.id);
     const success = await createNewPlaylist(`${artist.name} Top Songs`, songIds);
     if (!success) {
-      processingOverlayStore.getState().showError('Failed to create playlist');
+      processingOverlayStore.getState().showError(i18n.t('failedToCreatePlaylist'));
       return;
     }
 
     await playlistLibraryStore.getState().fetchAllPlaylists();
-    processingOverlayStore.getState().showSuccess('Playlist Created');
+    processingOverlayStore.getState().showSuccess(i18n.t('playlistCreated'));
   } catch {
-    processingOverlayStore.getState().showError('Failed to create playlist');
+    processingOverlayStore.getState().showError(i18n.t('failedToCreatePlaylist'));
   }
 }
 
@@ -247,7 +248,7 @@ const MORE_BY_ARTIST_MIN = 5;
  */
 export async function playMoreByArtist(artistId: string, artistName: string): Promise<void> {
   const offline = offlineModeStore.getState().offlineMode;
-  processingOverlayStore.getState().show('Loading…');
+  processingOverlayStore.getState().show(i18n.t('loading'));
 
   try {
     let songs: Child[];
@@ -269,11 +270,11 @@ export async function playMoreByArtist(artistId: string, artistName: string): Pr
       );
 
       if (songs.length === 0) {
-        processingOverlayStore.getState().showError(`No offline songs by ${artistName}`);
+        processingOverlayStore.getState().showError(i18n.t('noOfflineSongsByArtist', { artist: artistName }));
         return;
       }
       if (songs.length < MORE_BY_ARTIST_MIN) {
-        processingOverlayStore.getState().showError(`Not enough offline songs by ${artistName}`);
+        processingOverlayStore.getState().showError(i18n.t('notEnoughOfflineSongsByArtist', { artist: artistName }));
         return;
       }
     } else {
@@ -282,7 +283,7 @@ export async function playMoreByArtist(artistId: string, artistName: string): Pr
       const artistDetail = cached ?? (await artistDetailStore.getState().fetchArtist(artistId));
       const albums = artistDetail?.artist?.album;
       if (!albums?.length) {
-        processingOverlayStore.getState().showError(`No songs found by ${artistName}`);
+        processingOverlayStore.getState().showError(i18n.t('noSongsFoundByArtist', { artist: artistName }));
         return;
       }
 
@@ -303,20 +304,20 @@ export async function playMoreByArtist(artistId: string, artistName: string): Pr
       );
 
       if (songs.length === 0) {
-        processingOverlayStore.getState().showError(`No songs found by ${artistName}`);
+        processingOverlayStore.getState().showError(i18n.t('noSongsFoundByArtist', { artist: artistName }));
         return;
       }
       if (songs.length < MORE_BY_ARTIST_MIN) {
-        processingOverlayStore.getState().showError(`Not enough songs by ${artistName}`);
+        processingOverlayStore.getState().showError(i18n.t('notEnoughSongsByArtist', { artist: artistName }));
         return;
       }
     }
 
     const queue = shuffleArray(songs).slice(0, MORE_BY_ARTIST_COUNT);
     await playTrack(queue[0], queue);
-    processingOverlayStore.getState().showSuccess(`Playing ${artistName} mix`);
+    processingOverlayStore.getState().showSuccess(i18n.t('playingArtistMix', { artist: artistName }));
   } catch {
-    processingOverlayStore.getState().showError(`Failed to load ${artistName} songs`);
+    processingOverlayStore.getState().showError(i18n.t('failedToLoadArtistSongs', { artist: artistName }));
   }
 }
 

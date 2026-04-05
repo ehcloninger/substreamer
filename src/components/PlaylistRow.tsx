@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
@@ -17,6 +18,7 @@ const COVER_SIZE = 300;
 
 export const PlaylistRow = memo(function PlaylistRow({ playlist }: { playlist: Playlist }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const downloaded = useDownloadStatus('playlist', playlist.id) === 'complete';
 
@@ -33,8 +35,8 @@ export const PlaylistRow = memo(function PlaylistRow({ playlist }: { playlist: P
   }, [playlist]);
 
   const rightActions: SwipeAction[] = useMemo(
-    () => [{ icon: 'playlist-play', iconFamily: 'mdi' as const, color: colors.primary, label: 'Queue', onPress: handleAddToQueue }],
-    [colors.primary, handleAddToQueue],
+    () => [{ icon: 'playlist-play', iconFamily: 'mdi' as const, color: colors.primary, label: t('queue'), onPress: handleAddToQueue }],
+    [colors.primary, handleAddToQueue, t],
   );
 
   return (
@@ -58,7 +60,7 @@ export const PlaylistRow = memo(function PlaylistRow({ playlist }: { playlist: P
             <View style={styles.metaLeft}>
               <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
               <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                {playlist.songCount} {playlist.songCount === 1 ? 'track' : 'tracks'}
+                {t('trackCount', { count: playlist.songCount })}
               </Text>
             </View>
             {downloaded && <View style={styles.indicator}><DownloadedIcon size={14} circleColor={colors.primary} arrowColor="#fff" /></View>}

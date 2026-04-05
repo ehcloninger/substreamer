@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FlatList,
   Modal,
@@ -20,25 +21,25 @@ import { onboardingStore } from '../store/onboardingStore';
 
 interface Slide {
   icon: keyof typeof Ionicons.glyphMap;
-  headline: string;
-  body: string;
+  headlineKey: string;
+  bodyKey: string;
 }
 
 const SLIDES: Slide[] = [
   {
     icon: 'swap-horizontal-outline',
-    headline: 'Swipe & Long Press',
-    body: 'Swipe left or right on any song, album, or artist to access quick actions like adding to playlists, downloading, or deleting. Long press for more options.',
+    headlineKey: 'onboardingSwipeHeadline',
+    bodyKey: 'onboardingSwipeBody',
   },
   {
     icon: 'cloud-offline-outline',
-    headline: 'Offline Mode',
-    body: 'Tap the Offline chip in the filter bar to switch to offline mode. Only your downloaded music will be shown\u00a0\u2014\u00a0perfect for when you\u2019re on the go without a connection.',
+    headlineKey: 'onboardingOfflineHeadline',
+    bodyKey: 'onboardingOfflineBody',
   },
   {
     icon: 'settings-outline',
-    headline: 'Customise Your Experience',
-    body: 'Head to Settings to choose your streaming and download quality, set storage limits, and pick your preferred theme and accent colour.',
+    headlineKey: 'onboardingCustomiseHeadline',
+    bodyKey: 'onboardingCustomiseBody',
   },
 ];
 
@@ -83,6 +84,7 @@ const CARD_HORIZONTAL_MARGIN = 32;
 const CARD_MAX_WIDTH = 480;
 
 export const OnboardingGuide = memo(function OnboardingGuide() {
+  const { t } = useTranslation();
   const visible = onboardingStore((s) => s.visible);
   const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
@@ -131,14 +133,14 @@ export const OnboardingGuide = memo(function OnboardingGuide() {
           <Ionicons name={item.icon} size={48} color={colors.primary} />
         </View>
         <Text style={[styles.headline, { color: colors.textPrimary }]}>
-          {item.headline}
+          {t(item.headlineKey)}
         </Text>
         <Text style={[styles.body, { color: colors.textSecondary }]}>
-          {item.body}
+          {t(item.bodyKey)}
         </Text>
       </View>
     ),
-    [slideWidth, colors.primary, colors.textPrimary, colors.textSecondary],
+    [slideWidth, colors.primary, colors.textPrimary, colors.textSecondary, t],
   );
 
   const keyExtractor = useCallback((_: Slide, index: number) => String(index), []);
@@ -157,7 +159,7 @@ export const OnboardingGuide = memo(function OnboardingGuide() {
             hitSlop={12}
             style={({ pressed }) => [styles.skipButton, pressed && styles.pressed]}
           >
-            <Text style={[styles.skipText, { color: colors.textSecondary }]}>Skip</Text>
+            <Text style={[styles.skipText, { color: colors.textSecondary }]}>{t('skip')}</Text>
           </Pressable>
 
           {/* Slides */}
@@ -195,7 +197,7 @@ export const OnboardingGuide = memo(function OnboardingGuide() {
             ]}
           >
             <Text style={styles.nextButtonText}>
-              {isLastSlide ? 'Get Started' : 'Next'}
+              {isLastSlide ? t('getStarted') : t('next')}
             </Text>
           </Pressable>
         </View>

@@ -10,6 +10,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -35,6 +36,7 @@ const LAYOUT_ANIM_EXPAND = LayoutAnimation.create(EXPAND_MS, LayoutAnimation.Typ
 const LAYOUT_ANIM_COLLAPSE = LayoutAnimation.create(COLLAPSE_MS, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity);
 
 export function DownloadBanner() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
 
@@ -87,7 +89,7 @@ export function DownloadBanner() {
 
   const label = activeItem
     ? activeItem.name
-    : `${queueCount} ${queueCount === 1 ? 'item' : 'items'} queued`;
+    : t('itemQueued', { count: queueCount });
 
   const trackText = activeItem
     ? `${activeItem.completedTracks}/${activeItem.totalTracks}`

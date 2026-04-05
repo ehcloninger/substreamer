@@ -2,6 +2,7 @@ import { HeaderHeightContext } from '@react-navigation/elements';
 import { FlashList } from '@shopify/flash-list';
 import { memo, useCallback, useContext, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState as EmptyStateComponent } from '../components/EmptyState';
 import { GradientBackground } from '../components/GradientBackground';
@@ -18,9 +19,9 @@ type Scrobble = PendingScrobble | CompletedScrobble;
 
 type ScrobbleSegment = 'completed' | 'pending';
 
-const SEGMENTS = [
-  { key: 'completed', label: 'Completed' },
-  { key: 'pending', label: 'Pending' },
+const SEGMENT_KEYS = [
+  { key: 'completed', labelKey: 'completed' },
+  { key: 'pending', labelKey: 'pending' },
 ] as const;
 
 const ROW_HEIGHT = 56;
@@ -29,16 +30,16 @@ const ROW_HEIGHT = 56;
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function timeAgo(ts: number): string {
+function timeAgo(ts: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('justNow');
+  if (mins < 60) return t('minutesAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days}d ago`;
+  if (days === 1) return t('yesterday');
+  if (days < 7) return t('daysAgo', { count: days });
   const d = new Date(ts);
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
@@ -54,6 +55,7 @@ const ScrobbleRow = memo(function ScrobbleRow({
   scrobble: Scrobble;
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.row, { borderBottomColor: colors.border }]}>
       <View style={styles.rowLeft}>
@@ -67,7 +69,7 @@ const ScrobbleRow = memo(function ScrobbleRow({
         ) : null}
       </View>
       <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>
-        {timeAgo(scrobble.time)}
+        {timeAgo(scrobble.time, t)}
       </Text>
     </View>
   );
@@ -78,13 +80,14 @@ const ScrobbleRow = memo(function ScrobbleRow({
 /* ------------------------------------------------------------------ */
 
 function ScrobbleEmptyState({ segment }: { segment: ScrobbleSegment }) {
+  const { t } = useTranslation();
   const icon = segment === 'completed' ? 'checkmark-done-outline' : 'time-outline';
   const message =
-    segment === 'completed' ? 'No completed scrobbles yet' : 'No pending scrobbles';
+    segment === 'completed' ? t('noCompletedScrobblesYet') : t('noPendingScrobbles');
   const subtitle =
     segment === 'completed'
-      ? 'Scrobbles will appear here after tracks finish playing'
-      : 'Pending scrobbles are sent to your server automatically';
+      ? t('scrobblesAppearAfterPlaying')
+      : t('pendingScrobblesSentAutomatically');
 
   return <EmptyStateComponent icon={icon} title={message} subtitle={subtitle} />;
 }
@@ -95,8 +98,14 @@ function ScrobbleEmptyState({ segment }: { segment: ScrobbleSegment }) {
 
 export function ScrobbleBrowserScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [activeSegment, setActiveSegment] = useState<ScrobbleSegment>('completed');
+
+  const segments = useMemo(
+    () => SEGMENT_KEYS.map((s) => ({ key: s.key, label: t(s.labelKey) })),
+    [t],
+  );
 
   const pendingScrobbles = pendingScrobbleStore((s) => s.pendingScrobbles);
   const completedScrobbles = completedScrobbleStore((s) => s.completedScrobbles);
@@ -161,7 +170,7 @@ export function ScrobbleBrowserScreen() {
         )}
       </View>
       <View style={[styles.segmentOverlay, { top: headerHeight }]}>
-        <SegmentControl segments={SEGMENTS} selected={activeSegment} onSelect={setActiveSegment} />
+        <SegmentControl segments={segments} selected={activeSegment} onSelect={setActiveSegment} />
       </View>
     </GradientBackground>
   );

@@ -1,5 +1,6 @@
 import { Redirect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,6 +14,7 @@ import {
 } from 'react-native';
 
 import { CertificatePromptModal } from '../components/CertificatePromptModal';
+import { LanguageSelector } from '../components/LanguageSelector';
 import WaveformLogo from '../components/WaveformLogo';
 import { fetchServerInfo, login as subsonicLogin } from '../services/subsonicService';
 import { trustCertificateForHost } from '../services/sslTrustService';
@@ -30,6 +32,7 @@ const PRIMARY = '#1D9BF0';
 
 export function LoginScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const isLoggedIn = authStore((s) => s.isLoggedIn);
   const setSession = authStore((s) => s.setSession);
 
@@ -72,22 +75,22 @@ export function LoginScreen() {
         if (info) serverInfoStore.getState().setServerInfo(info);
         router.replace('/');
       } else {
-        setError(result.error || 'Connection failed after trusting certificate.');
+        setError(result.error || t('connectionFailedAfterTrust'));
       }
     } catch (e) {
       setLoading(false);
       setError(
-        `Failed to trust certificate: ${
-          e instanceof Error ? e.message : 'Unknown error'
-        }`
+        t('failedToTrustCertificate', {
+          message: e instanceof Error ? e.message : t('unknownError'),
+        })
       );
     }
   }, [certInfo, certHostname, serverUrl, username, password, legacyAuth, setSession, router]);
 
   const handleCancelCert = useCallback(() => {
     setCertModalVisible(false);
-    setError('Connection cancelled: untrusted certificate.');
-  }, []);
+    setError(t('connectionCancelledUntrusted'));
+  }, [t]);
 
   if (isLoggedIn) {
     return <Redirect href="/" />;
@@ -96,7 +99,7 @@ export function LoginScreen() {
   const handleManualCertTrust = async () => {
     const url = serverUrl.trim();
     if (!url) {
-      setError('Enter a server address first.');
+      setError(t('enterServerAddressFirst'));
       return;
     }
     setError(null);
@@ -114,9 +117,9 @@ export function LoginScreen() {
       setCertModalVisible(true);
     } catch (e) {
       setError(
-        `Could not retrieve certificate: ${
-          e instanceof Error ? e.message : 'Unknown error'
-        }`
+        t('couldNotRetrieveCertificate', {
+          message: e instanceof Error ? e.message : t('unknownError'),
+        })
       );
     } finally {
       setLoading(false);
@@ -141,7 +144,7 @@ export function LoginScreen() {
     const pass = password;
 
     if (!url || !user || !pass) {
-      setError('Please fill in all fields.');
+      setError(t('fillAllFields'));
       return;
     }
     setError(null);
@@ -162,7 +165,7 @@ export function LoginScreen() {
     }
 
     // Check if the error is SSL-related
-    const errorMsg = result.error || 'Connection failed';
+    const errorMsg = result.error || t('connectionFailed');
     if (isSSLError(errorMsg)) {
       // Try to fetch the certificate for inspection
       try {
@@ -178,9 +181,9 @@ export function LoginScreen() {
       } catch (certErr) {
         setLoading(false);
         setError(
-          `SSL certificate error: Could not retrieve certificate details. ${
-            certErr instanceof Error ? certErr.message : ''
-          }`.trim()
+          t('sslCertificateRetrievalError', {
+            message: certErr instanceof Error ? certErr.message : '',
+          }).trim()
         );
       }
     } else {
@@ -202,14 +205,14 @@ export function LoginScreen() {
 
         <Text style={styles.title}>substreamer</Text>
         <Text style={styles.subtitle}>
-          Sign in to your Subsonic server
+          {t('loginSubtitle')}
         </Text>
 
         {/* Form */}
         <View>
           <TextInput
             style={styles.input}
-            placeholder="Server address (e.g. https://demo.navidrome.org)"
+            placeholder={t('loginServerPlaceholder')}
             placeholderTextColor="rgba(255,255,255,0.85)"
             value={serverUrl}
             onChangeText={(t) => {
@@ -223,7 +226,7 @@ export function LoginScreen() {
           />
           <TextInput
             style={styles.input}
-            placeholder="Username"
+            placeholder={t('username')}
             placeholderTextColor="rgba(255,255,255,0.85)"
             value={username}
             onChangeText={(t) => {
@@ -236,7 +239,7 @@ export function LoginScreen() {
           />
           <TextInput
             style={[styles.input, styles.inputLast]}
-            placeholder="Password"
+            placeholder={t('password')}
             placeholderTextColor="rgba(255,255,255,0.85)"
             value={password}
             onChangeText={(t) => {
@@ -254,7 +257,7 @@ export function LoginScreen() {
             onPress={() => setShowAdvanced((prev) => !prev)}
           >
             <Text style={styles.advancedToggleText}>
-              {showAdvanced ? 'Hide advanced options' : 'Advanced options'}
+              {showAdvanced ? t('hideAdvancedOptions') : t('advancedOptions')}
             </Text>
           </Pressable>
 
@@ -262,9 +265,9 @@ export function LoginScreen() {
             <View style={styles.advancedSection}>
               <View style={styles.switchRow}>
                 <View style={styles.switchLabelContainer}>
-                  <Text style={styles.switchLabel}>Legacy authentication</Text>
+                  <Text style={styles.switchLabel}>{t('legacyAuthentication')}</Text>
                   <Text style={styles.switchHint}>
-                    Required for Nextcloud Music and Ampache servers
+                    {t('legacyAuthenticationHint')}
                   </Text>
                 </View>
                 <Switch
@@ -285,9 +288,9 @@ export function LoginScreen() {
                 onPress={handleManualCertTrust}
                 disabled={loading}
               >
-                <Text style={styles.certButtonText}>Trust server certificate</Text>
+                <Text style={styles.certButtonText}>{t('trustServerCertificate')}</Text>
                 <Text style={styles.switchHint}>
-                  Manually trust a self-signed or custom certificate
+                  {t('trustServerCertificateHint')}
                 </Text>
               </Pressable>
             </View>
@@ -310,9 +313,13 @@ export function LoginScreen() {
             {loading ? (
               <ActivityIndicator color={PRIMARY} />
             ) : (
-              <Text style={styles.buttonText}>Log in</Text>
+              <Text style={styles.buttonText}>{t('logIn')}</Text>
             )}
           </Pressable>
+
+          <View style={styles.languageSelector}>
+            <LanguageSelector variant="login" />
+          </View>
         </View>
       </View>
 
@@ -439,5 +446,8 @@ const styles = StyleSheet.create({
   certButtonText: {
     fontSize: 15,
     color: '#FFFFFF',
+  },
+  languageSelector: {
+    marginTop: 16,
   },
 });

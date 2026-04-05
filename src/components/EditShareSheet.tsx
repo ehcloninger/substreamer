@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BottomSheet } from './BottomSheet';
 import { CachedImage } from './CachedImage';
@@ -17,12 +18,12 @@ import { editShareStore } from '../store/editShareStore';
 import { sharesStore } from '../store/sharesStore';
 
 const EXPIRATION_OPTIONS = [
-  { label: 'Never', days: null },
-  { label: '1 day', days: 1 },
-  { label: '7 days', days: 7 },
-  { label: '30 days', days: 30 },
-  { label: '90 days', days: 90 },
-  { label: '1 year', days: 365 },
+  { labelKey: 'expiresNever', days: null },
+  { labelKey: 'expires1Day', days: 1 },
+  { labelKey: 'expires7Days', days: 7 },
+  { labelKey: 'expires30Days', days: 30 },
+  { labelKey: 'expires90Days', days: 90 },
+  { labelKey: 'expires1Year', days: 365 },
 ] as const;
 
 type ExpirationDays = (typeof EXPIRATION_OPTIONS)[number]['days'];
@@ -52,6 +53,7 @@ export function EditShareSheet() {
   const hide = editShareStore((s) => s.hide);
 
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const [description, setDescription] = useState('');
   const [selectedExpiration, setSelectedExpiration] = useState<ExpirationDays>(null);
@@ -89,7 +91,7 @@ export function EditShareSheet() {
       sharesStore.getState().fetchShares();
       handleClose();
     } else {
-      setError('Failed to update share.');
+      setError(t('failedToUpdateShare'));
     }
   }, [share, description, selectedExpiration, handleClose]);
 
@@ -122,11 +124,11 @@ export function EditShareSheet() {
     if (share.description) return share.description;
     const entries = share.entry ?? [];
     if (entries.length > 0) {
-      const first = entries[0].title ?? entries[0].album ?? 'Shared items';
+      const first = entries[0].title ?? entries[0].album ?? t('sharedItems');
       return entries.length > 1 ? `${first} + ${entries.length - 1} more` : first;
     }
-    return 'Share';
-  }, [share]);
+    return t('share');
+  }, [share, t]);
 
   const coverArtId = share?.entry?.[0]?.coverArt;
 
@@ -138,7 +140,7 @@ export function EditShareSheet() {
         )}
         <View style={styles.headerText}>
           <Text style={[styles.title, dynamicStyles.title]} numberOfLines={1}>
-            Edit Share
+            {t('editShare')}
           </Text>
           <Text style={[styles.subtitle, dynamicStyles.subtitle]} numberOfLines={1}>
             {shareTitle}
@@ -147,26 +149,26 @@ export function EditShareSheet() {
       </View>
 
         <View style={styles.formSection}>
-          <Text style={[styles.label, dynamicStyles.label]}>Description</Text>
+          <Text style={[styles.label, dynamicStyles.label]}>{t('description')}</Text>
           <TextInput
             style={[styles.input, dynamicStyles.input]}
             value={description}
             onChangeText={setDescription}
-            placeholder="Add a note..."
+            placeholder={t('addANotePlaceholder')}
             placeholderTextColor={colors.textSecondary}
             returnKeyType="done"
             editable={!saving}
           />
 
           <Text style={[styles.label, dynamicStyles.label, styles.expirationLabel]}>
-            Expires
+            {t('expires')}
           </Text>
           <View style={styles.chipRow}>
             {EXPIRATION_OPTIONS.map((opt) => {
               const selected = selectedExpiration === opt.days;
               return (
                 <Pressable
-                  key={opt.label}
+                  key={opt.labelKey}
                   onPress={() => setSelectedExpiration(opt.days)}
                   disabled={saving}
                   style={[
@@ -181,7 +183,7 @@ export function EditShareSheet() {
                       selected ? dynamicStyles.chipTextSelected : dynamicStyles.chipTextDefault,
                     ]}
                   >
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </Text>
                 </Pressable>
               );
@@ -207,13 +209,13 @@ export function EditShareSheet() {
             ) : (
               <>
                 <Ionicons name="checkmark" size={18} color="#fff" />
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text style={styles.saveButtonText}>{t('saveChanges')}</Text>
               </>
             )}
           </Pressable>
 
           <Pressable onPress={handleClose} style={styles.cancelButton}>
-            <Text style={[styles.cancelButtonText, { color: colors.primary }]}>Cancel</Text>
+            <Text style={[styles.cancelButtonText, { color: colors.primary }]}>{t('cancel')}</Text>
           </Pressable>
         </View>
     </BottomSheet>

@@ -3,6 +3,7 @@ import type { BottomTabHeaderProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dimensions,
   Keyboard,
@@ -26,6 +27,7 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 const DEBOUNCE_MS = 300;
 
 export function SearchableHeader({ route }: BottomTabHeaderProps) {
+  const { t } = useTranslation();
   const { theme, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
@@ -98,7 +100,7 @@ export function SearchableHeader({ route }: BottomTabHeaderProps) {
           <TextInput
             ref={inputRef}
             style={[styles.input, { color: colors.textPrimary }]}
-            placeholder={offlineMode ? 'Offline Search...' : 'Search...'}
+            placeholder={offlineMode ? t('offlineSearchPlaceholder') : t('searchPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={query}
             onChangeText={handleChangeText}

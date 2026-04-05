@@ -11,6 +11,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
@@ -44,6 +45,7 @@ export interface TrackRowProps {
 }
 
 export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onPress, showCoverArt, showAlbumName }: TrackRowProps) {
+  const { t } = useTranslation();
   const duration = track.duration != null ? formatTrackDuration(track.duration) : '—';
   const starred = useIsStarred('song', track.id);
   const downloaded = useDownloadStatus('song', track.id) === 'complete';
@@ -67,8 +69,8 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
   }, [track]);
 
   const rightActions: SwipeAction[] = useMemo(
-    () => [{ icon: 'playlist-play', iconFamily: 'mdi' as const, color: colors.primary, label: 'Queue', onPress: handleAddToQueue }],
-    [colors.primary, handleAddToQueue],
+    () => [{ icon: 'playlist-play', iconFamily: 'mdi' as const, color: colors.primary, label: t('queue'), onPress: handleAddToQueue }],
+    [colors.primary, handleAddToQueue, t],
   );
 
   const leftActions: SwipeAction[] = useMemo(
@@ -80,17 +82,17 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
               icon: 'playlist-plus',
               iconFamily: 'mdi' as const,
               color: colors.primary,
-              label: 'Playlist',
+              label: t('playlist'),
               onPress: handleAddToPlaylist,
             },
             {
               icon: starred ? 'heart' : 'heart-outline',
               color: colors.red,
-              label: starred ? 'Remove' : 'Add',
+              label: starred ? t('remove') : t('add'),
               onPress: handleToggleStar,
             },
           ],
-    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode],
+    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode, t],
   );
 
   return (
@@ -128,7 +130,7 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
               {track.title}
             </Text>
             <Text style={[styles.trackArtist, { color: colors.textSecondary }]} numberOfLines={1}>
-              {track.artist ?? 'Unknown Artist'}
+              {track.artist ?? t('unknownArtist')}
             </Text>
             {showAlbumName && (
               <View style={styles.metaAlbum}>
@@ -138,7 +140,7 @@ export const TrackRow = memo(function TrackRow({ track, trackNumber, colors, onP
                     style={[styles.albumText, { color: colors.textSecondary }]}
                     numberOfLines={1}
                   >
-                    {track.album ?? 'Unknown Album'}
+                    {track.album ?? t('unknownAlbum')}
                   </Text>
                 </View>
               </View>

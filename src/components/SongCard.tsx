@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
@@ -25,6 +26,7 @@ export const SongCard = memo(function SongCard({
   onPress?: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const starred = useIsStarred('song', song.id);
   const downloaded = useDownloadStatus('song', song.id) === 'complete';
   const rating = useRating(song.id, song.userRating);
@@ -65,7 +67,7 @@ export const SongCard = memo(function SongCard({
           style={[styles.artistName, { color: colors.textSecondary }]}
           numberOfLines={1}
         >
-          {song.artist ?? 'Unknown Artist'}
+          {song.artist ?? t('unknownArtist')}
         </Text>
       </View>
     </LongPressable>

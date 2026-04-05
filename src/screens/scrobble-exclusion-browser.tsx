@@ -2,6 +2,7 @@ import { HeaderHeightContext } from '@react-navigation/elements';
 import { FlashList } from '@shopify/flash-list';
 import { memo, useCallback, useContext, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '../components/EmptyState';
 import { GradientBackground } from '../components/GradientBackground';
@@ -30,6 +31,7 @@ const ExclusionRow = memo(function ExclusionRow({
   item: ExclusionItem;
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const { t } = useTranslation();
   const handleDelete = useCallback(() => {
     scrobbleExclusionStore.getState().removeExclusion(item.type, item.id);
   }, [item]);
@@ -39,16 +41,16 @@ const ExclusionRow = memo(function ExclusionRow({
       {
         icon: 'trash-outline' as const,
         color: colors.red,
-        label: 'Delete',
+        label: t('delete'),
         onPress: handleDelete,
         removesRow: true,
       },
     ],
-    [colors.red, handleDelete],
+    [colors.red, handleDelete, t],
   );
 
   const typeLabel =
-    item.type === 'album' ? 'Album' : item.type === 'artist' ? 'Artist' : 'Playlist';
+    item.type === 'album' ? t('album') : item.type === 'artist' ? t('artist') : t('playlist');
 
   return (
     <View style={styles.rowWrapper}>
@@ -74,6 +76,7 @@ const ExclusionRow = memo(function ExclusionRow({
 
 export function ScrobbleExclusionBrowserScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const excludedAlbums = scrobbleExclusionStore((s) => s.excludedAlbums);
   const excludedArtists = scrobbleExclusionStore((s) => s.excludedArtists);
@@ -105,8 +108,8 @@ export function ScrobbleExclusionBrowserScreen() {
       <GradientBackground style={styles.container}>
         <EmptyState
           icon="eye-off-outline"
-          title="No Scrobble Exclusions"
-          subtitle="Exclusions you set from an album, artist, or playlist menu will appear here."
+          title={t('noScrobbleExclusions')}
+          subtitle={t('scrobbleExclusionsSubtitle')}
         />
       </GradientBackground>
     );

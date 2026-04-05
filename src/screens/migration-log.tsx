@@ -2,6 +2,7 @@ import { File, Paths } from 'expo-file-system';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '../components/EmptyState';
 import { GradientBackground } from '../components/GradientBackground';
@@ -11,6 +12,7 @@ const LOG_FILE = new File(Paths.document, 'migration-log.txt');
 
 export function MigrationLogScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,8 +41,8 @@ export function MigrationLogScreen() {
       <GradientBackground style={styles.centered}>
         <EmptyState
           icon="document-text-outline"
-          title="No migration log"
-          subtitle="A log will be generated on the next app launch."
+          title={t('noMigrationLog')}
+          subtitle={t('migrationLogGeneratedOnLaunch')}
         />
       </GradientBackground>
     );

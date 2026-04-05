@@ -10,6 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useTranslation } from 'react-i18next';
+
 import { handleSslCertPrompt } from '../services/connectivityService';
 import { connectivityStore, type BannerState } from '../store/connectivityStore';
 import { offlineModeStore } from '../store/offlineModeStore';
@@ -39,7 +41,7 @@ const ERROR_RED = '#FF453A';
 interface ContentConfig {
   iconColor: string;
   icon: keyof typeof Ionicons.glyphMap;
-  message: string;
+  messageKey: string;
 }
 
 function getConfig(
@@ -47,18 +49,19 @@ function getConfig(
   isInternetReachable: boolean,
 ): ContentConfig {
   if (bannerState === 'reconnected') {
-    return { iconColor: SUCCESS, icon: 'checkmark-circle', message: 'Connected' };
+    return { iconColor: SUCCESS, icon: 'checkmark-circle', messageKey: 'connected' };
   }
   if (bannerState === 'ssl-error') {
-    return { iconColor: ERROR_RED, icon: 'shield-outline', message: 'Certificate changed' };
+    return { iconColor: ERROR_RED, icon: 'shield-outline', messageKey: 'certificateChanged' };
   }
   if (!isInternetReachable) {
-    return { iconColor: ERROR_RED, icon: 'cloud-offline', message: 'No internet connection' };
+    return { iconColor: ERROR_RED, icon: 'cloud-offline', messageKey: 'noInternetConnection' };
   }
-  return { iconColor: ERROR_RED, icon: 'cloud-offline', message: 'Server unreachable' };
+  return { iconColor: ERROR_RED, icon: 'cloud-offline', messageKey: 'serverUnreachable' };
 }
 
 export const ConnectivityBanner = memo(function ConnectivityBanner() {
+  const { t } = useTranslation();
   const offlineMode = offlineModeStore((s) => s.offlineMode);
   const rawBannerState = connectivityStore((s) => s.bannerState);
   const isInternetReachable = connectivityStore((s) => s.isInternetReachable);
@@ -145,7 +148,7 @@ export const ConnectivityBanner = memo(function ConnectivityBanner() {
             <Animated.View style={[styles.contentRow, contentStyle]}>
               <Ionicons name={config.icon} size={16} color={config.iconColor} />
               <Animated.Text style={styles.label} numberOfLines={1}>
-                {config.message}
+                {t(config.messageKey)}
               </Animated.Text>
             </Animated.View>
           </Animated.View>

@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
 import { useTheme } from '../hooks/useTheme';
@@ -62,10 +63,12 @@ function getSlotCounts(
 function CompactArtistRow({
   artist,
   colors,
+  albumCountLabel,
   onPress,
 }: {
   artist: ArtistID3;
   colors: ReturnType<typeof useTheme>['colors'];
+  albumCountLabel: string;
   onPress: () => void;
 }) {
   return (
@@ -79,7 +82,7 @@ function CompactArtistRow({
           {artist.name}
         </Text>
         <Text style={[styles.compactSecondary, { color: colors.textSecondary }]} numberOfLines={1}>
-          {artist.albumCount === 1 ? '1 album' : `${artist.albumCount} albums`}
+          {albumCountLabel}
         </Text>
       </View>
     </Pressable>
@@ -89,10 +92,12 @@ function CompactArtistRow({
 function CompactAlbumRow({
   album,
   colors,
+  unknownArtistLabel,
   onPress,
 }: {
   album: AlbumID3;
   colors: ReturnType<typeof useTheme>['colors'];
+  unknownArtistLabel: string;
   onPress: () => void;
 }) {
   return (
@@ -106,7 +111,7 @@ function CompactAlbumRow({
           {album.name}
         </Text>
         <Text style={[styles.compactSecondary, { color: colors.textSecondary }]} numberOfLines={1}>
-          {album.artist ?? 'Unknown Artist'}
+          {album.artist ?? unknownArtistLabel}
         </Text>
       </View>
     </Pressable>
@@ -116,10 +121,12 @@ function CompactAlbumRow({
 function CompactSongRow({
   song,
   colors,
+  unknownArtistLabel,
   onPress,
 }: {
   song: Child;
   colors: ReturnType<typeof useTheme>['colors'];
+  unknownArtistLabel: string;
   onPress: () => void;
 }) {
   return (
@@ -133,7 +140,7 @@ function CompactSongRow({
           {song.title}
         </Text>
         <Text style={[styles.compactSecondary, { color: colors.textSecondary }]} numberOfLines={1}>
-          {song.artist ?? 'Unknown Artist'}
+          {song.artist ?? unknownArtistLabel}
         </Text>
       </View>
     </Pressable>
@@ -146,6 +153,7 @@ function CompactSongRow({
 
 export function SearchResultsOverlay() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
 
   const isOverlayVisible = searchStore((s) => s.isOverlayVisible);
@@ -224,7 +232,7 @@ export function SearchResultsOverlay() {
         ) : !hasResults && query.trim() ? (
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No results found
+              {t('noResultsFound')}
             </Text>
           </View>
         ) : (
@@ -239,13 +247,14 @@ export function SearchResultsOverlay() {
             {slots.artists > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.label }]}>
-                  Artists
+                  {t('artists')}
                 </Text>
                 {results.artists.slice(0, slots.artists).map((artist) => (
                   <CompactArtistRow
                     key={artist.id}
                     artist={artist}
                     colors={colors}
+                    albumCountLabel={t('albumCount', { count: artist.albumCount ?? 0 })}
                     onPress={() => navigateToArtist(artist.id)}
                   />
                 ))}
@@ -256,13 +265,14 @@ export function SearchResultsOverlay() {
             {slots.albums > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.label }]}>
-                  Albums
+                  {t('albums')}
                 </Text>
                 {results.albums.slice(0, slots.albums).map((album) => (
                   <CompactAlbumRow
                     key={album.id}
                     album={album}
                     colors={colors}
+                    unknownArtistLabel={t('unknownArtist')}
                     onPress={() => navigateToAlbum(album.id)}
                   />
                 ))}
@@ -273,13 +283,14 @@ export function SearchResultsOverlay() {
             {slots.songs > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.label }]}>
-                  Songs
+                  {t('songs')}
                 </Text>
                 {results.songs.slice(0, slots.songs).map((song, index) => (
                   <CompactSongRow
                     key={`${song.id}-${index}`}
                     song={song}
                     colors={colors}
+                    unknownArtistLabel={t('unknownArtist')}
                     onPress={() => handlePlaySong(song)}
                   />
                 ))}
@@ -295,7 +306,7 @@ export function SearchResultsOverlay() {
               ]}
             >
               <Text style={[styles.seeMoreText, { color: colors.primary }]}>
-                See more results
+                {t('seeMoreResults')}
               </Text>
               <Ionicons name="chevron-forward" size={16} color={colors.primary} />
             </Pressable>

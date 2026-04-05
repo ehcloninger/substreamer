@@ -9,7 +9,7 @@ import {
   getArtist,
   getArtistInfo2,
   getTopSongs,
-  VARIOUS_ARTISTS_BIO,
+  getVariousArtistsBio,
   VARIOUS_ARTISTS_COVER_ART_ID,
 } from '../../services/subsonicService';
 import {
@@ -47,7 +47,7 @@ describe('fetchArtist — Various Artists', () => {
 
     expect(entry).not.toBeNull();
     expect(entry!.artist.coverArt).toBe(VARIOUS_ARTISTS_COVER_ART_ID);
-    expect(entry!.biography).toBe(VARIOUS_ARTISTS_BIO);
+    expect(entry!.biography).toBe(getVariousArtistsBio());
     expect(entry!.topSongs).toEqual([]);
     expect(entry!.artistInfo).toBeNull();
     expect(entry!.resolvedMbid).toBeNull();

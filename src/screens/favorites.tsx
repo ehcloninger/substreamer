@@ -2,6 +2,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { AlbumListView } from '../components/AlbumListView';
 import { DownloadButton } from '../components/DownloadButton';
@@ -32,10 +33,10 @@ import { searchStore } from '../store/searchStore';
 
 type FavoritesSegment = 'songs' | 'albums' | 'artists';
 
-const SEGMENTS = [
-  { key: 'songs', label: 'Songs' },
-  { key: 'albums', label: 'Albums' },
-  { key: 'artists', label: 'Artists' },
+const SEGMENT_KEYS = [
+  { key: 'songs', labelKey: 'songs' },
+  { key: 'albums', labelKey: 'albums' },
+  { key: 'artists', labelKey: 'artists' },
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -44,9 +45,15 @@ const SEGMENTS = [
 
 export function FavoritesScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const isFocused = useIsFocused();
   const headerHeight = searchStore((s) => s.headerHeight);
   const [activeSegment, setActiveSegment] = useState<FavoritesSegment>('songs');
+
+  const segments = useMemo(
+    () => SEGMENT_KEYS.map((s) => ({ key: s.key, label: t(s.labelKey) })),
+    [t],
+  );
 
   /* ---- Store: favorites data ---- */
   const songs = favoritesStore((s) => s.songs);
@@ -186,7 +193,7 @@ export function FavoritesScreen() {
           <View style={styles.metaLine}>
             <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-              {filteredSongs.length} {filteredSongs.length === 1 ? 'song' : 'songs'}
+              {t('songCount', { count: filteredSongs.length })}
             </Text>
           </View>
           <View style={styles.metaLine}>
@@ -208,7 +215,7 @@ export function FavoritesScreen() {
                 pressed && styles.buttonPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Shuffle play"
+              accessibilityLabel={t('shufflePlay')}
             >
               <Ionicons name="shuffle" size={18} color="#000" />
             </Pressable>
@@ -221,7 +228,7 @@ export function FavoritesScreen() {
               pressed && styles.buttonPressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Play all"
+            accessibilityLabel={t('playAll')}
           >
             <Ionicons name="play" size={28} color="#fff" style={styles.playAllIcon} />
           </Pressable>
@@ -242,11 +249,11 @@ export function FavoritesScreen() {
             onRefresh={handleRefresh}
             refreshing={refreshing}
             emptyMessage={starredSongsDownloaded === false && offlineMode
-              ? 'Not available offline'
-              : 'No favorite songs yet'}
+              ? t('notAvailableOffline')
+              : t('noFavoriteSongsYet')}
             emptySubtitle={starredSongsDownloaded === false && offlineMode
-              ? 'Download your favorite songs to access them in offline mode'
-              : 'Star songs you love and they will appear here, or check your filters'}
+              ? t('downloadFavoriteSongsOffline')
+              : t('starSongsHint')}
             emptyIcon={starredSongsDownloaded === false && offlineMode
               ? 'cloud-offline-outline'
               : 'heart-outline'}
@@ -263,8 +270,8 @@ export function FavoritesScreen() {
             error={error}
             onRefresh={handleRefresh}
             refreshing={refreshing}
-            emptyMessage="No favorite albums yet"
-            emptySubtitle="Star albums you love and they will appear here, or check your filters"
+            emptyMessage={t('noFavoriteAlbumsYet')}
+            emptySubtitle={t('starAlbumsHint')}
             emptyIcon="heart-outline"
             scrollToTopTrigger={`${downloadedOnly}`}
             contentInsetTop={contentInsetTop}
@@ -275,8 +282,8 @@ export function FavoritesScreen() {
             <View style={[styles.emptyContainer, { paddingTop: contentInsetTop }]}>
               <EmptyState
                 icon="cloud-offline-outline"
-                title="Not available offline"
-                subtitle="Artists are not available in offline mode"
+                title={t('notAvailableOffline')}
+                subtitle={t('artistsNotAvailableOffline')}
               />
             </View>
           ) : (
@@ -287,8 +294,8 @@ export function FavoritesScreen() {
               error={error}
               onRefresh={handleRefresh}
               refreshing={refreshing}
-              emptyMessage="No favorite artists yet"
-              emptySubtitle="Star artists you love and they will appear here, or check your filters"
+              emptyMessage={t('noFavoriteArtistsYet')}
+              emptySubtitle={t('starArtistsHint')}
               emptyIcon="heart-outline"
               scrollToTopTrigger={`${downloadedOnly}`}
               contentInsetTop={contentInsetTop}
@@ -297,7 +304,7 @@ export function FavoritesScreen() {
         )}
       </View>
       <View style={[styles.segmentOverlay, { top: headerHeight }]}>
-        <SegmentControl segments={SEGMENTS} selected={activeSegment} onSelect={setActiveSegment} />
+        <SegmentControl segments={segments} selected={activeSegment} onSelect={setActiveSegment} />
       </View>
     </View>
   );

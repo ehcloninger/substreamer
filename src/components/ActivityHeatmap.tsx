@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Rect as SvgRect } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
 import { type ThemeColors } from '../constants/theme';
 
@@ -57,10 +58,11 @@ function parseColorToRgb(color: string): [number, number, number] {
   return [128, 128, 128];
 }
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+const MONTH_LABEL_KEYS = ['monthJan', 'monthFeb', 'monthMar', 'monthApr', 'monthMay', 'monthJun', 'monthJul', 'monthAug', 'monthSep', 'monthOct', 'monthNov', 'monthDec'] as const;
+const DAY_LABEL_KEYS = ['', 'dayMon', '', 'dayWed', '', 'dayFri', ''] as const;
 
 export const ActivityHeatmap = memo(function ActivityHeatmap({ data, colors }: ActivityHeatmapProps) {
+  const { t } = useTranslation();
   const weeks = Math.ceil(data.length / ROWS);
 
   const { cells, monthMarkers, maxCount } = useMemo(() => {
@@ -76,7 +78,7 @@ export const ActivityHeatmap = memo(function ActivityHeatmap({ data, colors }: A
       date: string;
     }[] = [];
 
-    const markers: { col: number; label: string }[] = [];
+    const markers: { col: number; labelKey: string }[] = [];
     let lastMonth = -1;
 
     for (let i = 0; i < data.length; i++) {
@@ -86,7 +88,7 @@ export const ActivityHeatmap = memo(function ActivityHeatmap({ data, colors }: A
 
       const month = parseInt(data[i].date.substring(5, 7), 10) - 1;
       if (month !== lastMonth && row === 0) {
-        markers.push({ col, label: MONTH_LABELS[month] });
+        markers.push({ col, labelKey: MONTH_LABEL_KEYS[month] });
         lastMonth = month;
       }
     }
@@ -106,14 +108,14 @@ export const ActivityHeatmap = memo(function ActivityHeatmap({ data, colors }: A
       <View style={[styles.monthRow, { paddingLeft: DAY_LABEL_WIDTH }]}>
         {monthMarkers.map((m, i) => (
           <Text
-            key={`${m.label}-${i}`}
+            key={`${m.labelKey}-${i}`}
             style={[
               styles.monthLabel,
               { color: colors.textSecondary },
               { position: 'absolute', left: DAY_LABEL_WIDTH + m.col * (CELL_SIZE + CELL_GAP) },
             ]}
           >
-            {m.label}
+            {t(m.labelKey)}
           </Text>
         ))}
       </View>
@@ -121,9 +123,9 @@ export const ActivityHeatmap = memo(function ActivityHeatmap({ data, colors }: A
       <View style={styles.gridRow}>
         {/* Day labels */}
         <View style={[styles.dayLabels, { width: DAY_LABEL_WIDTH }]}>
-          {DAY_LABELS.map((label, i) => (
+          {DAY_LABEL_KEYS.map((key, i) => (
             <View key={i} style={{ height: CELL_SIZE + CELL_GAP }}>
-              <Text style={[styles.dayLabel, { color: colors.textSecondary }]}>{label}</Text>
+              <Text style={[styles.dayLabel, { color: colors.textSecondary }]}>{key ? t(key) : ''}</Text>
             </View>
           ))}
         </View>
@@ -157,7 +159,7 @@ export const ActivityHeatmap = memo(function ActivityHeatmap({ data, colors }: A
 
       {/* Legend */}
       <View style={styles.legendRow}>
-        <Text style={[styles.legendText, { color: colors.textSecondary }]}>Less</Text>
+        <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('less')}</Text>
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
           <View
             key={t}
@@ -173,7 +175,7 @@ export const ActivityHeatmap = memo(function ActivityHeatmap({ data, colors }: A
             ]}
           />
         ))}
-        <Text style={[styles.legendText, { color: colors.textSecondary }]}>More</Text>
+        <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('more')}</Text>
       </View>
     </View>
   );

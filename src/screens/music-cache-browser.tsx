@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from '../components/CachedImage';
 import { EmptyState } from '../components/EmptyState';
@@ -112,9 +113,8 @@ const CacheRow = memo(function CacheRow({
   onRedownload: (itemId: string) => void;
 }) {
   const offlineMode = offlineModeStore((s) => s.offlineMode);
-  const trackLabel = item.tracks.length === 1
-    ? '1 track'
-    : `${item.tracks.length} tracks`;
+  const { t } = useTranslation();
+  const trackLabel = t('trackWithCount', { count: item.tracks.length });
 
   // Defer track list rendering by one frame so the chevron flip and row
   // expansion feel instant before mounting potentially many TrackFileRows.
@@ -146,13 +146,13 @@ const CacheRow = memo(function CacheRow({
   }, [item.itemId, onToggle]);
 
   const rightActions: SwipeAction[] = useMemo(
-    () => [{ icon: 'trash-outline' as const, color: colors.red, label: 'Delete', onPress: handleDelete, removesRow: true }],
-    [colors.red, handleDelete],
+    () => [{ icon: 'trash-outline' as const, color: colors.red, label: t('delete'), onPress: handleDelete, removesRow: true }],
+    [colors.red, handleDelete, t],
   );
 
   const leftActions: SwipeAction[] = useMemo(
-    () => offlineMode ? [] : [{ icon: 'refresh-outline' as const, color: colors.primary, label: 'Refresh', onPress: handleRedownload }],
-    [offlineMode, colors.primary, handleRedownload],
+    () => offlineMode ? [] : [{ icon: 'refresh-outline' as const, color: colors.primary, label: t('refresh'), onPress: handleRedownload }],
+    [offlineMode, colors.primary, handleRedownload, t],
   );
 
   return (
@@ -176,7 +176,7 @@ const CacheRow = memo(function CacheRow({
                 </Text>
               )}
               <Text style={[styles.rowMeta, { color: colors.textSecondary }]}>
-                {item.type === 'album' ? 'Album' : 'Playlist'} · {trackLabel} · {formatBytes(item.totalBytes)}
+                {item.type === 'album' ? t('album') : t('playlist')} · {trackLabel} · {formatBytes(item.totalBytes)}
               </Text>
             </View>
             <Ionicons
@@ -219,6 +219,7 @@ const CacheRow = memo(function CacheRow({
 
 export function MusicCacheBrowserScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { alert, alertProps } = useThemedAlert();
   const transitionComplete = useTransitionComplete();
@@ -231,12 +232,12 @@ export function MusicCacheBrowserScreen() {
 
   const handleClearAll = useCallback(() => {
     alert(
-      'Clear All Downloads',
-      'Delete all downloaded music? This cannot be undone.',
+      t('clearAllDownloads'),
+      t('clearAllDownloadsMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear All',
+          text: t('clearAll'),
           style: 'destructive',
           onPress: async () => {
             setExpandedId(null);
@@ -247,7 +248,7 @@ export function MusicCacheBrowserScreen() {
         },
       ],
     );
-  }, [alert]);
+  }, [alert, t]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -258,7 +259,7 @@ export function MusicCacheBrowserScreen() {
               hitSlop={8}
               style={({ pressed }) => pressed && styles.pressed}
             >
-              <Text style={[styles.clearButton, { color: colors.primary }]}>Clear</Text>
+              <Text style={[styles.clearButton, { color: colors.primary }]}>{t('clear')}</Text>
             </Pressable>
           )
         : undefined,
@@ -285,12 +286,12 @@ export function MusicCacheBrowserScreen() {
     const item = musicCacheStore.getState().cachedItems[itemId];
     if (!item) return;
     alert(
-      'Remove Download',
-      `Delete "${item.name}" and free ${formatBytes(item.totalBytes)}?\n\nThis may affect offline access to your music.`,
+      t('removeDownload'),
+      t('removeDownloadMessage', { name: item.name, size: formatBytes(item.totalBytes) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('delete'),
           style: 'destructive',
           onPress: () => {
             setExpandedId((prev) => (prev === itemId ? null : prev));
@@ -305,12 +306,12 @@ export function MusicCacheBrowserScreen() {
     const item = musicCacheStore.getState().cachedItems[itemId];
     if (!item) return;
     alert(
-      'Redownload',
-      `Redownload all tracks in "${item.name}" with current quality settings?`,
+      t('redownload'),
+      t('redownloadMessage', { name: item.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Redownload',
+          text: t('redownload'),
           onPress: () => {
             setExpandedId((prev) => (prev === itemId ? null : prev));
             redownloadItem(itemId);
@@ -340,8 +341,8 @@ export function MusicCacheBrowserScreen() {
   );
 
   const isFiltered = filter.trim().length > 0;
-  const emptyMessage = isFiltered ? 'No matching downloads' : 'No downloaded music';
-  const emptySubtitle = isFiltered ? undefined : 'Download albums or playlists for offline listening';
+  const emptyMessage = isFiltered ? t('noMatchingDownloads') : t('noDownloadedMusic');
+  const emptySubtitle = isFiltered ? undefined : t('downloadForOffline');
 
   const listEmpty = useMemo(
     () =>
@@ -362,7 +363,7 @@ export function MusicCacheBrowserScreen() {
           <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.filterIcon} />
           <TextInput
             style={[styles.filterInput, { color: colors.textPrimary }]}
-            placeholder="Filter..."
+            placeholder={t('filterPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={filter}
             onChangeText={setFilter}

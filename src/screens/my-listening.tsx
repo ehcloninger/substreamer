@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { useCallback, useContext, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { ActivityHeatmap } from '../components/ActivityHeatmap';
 import { CachedImage } from '../components/CachedImage';
@@ -20,11 +21,11 @@ import { layoutPreferencesStore } from '../store/layoutPreferencesStore';
 import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
 import { getArtistInitials, minDelay } from '../utils/stringHelpers';
 
-const PERIODS: { key: TimePeriod; label: string }[] = [
-  { key: '7d', label: '7D' },
-  { key: '30d', label: '30D' },
-  { key: '90d', label: '90D' },
-  { key: 'all', label: 'All' },
+const PERIODS: { key: TimePeriod; labelKey: string }[] = [
+  { key: '7d', labelKey: 'period7d' },
+  { key: '30d', labelKey: 'period30d' },
+  { key: '90d', labelKey: 'period90d' },
+  { key: 'all', labelKey: 'periodAll' },
 ];
 
 const HOUR_LABELS = [
@@ -45,22 +46,23 @@ function formatHour(hour: number): string {
   return hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
 }
 
-function timeAgo(ts: number): string {
+function timeAgo(ts: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('justNow');
+  if (mins < 60) return t('minutesAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days}d ago`;
+  if (days === 1) return t('yesterday');
+  if (days < 7) return t('daysAgo', { count: days });
   const weeks = Math.floor(days / 7);
-  return `${weeks}w ago`;
+  return t('weeksAgo', { count: weeks });
 }
 
 export function MyListeningScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const transitionComplete = useTransitionComplete();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [period, setPeriod] = useState<TimePeriod>('30d');
@@ -100,12 +102,11 @@ export function MyListeningScreen() {
       <GradientBackground style={styles.loadingContainer}>
         <EmptyState
           icon="musical-notes-outline"
-          title="No listening history yet"
-          subtitle="Listen to some music and check back soon to see your personal stats, top tracks, and listening trends."
+          title={t('noListeningHistoryYet')}
+          subtitle={t('noListeningHistorySubtitle')}
         >
           <Text style={[styles.emptyDisclaimer, { color: colors.textSecondary }]}>
-            Listening history is tracked locally on this device and is not synced to your server or
-            other devices.
+            {t('listeningHistoryDisclaimer')}
           </Text>
         </EmptyState>
       </GradientBackground>
@@ -162,7 +163,7 @@ export function MyListeningScreen() {
                 period === p.key && styles.periodLabelActive,
               ]}
             >
-              {p.label}
+              {t(p.labelKey)}
             </Text>
           </Pressable>
         ))}
@@ -174,14 +175,14 @@ export function MyListeningScreen() {
           <StatCard
             icon="musical-notes"
             value={analytics.totalPlays.toLocaleString()}
-            label="Total Plays"
+            label={t('totalPlays')}
             colors={colors}
             index={0}
           />
           <StatCard
             icon="time-outline"
             value={formatDuration(analytics.totalListeningSeconds)}
-            label="Listening Time"
+            label={t('listeningTime')}
             colors={colors}
             index={1}
           />
@@ -190,14 +191,14 @@ export function MyListeningScreen() {
           <StatCard
             icon="people-outline"
             value={analytics.uniqueArtists.toLocaleString()}
-            label="Unique Artists"
+            label={t('uniqueArtists')}
             colors={colors}
             index={2}
           />
           <StatCard
             icon="flame-outline"
             value={`${analytics.currentStreak}d`}
-            label={`Streak${analytics.longestStreak > analytics.currentStreak ? ` (${analytics.longestStreak}d best)` : ''}`}
+            label={analytics.longestStreak > analytics.currentStreak ? t('streakWithBest', { best: analytics.longestStreak }) : t('streak')}
             colors={colors}
             index={3}
           />
@@ -207,7 +208,7 @@ export function MyListeningScreen() {
       {/* Daily activity */}
       {analytics.dailyActivity.length > 0 && (
         <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
-          <SectionTitle title="Daily Activity" color={colors.textSecondary} />
+          <SectionTitle title={t('dailyActivity')} color={colors.textSecondary} />
           <MiniBarChart
             data={dailyBarData}
             colors={colors}
@@ -219,11 +220,11 @@ export function MyListeningScreen() {
       {/* Peak listening hours */}
       <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
         <View style={styles.sectionHeader}>
-          <SectionTitle title="Listening Hours" color={colors.textSecondary} />
+          <SectionTitle title={t('listeningHours')} color={colors.textSecondary} />
           <View style={styles.peakBadge}>
             <Ionicons name="sunny-outline" size={12} color={colors.primary} />
             <Text style={[styles.peakText, { color: colors.primary }]}>
-              Peak: {formatHour(analytics.peakHour)}
+              {t('peakHour', { hour: formatHour(analytics.peakHour) })}
             </Text>
           </View>
         </View>
@@ -233,7 +234,7 @@ export function MyListeningScreen() {
       {/* Top songs */}
       {analytics.topSongs.length > 0 && (
         <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
-          <SectionTitle title="Most Played Songs" color={colors.textSecondary} />
+          <SectionTitle title={t('mostPlayedSongs')} color={colors.textSecondary} />
           {analytics.topSongs.map((item, i) => (
             <TopItemRow
               key={item.song.id}
@@ -253,7 +254,7 @@ export function MyListeningScreen() {
       {/* Top artists */}
       {analytics.topArtists.length > 0 && (
         <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
-          <SectionTitle title="Most Played Artists" color={colors.textSecondary} />
+          <SectionTitle title={t('mostPlayedArtists')} color={colors.textSecondary} />
           {analytics.topArtists.map((item, i) => (
             <TopItemRow
               key={item.artist}
@@ -272,7 +273,7 @@ export function MyListeningScreen() {
       {/* Top albums */}
       {analytics.topAlbums.length > 0 && (
         <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
-          <SectionTitle title="Top Albums" color={colors.textSecondary} />
+          <SectionTitle title={t('topAlbums')} color={colors.textSecondary} />
           {analytics.topAlbums.map((item, i) => (
             <TopItemRow
               key={`${item.album}-${item.artist}`}
@@ -291,7 +292,7 @@ export function MyListeningScreen() {
 
       {/* Genre breakdown */}
       <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
-        <SectionTitle title="Genres" color={colors.textSecondary} />
+        <SectionTitle title={t('genres')} color={colors.textSecondary} />
         <GenreChart
           data={analytics.genreBreakdown}
           totalPlays={analytics.totalPlays}
@@ -301,7 +302,7 @@ export function MyListeningScreen() {
 
       {/* Activity heatmap */}
       <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
-        <SectionTitle title="Listening History" color={colors.textSecondary} />
+        <SectionTitle title={t('listeningHistory')} color={colors.textSecondary} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <ActivityHeatmap data={analytics.heatmapData} colors={colors} />
         </ScrollView>
@@ -311,7 +312,7 @@ export function MyListeningScreen() {
       {pendingScrobbles.length > 0 && (
         <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
           <View style={styles.sectionHeader}>
-            <SectionTitle title="Pending Scrobbles" color={colors.textSecondary} />
+            <SectionTitle title={t('pendingScrobbles')} color={colors.textSecondary} />
             <View style={[styles.pendingBadge, { backgroundColor: colors.red + '20' }]}>
               <Text style={[styles.pendingCount, { color: colors.red }]}>
                 {pendingScrobbles.length}
@@ -319,7 +320,7 @@ export function MyListeningScreen() {
             </View>
           </View>
           <Text style={[styles.pendingHint, { color: colors.textSecondary }]}>
-            Waiting to be submitted to the server
+            {t('waitingToBeSubmitted')}
           </Text>
           {[...pendingScrobbles].reverse().slice(0, 10).map((s) => (
             <View key={s.id} style={[styles.recentRow, { borderBottomColor: colors.border }]}>
@@ -339,11 +340,11 @@ export function MyListeningScreen() {
                   style={[styles.recentSubtitle, { color: colors.textSecondary }]}
                   numberOfLines={1}
                 >
-                  {s.song.artist ?? 'Unknown'}
+                  {s.song.artist ?? t('unknownArtist')}
                 </Text>
               </View>
               <Text style={[styles.recentTime, { color: colors.textSecondary }]}>
-                {timeAgo(s.time)}
+                {timeAgo(s.time, t)}
               </Text>
             </View>
           ))}
@@ -353,7 +354,7 @@ export function MyListeningScreen() {
       {/* Recent scrobble timeline */}
       {recentScrobbles.length > 0 && (
         <View style={[styles.section, styles.card, { backgroundColor: colors.card }]}>
-          <SectionTitle title="Recent Plays" color={colors.textSecondary} />
+          <SectionTitle title={t('recentPlays')} color={colors.textSecondary} />
           {recentScrobbles.map((s) => (
             <View key={s.id} style={[styles.recentRow, { borderBottomColor: colors.border }]}>
               {s.song.coverArt && (
@@ -372,11 +373,11 @@ export function MyListeningScreen() {
                   style={[styles.recentSubtitle, { color: colors.textSecondary }]}
                   numberOfLines={1}
                 >
-                  {s.song.artist ?? 'Unknown'} — {s.song.album ?? 'Unknown'}
+                  {s.song.artist ?? t('unknownArtist')} — {s.song.album ?? t('unknownAlbum')}
                 </Text>
               </View>
               <Text style={[styles.recentTime, { color: colors.textSecondary }]}>
-                {timeAgo(s.time)}
+                {timeAgo(s.time, t)}
               </Text>
             </View>
           ))}

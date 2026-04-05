@@ -290,7 +290,7 @@ describe('PlayerView', () => {
     });
 
     expect(getByLabelText('Share queue')).toBeTruthy();
-    expect(getByLabelText('Clear queue')).toBeTruthy();
+    expect(getByLabelText('Clear Queue')).toBeTruthy();
   });
 
   it('switches to lyrics tab showing placeholder', () => {
@@ -333,7 +333,7 @@ describe('PlayerView', () => {
   it('renders loading state when queue is loading', () => {
     playerStore.setState({ queueLoading: true });
     const { getByText } = render(<PlayerView />);
-    expect(getByText('Loading...')).toBeTruthy();
+    expect(getByText('Loading\u2026')).toBeTruthy();
   });
 
   it('renders transport control buttons', () => {
@@ -352,12 +352,12 @@ describe('PlayerView', () => {
 
   it('renders favorite button', () => {
     const { getByLabelText } = render(<PlayerView />);
-    expect(getByLabelText('Add to favorites')).toBeTruthy();
+    expect(getByLabelText('Add to Favorites')).toBeTruthy();
   });
 
   it('presses favorite button without error', () => {
     const { getByLabelText } = render(<PlayerView />);
-    fireEvent.press(getByLabelText('Add to favorites'));
+    fireEvent.press(getByLabelText('Add to Favorites'));
     const { toggleStar } = require('../../services/moreOptionsService');
     expect(toggleStar).toHaveBeenCalledWith('song', 'track-1');
   });
@@ -446,7 +446,7 @@ describe('PlayerView', () => {
       fireEvent.press(getByLabelText('Queue'));
     });
 
-    fireEvent.press(getByLabelText('Clear queue'));
+    fireEvent.press(getByLabelText('Clear Queue'));
   });
 
   it('renders all queue items in queue tab', () => {

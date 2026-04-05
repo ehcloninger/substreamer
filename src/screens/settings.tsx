@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../hooks/useTheme';
 import { supports } from '../services/serverCapabilityService';
@@ -24,23 +25,23 @@ const BUILD_NUMBER =
 
 const SETTINGS_LINKS: {
   route: string;
-  label: string;
-  subtitle: string;
+  labelKey: string;
+  subtitleKey: string;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
-  { route: '/settings-server', label: 'Server Management', subtitle: 'Server info, library scanning', icon: 'server-outline' },
-  { route: '/settings-appearance', label: 'Appearance & Layout', subtitle: 'Theme, accent color, sort order, grid/list views', icon: 'color-palette-outline' },
-  { route: '/settings-audio-quality', label: 'Audio Quality', subtitle: 'Streaming quality, download quality, transcoding', icon: 'musical-notes-outline' },
-  { route: '/settings-playback', label: 'Playback', subtitle: 'Skip intervals, player controls, remote controls', icon: 'play-circle-outline' },
-  { route: '/settings-connectivity', label: 'Connectivity', subtitle: 'Offline mode, trusted SSL certificates', icon: 'globe-outline' },
-  { route: '/settings-storage', label: 'Storage & Data', subtitle: 'Image cache, metadata cache, scrobbles', icon: 'folder-outline' },
-  { route: '/settings-shares', label: 'Shares', subtitle: 'Manage shared links, alternate URL', icon: 'share-social-outline' },
-  { route: '/settings-account', label: 'Account', subtitle: 'Username, password, log out', icon: 'person-outline' },
+  { route: '/settings-server', labelKey: 'serverManagement', subtitleKey: 'serverManagementSubtitle', icon: 'server-outline' },
+  { route: '/settings-appearance', labelKey: 'appearanceLayout', subtitleKey: 'appearanceLayoutSubtitle', icon: 'color-palette-outline' },
+  { route: '/settings-audio-quality', labelKey: 'audioQuality', subtitleKey: 'audioQualitySubtitle', icon: 'musical-notes-outline' },
+  { route: '/settings-playback', labelKey: 'playback', subtitleKey: 'playbackSubtitle', icon: 'play-circle-outline' },
+  { route: '/settings-connectivity', labelKey: 'connectivity', subtitleKey: 'connectivitySubtitle', icon: 'globe-outline' },
+  { route: '/settings-storage', labelKey: 'storageData', subtitleKey: 'storageDataSubtitle', icon: 'folder-outline' },
+  { route: '/settings-shares', labelKey: 'shares', subtitleKey: 'sharesSubtitle', icon: 'share-social-outline' },
+  { route: '/settings-account', labelKey: 'account', subtitleKey: 'accountSubtitle', icon: 'person-outline' },
 ];
 
 const DEV_SETTINGS_LINKS: typeof SETTINGS_LINKS = [
-  { route: '/file-explorer', label: 'File Explorer', subtitle: 'Browse app directories on disk', icon: 'document-text-outline' },
-  { route: '/migration-log', label: 'Migration Log', subtitle: 'View results of data migration tasks', icon: 'list-outline' },
+  { route: '/file-explorer', labelKey: 'fileExplorer', subtitleKey: 'fileExplorerSubtitle', icon: 'document-text-outline' },
+  { route: '/migration-log', labelKey: 'migrationLog', subtitleKey: 'migrationLogSubtitle', icon: 'list-outline' },
 ];
 
 const TAP_WINDOW_MS = 3000;
@@ -49,6 +50,7 @@ const TAP_COUNT_TO_ACTIVATE = 5;
 export function SettingsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const headerHeight = searchStore((s) => s.headerHeight);
   const devEnabled = devOptionsStore((s) => s.enabled);
   const diagEnabled = audioDiagnosticsStore((s) => s.enabled);
@@ -93,13 +95,13 @@ export function SettingsScreen() {
       setCountdownText(null);
       devOptionsStore.getState().enable();
       notificationAsync();
-      processingOverlayStore.getState().showSuccess('Developer options activated');
+      processingOverlayStore.getState().showSuccess(t('developerOptionsActivated'));
     } else if (count >= 2) {
       selectionAsync();
-      setCountdownText(`${remaining} more tap${remaining === 1 ? '' : 's'} for developer options`);
+      setCountdownText(t('devOptionsTapCountdown', { count: remaining }));
       countdownTimer.current = setTimeout(() => setCountdownText(null), TAP_WINDOW_MS);
     }
-  }, [devEnabled]);
+  }, [devEnabled, t]);
 
   const handleShowOnboarding = useCallback(() => {
     onboardingStore.getState().reset();
@@ -134,10 +136,10 @@ export function SettingsScreen() {
             <Ionicons name={link.icon} size={20} color={colors.primary} style={styles.navRowIcon} />
             <View style={styles.navRowText}>
               <Text style={[styles.navRowLabel, { color: colors.textPrimary }]}>
-                {link.label}
+                {t(link.labelKey)}
               </Text>
               <Text style={[styles.navRowSubtitle, { color: colors.textSecondary }]}>
-                {link.subtitle}
+                {t(link.subtitleKey)}
               </Text>
             </View>
           </View>
@@ -156,10 +158,10 @@ export function SettingsScreen() {
           <Ionicons name="help-circle-outline" size={20} color={colors.primary} style={styles.navRowIcon} />
           <View style={styles.navRowText}>
             <Text style={[styles.navRowLabel, { color: colors.textPrimary }]}>
-              Help & Welcome Guide
+              {t('helpWelcomeGuide')}
             </Text>
             <Text style={[styles.navRowSubtitle, { color: colors.textSecondary }]}>
-              Learn about gestures, offline mode, and settings
+              {t('helpWelcomeGuideSubtitle')}
             </Text>
           </View>
         </View>
@@ -167,13 +169,13 @@ export function SettingsScreen() {
       </Pressable>
       {devEnabled && (
         <View style={styles.diagSection}>
-          <Text style={[styles.diagSectionTitle, { color: colors.label }]}>Audio Diagnostics</Text>
+          <Text style={[styles.diagSectionTitle, { color: colors.label }]}>{t('audioDiagnostics')}</Text>
           <View style={[styles.diagCard, { backgroundColor: colors.card }]}>
             <View style={[styles.diagRow, { borderBottomColor: colors.border }]}>
               <View style={styles.diagTextWrap}>
-                <Text style={[styles.diagLabel, { color: colors.textPrimary }]}>Diagnostic Logging</Text>
+                <Text style={[styles.diagLabel, { color: colors.textPrimary }]}>{t('diagnosticLogging')}</Text>
                 <Text style={[styles.diagHint, { color: colors.textSecondary }]}>
-                  Logs audio playback events to a file for debugging.
+                  {t('diagnosticLoggingHint')}
                 </Text>
               </View>
               <Switch
@@ -183,9 +185,9 @@ export function SettingsScreen() {
               />
             </View>
             <View style={[styles.diagRow, diagLogSize == null ? styles.diagRowLast : undefined]}>
-              <Text style={[styles.diagLabel, { color: colors.textPrimary }]}>Log file</Text>
+              <Text style={[styles.diagLabel, { color: colors.textPrimary }]}>{t('logFile')}</Text>
               <Text style={[styles.diagValue, { color: colors.textSecondary }]}>
-                {diagLogSize != null ? formatBytes(diagLogSize) : 'None'}
+                {diagLogSize != null ? formatBytes(diagLogSize) : t('none')}
               </Text>
             </View>
             {diagLogSize != null && (
@@ -193,7 +195,7 @@ export function SettingsScreen() {
                 onPress={handleDiagReset}
                 style={({ pressed }) => [styles.diagRow, styles.diagRowLast, pressed && styles.pressed]}
               >
-                <Text style={[styles.diagLabel, { color: colors.red }]}>Reset Log</Text>
+                <Text style={[styles.diagLabel, { color: colors.red }]}>{t('resetLog')}</Text>
               </Pressable>
             )}
           </View>
@@ -201,7 +203,7 @@ export function SettingsScreen() {
       )}
       <Pressable onPress={handleVersionTap}>
         <Text style={[styles.versionText, { color: colors.textSecondary }]}>
-          {countdownText ?? `Version ${APP_VERSION} (${BUILD_NUMBER})`}
+          {countdownText ?? t('versionText', { version: APP_VERSION, build: BUILD_NUMBER })}
         </Text>
       </Pressable>
     </ScrollView>

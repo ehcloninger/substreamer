@@ -14,6 +14,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumRow } from '../components/AlbumRow';
@@ -65,6 +66,7 @@ const HORIZONTAL_GAP = 10;
 /* ------------------------------------------------------------------ */
 
 export function ArtistDetailScreen() {
+  const { t } = useTranslation();
   const { colors, theme } = useTheme();
   const offlineMode = offlineModeStore((s) => s.offlineMode);
   const { width: screenWidth } = useWindowDimensions();
@@ -152,7 +154,7 @@ export function ArtistDetailScreen() {
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (!id) {
-      setError('Missing artist id');
+      setError(t('missingArtistId'));
       if (!isRefresh) setLoading(false);
       return;
     }
@@ -163,7 +165,7 @@ export function ArtistDetailScreen() {
       const delay = isRefresh ? minDelay() : null;
       const entry = await fetchArtist(id);
       if (!entry) {
-        setError('Artist not found');
+        setError(t('artistNotFound'));
         setArtist(null);
         setArtistInfo(null);
         setTopSongs([]);
@@ -179,7 +181,7 @@ export function ArtistDetailScreen() {
       }
       await delay;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load artist');
+      setError(e instanceof Error ? e.message : t('failedToLoadArtist'));
     } finally {
       if (isRefresh) setRefreshing(false);
       else setLoading(false);
@@ -269,7 +271,7 @@ export function ArtistDetailScreen() {
           <View style={styles.meta}>
             <Ionicons name="disc-outline" size={14} color={colors.primary} />
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-              {artist.albumCount === 1 ? '1 album' : `${artist.albumCount} albums`}
+              {t('albumCount', { count: artist.albumCount ?? 0 })}
             </Text>
           </View>
         </View>
@@ -288,7 +290,7 @@ export function ArtistDetailScreen() {
               pressed && styles.shufflePlayButtonPressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Shuffle play"
+            accessibilityLabel={t('shufflePlay')}
           >
             <Ionicons name="shuffle" size={18} color="#000" />
           </Pressable>
@@ -316,7 +318,7 @@ export function ArtistDetailScreen() {
             {/* ---- Biography ---- */}
             {biography != null && biography.length > 0 && (
               <View style={styles.section}>
-                <SectionTitle title="About" color={colors.label} />
+                <SectionTitle title={t('about')} color={colors.label} />
                 <Text
                   style={[styles.bioText, { color: colors.textSecondary }]}
                   numberOfLines={bioExpanded ? undefined : 4}
@@ -328,7 +330,7 @@ export function ArtistDetailScreen() {
                   style={({ pressed }) => pressed && styles.pressed}
                 >
                   <Text style={[styles.bioToggle, { color: colors.primary }]}>
-                    {bioExpanded ? 'Show less' : 'Read more'}
+                    {bioExpanded ? t('showLess') : t('readMore')}
                   </Text>
                 </Pressable>
               </View>
@@ -337,7 +339,7 @@ export function ArtistDetailScreen() {
             {/* ---- Top Songs ---- */}
             {topSongs.length > 0 && (
               <View style={styles.section}>
-                <SectionTitle title="Top Songs" color={colors.label} />
+                <SectionTitle title={t('topSongs')} color={colors.label} />
                 <FlashList
                   data={topSongs}
                   renderItem={topSongsRenderItem}
@@ -355,7 +357,7 @@ export function ArtistDetailScreen() {
             {/* ---- Similar Artists ---- */}
             {similarArtists.length > 0 && (
               <View style={styles.section}>
-                <SectionTitle title="Similar Artists" color={colors.label} />
+                <SectionTitle title={t('similarArtists')} color={colors.label} />
                 <FlashList
                   data={similarArtists}
                   renderItem={similarArtistsRenderItem}
@@ -374,7 +376,7 @@ export function ArtistDetailScreen() {
             {albums.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <SectionTitle title="Albums" color={colors.label} />
+                  <SectionTitle title={t('albums')} color={colors.label} />
                   <Pressable
                     onPress={() => setAlbumSortDesc((prev) => !prev)}
                     style={({ pressed }) => [
@@ -389,7 +391,7 @@ export function ArtistDetailScreen() {
                       color={colors.primary}
                     />
                     <Text style={[styles.sortLabel, { color: colors.textPrimary }]}>
-                      {albumSortDesc ? 'Newest' : 'Oldest'}
+                      {albumSortDesc ? t('newest') : t('oldest')}
                     </Text>
                   </Pressable>
                 </View>
@@ -418,6 +420,7 @@ export function ArtistDetailScreen() {
     topSongsKeyExtractor,
     similarArtistsRenderItem,
     similarArtistsKeyExtractor,
+    t,
   ]);
 
   /* ---- Loading state ---- */
@@ -435,8 +438,8 @@ export function ArtistDetailScreen() {
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <EmptyState
           icon="person-outline"
-          title="Couldn't Load Artist"
-          subtitle={`Substreamer ran into an issue loading this artist.\n\n${error ?? 'Unknown error'}`}
+          title={t('couldntLoadArtist')}
+          subtitle={`${t('loadArtistError')}\n\n${error ?? t('unknownError')}`}
         />
       </View>
     );

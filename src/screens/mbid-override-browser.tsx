@@ -3,6 +3,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '../components/EmptyState';
 import { GradientBackground } from '../components/GradientBackground';
@@ -21,9 +22,9 @@ const ROW_HEIGHT = 72;
 /*  Segment control                                                    */
 /* ------------------------------------------------------------------ */
 
-const SEGMENTS: { key: MbidOverrideType; label: string }[] = [
-  { key: 'artist', label: 'Artists' },
-  { key: 'album', label: 'Albums' },
+const SEGMENT_KEYS: { key: MbidOverrideType; labelKey: string }[] = [
+  { key: 'artist', labelKey: 'artists' },
+  { key: 'album', labelKey: 'albums' },
 ];
 
 const SegmentControl = memo(function SegmentControl({
@@ -35,9 +36,10 @@ const SegmentControl = memo(function SegmentControl({
   onSelect: (type: MbidOverrideType) => void;
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.segmentContainer, { backgroundColor: colors.inputBg }]}>
-      {SEGMENTS.map((seg) => {
+      {SEGMENT_KEYS.map((seg) => {
         const isActive = seg.key === selected;
         return (
           <Pressable
@@ -55,7 +57,7 @@ const SegmentControl = memo(function SegmentControl({
                 isActive && styles.segmentTextActive,
               ]}
             >
-              {seg.label}
+              {t(seg.labelKey)}
             </Text>
           </Pressable>
         );
@@ -77,6 +79,7 @@ const OverrideRow = memo(function OverrideRow({
   offlineMode: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const { t } = useTranslation();
   const handlePress = useCallback(() => {
     if (offlineMode) return;
     if (override.type === 'artist') {
@@ -94,20 +97,20 @@ const OverrideRow = memo(function OverrideRow({
     const { type, entityId } = override;
     mbidOverrideStore.getState().removeOverride(type, entityId);
     if (type === 'artist' && entityId in artistDetailStore.getState().artists) {
-      processingOverlayStore.getState().show('Updating Artist\u2026');
+      processingOverlayStore.getState().show(t('updatingArtist'));
       try {
         await artistDetailStore.getState().fetchArtist(entityId);
-        processingOverlayStore.getState().showSuccess('Artist Updated');
+        processingOverlayStore.getState().showSuccess(t('artistUpdated'));
       } catch {
-        processingOverlayStore.getState().showError('Failed to update artist');
+        processingOverlayStore.getState().showError(t('failedToUpdateArtist'));
       }
     } else if (type === 'album' && entityId in albumInfoStore.getState().entries) {
-      processingOverlayStore.getState().show('Updating Album\u2026');
+      processingOverlayStore.getState().show(t('updatingAlbum'));
       try {
         await albumInfoStore.getState().fetchAlbumInfo(entityId);
-        processingOverlayStore.getState().showSuccess('Album Updated');
+        processingOverlayStore.getState().showSuccess(t('albumUpdated'));
       } catch {
-        processingOverlayStore.getState().showError('Failed to update album');
+        processingOverlayStore.getState().showError(t('failedToUpdateAlbum'));
       }
     }
   }, [override]);
@@ -117,12 +120,12 @@ const OverrideRow = memo(function OverrideRow({
       {
         icon: 'trash-outline' as const,
         color: colors.red,
-        label: 'Delete',
+        label: t('delete'),
         onPress: handleDelete,
         removesRow: true,
       },
     ],
-    [colors.red, handleDelete],
+    [colors.red, handleDelete, t],
   );
 
   return (
@@ -157,6 +160,7 @@ const OverrideRow = memo(function OverrideRow({
 
 export function MbidOverrideBrowserScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const overrides = mbidOverrideStore((s) => s.overrides);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
@@ -195,8 +199,8 @@ export function MbidOverrideBrowserScreen() {
         ListEmptyComponent={
           <EmptyState
             icon="finger-print-outline"
-            title={`No ${selectedType === 'artist' ? 'Artist' : 'Album'} Overrides`}
-            subtitle={`Overrides for ${selectedType === 'artist' ? 'artists' : 'albums'} will appear here.`}
+            title={selectedType === 'artist' ? t('noArtistOverrides') : t('noAlbumOverrides')}
+            subtitle={selectedType === 'artist' ? t('artistOverridesAppearHere') : t('albumOverridesAppearHere')}
           />
         }
         contentContainerStyle={{ paddingTop: headerHeight, paddingBottom: 32 }}

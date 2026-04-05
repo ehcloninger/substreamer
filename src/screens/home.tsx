@@ -17,6 +17,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 import { AlbumCard } from '../components/AlbumCard';
 import { AnimatedNumber } from '../components/AnimatedNumber';
@@ -47,26 +48,26 @@ const CARD_GAP = 12;
 
 const SECTION_CONFIG: Record<
   AlbumListType,
-  { title: string; emptyMessage: string; refresh: () => Promise<void> }
+  { titleKey: string; emptyMessageKey: string; refresh: () => Promise<void> }
 > = {
   recentlyAdded: {
-    title: 'Recently Added',
-    emptyMessage: 'New albums added to your server will appear here',
+    titleKey: 'recentlyAdded',
+    emptyMessageKey: 'recentlyAddedEmpty',
     refresh: () => albumListsStore.getState().refreshRecentlyAdded(),
   },
   recentlyPlayed: {
-    title: 'Recently Played',
-    emptyMessage: 'Albums you listen to will appear here',
+    titleKey: 'recentlyPlayed',
+    emptyMessageKey: 'recentlyPlayedEmpty',
     refresh: () => albumListsStore.getState().refreshRecentlyPlayed(),
   },
   frequentlyPlayed: {
-    title: 'Frequently Played',
-    emptyMessage: 'Your most played albums will show up here over time',
+    titleKey: 'frequentlyPlayed',
+    emptyMessageKey: 'frequentlyPlayedEmpty',
     refresh: () => albumListsStore.getState().refreshFrequentlyPlayed(),
   },
   randomSelection: {
-    title: 'Random Selection',
-    emptyMessage: 'Add some albums to your library to get started',
+    titleKey: 'randomSelection',
+    emptyMessageKey: 'randomSelectionEmpty',
     refresh: () => albumListsStore.getState().refreshRandomSelection(),
   },
 };
@@ -112,8 +113,10 @@ function AlbumSection({
   colors: ReturnType<typeof useTheme>['colors'];
   offlineMode: boolean;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const config = SECTION_CONFIG[listType];
+  const title = t(config.titleKey);
   const renderItem = useCallback(
     ({ item }: { item: AlbumID3 }) => (
       <AlbumCard album={item} width={CARD_WIDTH} />
@@ -132,7 +135,7 @@ function AlbumSection({
       <View style={styles.sectionHeader}>
         {offlineMode ? (
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            {config.title}
+            {title}
           </Text>
         ) : (
           <Pressable
@@ -143,10 +146,10 @@ function AlbumSection({
             ]}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={`See more ${config.title} albums`}
+            accessibilityLabel={t('seeMoreAlbums', { section: title })}
           >
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {config.title}
+              {title}
             </Text>
           </Pressable>
         )}
@@ -184,7 +187,7 @@ function AlbumSection({
         )}
       </View>
       {albums.length === 0 ? (
-        <SectionPlaceholder message={config.emptyMessage} colors={colors} />
+        <SectionPlaceholder message={t(config.emptyMessageKey)} colors={colors} />
       ) : (
         <FlashList
           data={albums}
@@ -207,6 +210,7 @@ function DownloadedAlbumSection({
   albums: AlbumID3[];
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const { t } = useTranslation();
   const renderItem = useCallback(
     ({ item }: { item: AlbumID3 }) => (
       <AlbumCard album={item} width={CARD_WIDTH} />
@@ -218,10 +222,10 @@ function DownloadedAlbumSection({
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 16 }]}>
-        Downloaded Albums
+        {t('downloadedAlbums')}
       </Text>
       {albums.length === 0 ? (
-        <SectionPlaceholder message="Download albums to listen offline" colors={colors} />
+        <SectionPlaceholder message={t('downloadAlbumsOffline')} colors={colors} />
       ) : (
         <FlashList
           data={albums}
@@ -244,6 +248,7 @@ function PlaylistSection({
   playlists: Playlist[];
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const { t } = useTranslation();
   const renderItem = useCallback(
     ({ item }: { item: Playlist }) => (
       <PlaylistCard playlist={item} width={CARD_WIDTH} />
@@ -255,10 +260,10 @@ function PlaylistSection({
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 16 }]}>
-        Downloaded Playlists
+        {t('downloadedPlaylists')}
       </Text>
       {playlists.length === 0 ? (
-        <SectionPlaceholder message="Download playlists to listen offline" colors={colors} />
+        <SectionPlaceholder message={t('downloadPlaylistsOffline')} colors={colors} />
       ) : (
         <FlashList
           data={playlists}
@@ -318,6 +323,7 @@ function AnimatedStatIcon({
 
 export function HomeScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const isFocused = useIsFocused();
   const headerHeight = searchStore((s) => s.headerHeight);
@@ -411,12 +417,12 @@ export function HomeScreen() {
       {offlineEmpty ? (
         <EmptyState
           icon="cloud-offline-outline"
-          title="No downloaded music"
+          title={t('noDownloadedMusic')}
         >
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Tap the{' '}
+            {t('noDownloadedMusicHintBefore')}{' '}
             <DownloadedIcon size={15} circleColor={colors.primary} arrowColor="#fff" />
-            {' '}button on an album, playlist, or your favorite songs list to download it for offline listening
+            {' '}{t('noDownloadedMusicHintAfter')}
           </Text>
         </EmptyState>
       ) : (
@@ -435,10 +441,10 @@ export function HomeScreen() {
                 ]}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="View listening history"
+                accessibilityLabel={t('viewListeningHistory')}
               >
                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  My Listening
+                  {t('myListening')}
                 </Text>
               </Pressable>
               <Pressable
@@ -471,7 +477,7 @@ export function HomeScreen() {
                       style={[styles.statValue, { color: colors.textPrimary }]}
                     />
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                      plays
+                      {t('plays')}
                     </Text>
                   </View>
                   <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -485,7 +491,7 @@ export function HomeScreen() {
                       style={[styles.statValue, { color: colors.textPrimary }]}
                     />
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                      listening
+                      {t('listening')}
                     </Text>
                   </View>
                   <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -498,7 +504,7 @@ export function HomeScreen() {
                       style={[styles.statValue, { color: colors.textPrimary }]}
                     />
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                      artists
+                      {t('artistsLabel')}
                     </Text>
                   </View>
                   <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -511,7 +517,7 @@ export function HomeScreen() {
                       style={[styles.statValue, { color: colors.textPrimary }]}
                     />
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                      streak
+                      {t('streak')}
                     </Text>
                   </View>
                 </View>
@@ -519,7 +525,7 @@ export function HomeScreen() {
                 <View style={styles.statsEmpty}>
                   <Ionicons name="analytics-outline" size={24} color={colors.primary} />
                   <Text style={[styles.statsEmptyText, { color: colors.textSecondary }]}>
-                    Listen to some music to see your stats here
+                    {t('listenToSeeStats')}
                   </Text>
                 </View>
               )}

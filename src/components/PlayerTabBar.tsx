@@ -7,6 +7,7 @@
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { type ThemeColors } from '../constants/theme';
@@ -28,6 +29,7 @@ export const PlayerTabBar = memo(function PlayerTabBar({
   colors,
   offlineMode,
 }: PlayerTabBarProps) {
+  const { t } = useTranslation();
   const handlePlayer = useCallback(() => onSelect('player'), [onSelect]);
   const handleQueue = useCallback(() => onSelect('queue'), [onSelect]);
   const handleInfo = useCallback(() => onSelect('info'), [onSelect]);
@@ -42,7 +44,7 @@ export const PlayerTabBar = memo(function PlayerTabBar({
         onPress={handlePlayer}
         accessibilityRole="tab"
         accessibilityState={{ selected: activeTab === 'player' }}
-        accessibilityLabel="Now Playing"
+        accessibilityLabel={t('nowPlaying')}
         style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
       >
         <Ionicons
@@ -56,7 +58,7 @@ export const PlayerTabBar = memo(function PlayerTabBar({
         onPress={handleQueue}
         accessibilityRole="tab"
         accessibilityState={{ selected: activeTab === 'queue' }}
-        accessibilityLabel="Queue"
+        accessibilityLabel={t('queue')}
         style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
       >
         <MaterialCommunityIcons
@@ -71,7 +73,7 @@ export const PlayerTabBar = memo(function PlayerTabBar({
           onPress={handleInfo}
           accessibilityRole="tab"
           accessibilityState={{ selected: activeTab === 'info' }}
-          accessibilityLabel="Album Info"
+          accessibilityLabel={t('albumInfo')}
           style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
         >
           <MaterialCommunityIcons
@@ -87,7 +89,7 @@ export const PlayerTabBar = memo(function PlayerTabBar({
           onPress={handleLyrics}
           accessibilityRole="tab"
           accessibilityState={{ selected: activeTab === 'lyrics' }}
-          accessibilityLabel="Lyrics"
+          accessibilityLabel={t('lyrics')}
           style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
         >
           <MaterialCommunityIcons

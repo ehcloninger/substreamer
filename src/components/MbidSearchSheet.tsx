@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BottomSheet } from './BottomSheet';
 import { CachedImage } from './CachedImage';
@@ -74,6 +75,7 @@ const ResultRow = memo(function ResultRow({
   onSelect: (result: SearchResult) => void;
   colors: ReturnType<typeof useTheme>['colors'];
 }) {
+  const { t } = useTranslation();
   const handlePress = useCallback(() => onSelect(result), [result, onSelect]);
 
   return (
@@ -100,7 +102,7 @@ const ResultRow = memo(function ResultRow({
           </Text>
           {isCurrentMbid && (
             <View style={[styles.currentBadge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.currentBadgeText}>Current</Text>
+              <Text style={styles.currentBadgeText}>{t('current')}</Text>
             </View>
           )}
         </View>
@@ -139,6 +141,7 @@ export function MbidSearchSheet() {
   const hide = mbidSearchStore((s) => s.hide);
 
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -210,20 +213,20 @@ export function MbidSearchSheet() {
       hide();
 
       if (type === 'artist') {
-        processingOverlayStore.getState().show('Updating Artist\u2026');
+        processingOverlayStore.getState().show(t('updatingArtist'));
         try {
           await artistDetailStore.getState().fetchArtist(entityId);
-          processingOverlayStore.getState().showSuccess('MBID Override Saved');
+          processingOverlayStore.getState().showSuccess(t('mbidOverrideSaved'));
         } catch {
-          processingOverlayStore.getState().showError('Failed to update artist');
+          processingOverlayStore.getState().showError(t('failedToUpdateArtist'));
         }
       } else {
-        processingOverlayStore.getState().show('Updating Album\u2026');
+        processingOverlayStore.getState().show(t('updatingAlbum'));
         try {
           await albumInfoStore.getState().fetchAlbumInfo(entityId);
-          processingOverlayStore.getState().showSuccess('MBID Override Saved');
+          processingOverlayStore.getState().showSuccess(t('mbidOverrideSaved'));
         } catch {
-          processingOverlayStore.getState().showError('Failed to update album');
+          processingOverlayStore.getState().showError(t('failedToUpdateAlbum'));
         }
       }
     },
@@ -265,8 +268,8 @@ export function MbidSearchSheet() {
     [colors],
   );
 
-  const entityLabel = isArtist ? 'artist' : 'album';
-  const emptyLabel = isArtist ? 'No artists found' : 'No albums found';
+  const entityLabel = isArtist ? t('artist').toLowerCase() : t('album').toLowerCase();
+  const emptyLabel = isArtist ? t('noArtistsFound') : t('noAlbumsFound');
 
   return (
     <BottomSheet visible={visible} onClose={handleClose} maxHeight="80%">
@@ -276,10 +279,10 @@ export function MbidSearchSheet() {
         )}
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-            Set MusicBrainz ID
+            {t('setMusicBrainzId')}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-            {entityName ?? `Search for an ${entityLabel}`}
+            {entityName ?? t('searchForEntity', { type: entityLabel })}
           </Text>
         </View>
       </View>
@@ -290,7 +293,7 @@ export function MbidSearchSheet() {
             style={[styles.input, dynamicStyles.input]}
             value={query}
             onChangeText={handleQueryChange}
-            placeholder={`Search MusicBrainz ${isArtist ? 'artists' : 'albums'}\u2026`}
+            placeholder={isArtist ? t('searchMusicBrainzArtists') : t('searchMusicBrainzAlbums')}
             placeholderTextColor={colors.textSecondary}
             returnKeyType="search"
             autoCorrect={false}
@@ -308,7 +311,7 @@ export function MbidSearchSheet() {
             <View style={styles.centered}>
               <ActivityIndicator size="small" color={colors.primary} />
               <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                Searching MusicBrainz{'\u2026'}
+                {t('searchingMusicBrainz')}
               </Text>
             </View>
           ) : results.length === 0 && searched ? (

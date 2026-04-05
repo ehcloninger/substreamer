@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DraggableFlatList, {
@@ -63,6 +64,7 @@ const HEADER_BAR_HEIGHT = 44;
 const EDIT_ROW_HEIGHT = 64;
 
 export function PlaylistDetailScreen() {
+  const { t } = useTranslation();
   const { colors, theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -99,7 +101,7 @@ export function PlaylistDetailScreen() {
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (!id) {
-      setError('Missing playlist id');
+      setError(t('missingPlaylistId'));
       if (!isRefresh) setLoading(false);
       return;
     }
@@ -110,13 +112,13 @@ export function PlaylistDetailScreen() {
       const delay = isRefresh ? minDelay() : null;
       const data = await fetchPlaylist(id);
       setPlaylist(data);
-      if (!data) setError('Playlist not found');
+      if (!data) setError(t('playlistNotFound'));
       if (isRefresh && data?.coverArt) {
         refreshCachedImage(data.coverArt).catch(() => { /* non-critical */ });
       }
       await delay;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load playlist');
+      setError(e instanceof Error ? e.message : t('failedToLoadPlaylist'));
     } finally {
       if (isRefresh) setRefreshing(false);
       else setLoading(false);
@@ -155,8 +157,8 @@ export function PlaylistDetailScreen() {
   const handleSave = useCallback(async () => {
     if (!playlist || !id) return;
 
-    const originalIds = tracks.map((t) => t.id).join(',');
-    const editedIds = editedTracks.map((t) => t.id).join(',');
+    const originalIds = tracks.map((tr) => tr.id).join(',');
+    const editedIds = editedTracks.map((tr) => tr.id).join(',');
     if (originalIds === editedIds) {
       setEditing(false);
       setEditedTracks([]);
@@ -164,21 +166,21 @@ export function PlaylistDetailScreen() {
     }
 
     setSaving(true);
-    processingOverlayStore.getState().show('Saving…');
+    processingOverlayStore.getState().show(t('saving'));
     try {
       const success = await updatePlaylistOrder(
         id,
         playlist.name,
-        editedTracks.map((t) => t.id),
+        editedTracks.map((tr) => tr.id),
       );
       if (!success) {
-        processingOverlayStore.getState().showError('Failed to save playlist');
+        processingOverlayStore.getState().showError(t('failedToSavePlaylist'));
         setSaving(false);
         return;
       }
 
       if (id in musicCacheStore.getState().cachedItems) {
-        syncCachedPlaylistTracks(id, editedTracks.map((t) => t.id));
+        syncCachedPlaylistTracks(id, editedTracks.map((tr) => tr.id));
       }
 
       const fresh = await fetchPlaylist(id);
@@ -189,9 +191,9 @@ export function PlaylistDetailScreen() {
 
       setEditing(false);
       setEditedTracks([]);
-      processingOverlayStore.getState().showSuccess('Playlist Saved');
+      processingOverlayStore.getState().showSuccess(t('playlistSaved'));
     } catch {
-      processingOverlayStore.getState().showError('Failed to save playlist');
+      processingOverlayStore.getState().showError(t('failedToSavePlaylist'));
     } finally {
       setSaving(false);
     }
@@ -208,7 +210,7 @@ export function PlaylistDetailScreen() {
         headerLeft: () => (
           <Pressable onPress={handleCancelEdit} hitSlop={8}>
             <Text style={[styles.headerButtonText, { color: colors.textPrimary }]}>
-              Cancel
+              {t('cancel')}
             </Text>
           </Pressable>
         ),
@@ -223,7 +225,7 @@ export function PlaylistDetailScreen() {
                   { color: colors.textPrimary, fontWeight: '700' },
                 ]}
               >
-                Save
+                {t('save')}
               </Text>
             )}
           </Pressable>
@@ -288,7 +290,7 @@ export function PlaylistDetailScreen() {
     ({ item, getIndex, drag }: RenderItemParams<Child>) => {
       const index = getIndex() ?? 0;
       const rightActions: SwipeAction[] = [
-        { icon: 'trash-outline', color: colors.red, label: 'Remove', onPress: () => handleDeleteTrack(index), removesRow: true },
+        { icon: 'trash-outline', color: colors.red, label: t('remove'), onPress: () => handleDeleteTrack(index), removesRow: true },
       ];
       return (
         <ScaleDecorator activeScale={1.03}>
@@ -318,7 +320,7 @@ export function PlaylistDetailScreen() {
                     style={[styles.editTrackArtist, { color: colors.textSecondary }]}
                     numberOfLines={1}
                   >
-                    {item.artist ?? 'Unknown Artist'}
+                    {item.artist ?? t('unknownArtist')}
                   </Text>
                 </View>
 
@@ -331,7 +333,7 @@ export function PlaylistDetailScreen() {
         </ScaleDecorator>
       );
     },
-    [colors, handleDeleteTrack],
+    [colors, handleDeleteTrack, t],
   );
 
   const keyExtractor = useCallback(
@@ -346,7 +348,7 @@ export function PlaylistDetailScreen() {
     const displayTracks = editing ? editedTracks : tracks;
     const songCount = editing ? editedTracks.length : playlist.songCount;
     const duration = editing
-      ? editedTracks.reduce((sum, t) => sum + (t.duration ?? 0), 0)
+      ? editedTracks.reduce((sum, tr) => sum + (tr.duration ?? 0), 0)
       : playlist.duration;
 
     return (
@@ -369,7 +371,7 @@ export function PlaylistDetailScreen() {
             <View style={styles.subtitleText}>
               {playlist.owner && (
                 <Text style={[styles.ownerName, { color: colors.textSecondary }]}>
-                  by {playlist.owner}
+                  {t('byOwner', { owner: playlist.owner })}
                 </Text>
               )}
               {playlist.comment ? (
@@ -380,7 +382,7 @@ export function PlaylistDetailScreen() {
               <View style={styles.meta}>
                 <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
                 <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                  {songCount} {songCount === 1 ? 'song' : 'songs'}
+                  {t('songCount', { count: songCount })}
                 </Text>
                 <View style={styles.metaSpacer} />
                 <Ionicons name="time-outline" size={14} color={colors.primary} />
@@ -400,7 +402,7 @@ export function PlaylistDetailScreen() {
                   pressed && styles.shufflePlayButtonPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Shuffle play"
+                accessibilityLabel={t('shufflePlay')}
               >
                 <Ionicons name="shuffle" size={18} color="#000" />
               </Pressable>
@@ -422,20 +424,20 @@ export function PlaylistDetailScreen() {
         <View style={styles.trackListSpacer} />
       </View>
     );
-  }, [playlist, colors, tracks, editing, editedTracks]);
+  }, [playlist, colors, tracks, editing, editedTracks, t]);
 
   const listEmpty = useMemo(
     () => (
       <View style={styles.emptyTracks}>
         <Text style={[styles.emptyTracksTitle, { color: colors.textPrimary }]}>
-          No tracks
+          {t('noTracks')}
         </Text>
         <Text style={[styles.emptyTracksSubtitle, { color: colors.textSecondary }]}>
-          When you add tracks to this playlist they will appear here. If you already have tracks, check your server is reachable and pull to refresh.
+          {t('noTracksPlaylistSubtitle')}
         </Text>
       </View>
     ),
-    [colors.textPrimary, colors.textSecondary],
+    [colors.textPrimary, colors.textSecondary, t],
   );
 
   const gradientStart = coverBackgroundColor ?? colors.background;
@@ -457,8 +459,8 @@ export function PlaylistDetailScreen() {
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <EmptyState
           icon="list-outline"
-          title="Couldn't Load Playlist"
-          subtitle={`Substreamer ran into an issue loading this playlist.\n\n${error ?? 'Unknown error'}`}
+          title={t('couldntLoadPlaylist')}
+          subtitle={`${t('loadPlaylistError')}\n\n${error ?? t('unknownError')}`}
         />
       </View>
     );
@@ -509,10 +511,10 @@ export function PlaylistDetailScreen() {
       {Platform.OS === 'ios' && editing && (
         <>
           <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button onPress={handleCancelEdit}>Cancel</Stack.Toolbar.Button>
+            <Stack.Toolbar.Button onPress={handleCancelEdit}>{t('cancel')}</Stack.Toolbar.Button>
           </Stack.Toolbar>
           <Stack.Toolbar placement="right">
-            <Stack.Toolbar.Button onPress={handleSave} disabled={saving}>Save</Stack.Toolbar.Button>
+            <Stack.Toolbar.Button onPress={handleSave} disabled={saving}>{t('save')}</Stack.Toolbar.Button>
           </Stack.Toolbar>
         </>
       )}

@@ -20,6 +20,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AlbumDetailsModal } from './AlbumDetailsModal';
 import { BottomSheet } from './BottomSheet';
@@ -78,10 +79,10 @@ import { setRatingStore } from '../store/setRatingStore';
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function getTitle(entity: MoreOptionsEntity): string {
+function getTitle(entity: MoreOptionsEntity, t: (key: string, options?: Record<string, unknown>) => string): string {
   switch (entity.type) {
     case 'song':
-      return entity.item.title ?? 'Unknown Song';
+      return entity.item.title ?? t('unknownSong');
     case 'album':
       return `${entity.item.name}${entity.item.year ? ` (${entity.item.year})` : ''}`;
     case 'artist':
@@ -91,19 +92,19 @@ function getTitle(entity: MoreOptionsEntity): string {
   }
 }
 
-function getSubtitle(entity: MoreOptionsEntity): string {
+function getSubtitle(entity: MoreOptionsEntity, t: (key: string, options?: Record<string, unknown>) => string): string {
   switch (entity.type) {
     case 'song':
-      return entity.item.artist ?? 'Unknown Artist';
+      return entity.item.artist ?? t('unknownArtist');
     case 'album':
-      return entity.item.artist ?? (entity.item as AlbumID3).displayArtist ?? 'Unknown Artist';
+      return entity.item.artist ?? (entity.item as AlbumID3).displayArtist ?? t('unknownArtist');
     case 'artist': {
       const count = entity.item.albumCount;
-      return count === 1 ? '1 album' : `${count ?? 0} albums`;
+      return t('albumCount', { count: count ?? 0 });
     }
     case 'playlist': {
       const sc = entity.item.songCount;
-      return sc === 1 ? '1 track' : `${sc ?? 0} tracks`;
+      return t('trackWithCount', { count: sc ?? 0 });
     }
   }
 }
@@ -208,6 +209,7 @@ export function MoreOptionsSheet() {
   );
 
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { alert, alertProps } = useThemedAlert();
   const router = useRouter();
   const pathname = usePathname();
@@ -425,7 +427,7 @@ export function MoreOptionsSheet() {
       setRatingStore.getState().show(
         entity.type as 'song' | 'album' | 'artist',
         entity.item.id,
-        getTitle(entity),
+        getTitle(entity, t),
         entityRating,
         coverArtId,
       );
@@ -441,15 +443,15 @@ export function MoreOptionsSheet() {
 
     setTimeout(() => {
       alert(
-        'Delete Playlist',
-        `Are you sure you want to delete "${playlistName}"?`,
+        t('deletePlaylist'),
+        t('deletePlaylistConfirmMessage', { name: playlistName }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('delete'),
             style: 'destructive',
             onPress: async () => {
-              processingOverlayStore.getState().show('Deleting…');
+              processingOverlayStore.getState().show(t('deleting'));
               try {
                 const success = await deletePlaylist(playlistId);
                 if (!success) throw new Error('API returned false');
@@ -460,13 +462,13 @@ export function MoreOptionsSheet() {
                   deleteCachedItem(playlistId);
                 }
 
-                processingOverlayStore.getState().showSuccess('Playlist Deleted');
+                processingOverlayStore.getState().showSuccess(t('playlistDeleted'));
 
                 if (onDetailView) {
                   setTimeout(() => router.back(), 800);
                 }
               } catch {
-                processingOverlayStore.getState().showError('Failed to delete playlist');
+                processingOverlayStore.getState().showError(t('failedToDeletePlaylist'));
               }
             },
           },
@@ -556,7 +558,7 @@ export function MoreOptionsSheet() {
                 style={[styles.sheetTitle, { color: colors.textPrimary }]}
                 numberOfLines={1}
               >
-                Player Queue
+                {t('playerQueue')}
               </Text>
               <Pressable
                 onPress={handleAddQueueToPlaylist}
@@ -572,7 +574,7 @@ export function MoreOptionsSheet() {
                   style={styles.optionIcon}
                 />
                 <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                  Add Queue to Playlist
+                  {t('addQueueToPlaylist')}
                 </Text>
               </Pressable>
 
@@ -589,13 +591,13 @@ export function MoreOptionsSheet() {
                     style={[styles.sheetTitle, { color: colors.textPrimary }]}
                     numberOfLines={1}
                   >
-                    {getTitle(entity)}
+                    {getTitle(entity, t)}
                   </Text>
                   <Text
                     style={[styles.sheetSubtitle, { color: colors.textSecondary }]}
                     numberOfLines={1}
                   >
-                    {getSubtitle(entity)}
+                    {getSubtitle(entity, t)}
                   </Text>
                 </View>
               </View>
@@ -625,7 +627,7 @@ export function MoreOptionsSheet() {
                     />
                   )}
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    {starred ? 'Remove from Favorites' : 'Add to Favorites'}
+                    {starred ? t('removeFromFavorites') : t('addToFavorites')}
                   </Text>
                 </Pressable>
               )}
@@ -646,7 +648,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Set Rating
+                    {t('setRating')}
                   </Text>
                   {entityRating > 0 && (
                     <View style={styles.ratingBadge}>
@@ -677,7 +679,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Save Top Songs Playlist
+                    {t('saveTopSongsPlaylist')}
                   </Text>
                 </Pressable>
               )}
@@ -698,7 +700,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Play Similar Artists
+                    {t('playSimilarArtists')}
                   </Text>
                 </Pressable>
               )}
@@ -719,7 +721,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Add to Playlist
+                    {t('addToPlaylist')}
                   </Text>
                 </Pressable>
               )}
@@ -740,7 +742,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Play More Like This
+                    {t('playMoreLikeThis')}
                   </Text>
                 </Pressable>
               )}
@@ -761,7 +763,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Play More by This Artist
+                    {t('playMoreByThisArtist')}
                   </Text>
                 </Pressable>
               )}
@@ -782,7 +784,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Add to Queue
+                    {t('addToQueue')}
                   </Text>
                 </Pressable>
               )}
@@ -803,7 +805,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Go to Album
+                    {t('goToAlbum')}
                   </Text>
                 </Pressable>
               )}
@@ -824,7 +826,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Go to Artist
+                    {t('goToArtist')}
                   </Text>
                 </Pressable>
               )}
@@ -845,7 +847,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Share
+                    {t('share')}
                   </Text>
                 </Pressable>
               )}
@@ -866,7 +868,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Album Details
+                    {t('albumDetails')}
                   </Text>
                 </Pressable>
               )}
@@ -887,7 +889,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Track Details
+                    {t('trackDetails')}
                   </Text>
                 </Pressable>
               )}
@@ -908,7 +910,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Set MusicBrainz ID
+                    {t('setMusicBrainzId')}
                   </Text>
                 </Pressable>
               )}
@@ -929,7 +931,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    {isScrobbleExcluded ? 'Include in Scrobbling' : 'Exclude from Scrobbling'}
+                    {isScrobbleExcluded ? t('includeInScrobbling') : t('excludeFromScrobbling')}
                   </Text>
                 </Pressable>
               )}
@@ -956,8 +958,8 @@ export function MoreOptionsSheet() {
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                     {downloadStatus === 'queued' || downloadStatus === 'downloading'
-                      ? 'Cancel Download'
-                      : 'Download'}
+                      ? t('cancelDownload')
+                      : t('download')}
                   </Text>
                 </Pressable>
               )}
@@ -979,7 +981,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.red }]}>
-                    Remove Download
+                    {t('removeDownload')}
                   </Text>
                 </Pressable>
               )}
@@ -1001,7 +1003,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.red }]}>
-                    Delete Playlist
+                    {t('deletePlaylist')}
                   </Text>
                 </Pressable>
               )}
@@ -1018,13 +1020,13 @@ export function MoreOptionsSheet() {
                     style={[styles.sheetTitle, { color: colors.textPrimary }]}
                     numberOfLines={1}
                   >
-                    {getTitle(entity)}
+                    {getTitle(entity, t)}
                   </Text>
                   <Text
                     style={[styles.sheetSubtitle, { color: colors.textSecondary }]}
                     numberOfLines={1}
                   >
-                    {getSubtitle(entity)}
+                    {getSubtitle(entity, t)}
                   </Text>
                 </View>
               </View>
@@ -1034,7 +1036,7 @@ export function MoreOptionsSheet() {
                 <View style={styles.emptyOptions}>
                   <Ionicons name="cloud-offline-outline" size={32} color={colors.primary} />
                   <Text style={[styles.emptyOptionsText, { color: colors.textSecondary }]}>
-                    No additional options available in offline mode
+                    {t('noOptionsOffline')}
                   </Text>
                 </View>
               )}
@@ -1064,7 +1066,7 @@ export function MoreOptionsSheet() {
                     />
                   )}
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    {starred ? 'Remove from Favorites' : 'Add to Favorites'}
+                    {starred ? t('removeFromFavorites') : t('addToFavorites')}
                   </Text>
                 </Pressable>
               )}
@@ -1085,7 +1087,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Set Rating
+                    {t('setRating')}
                   </Text>
                   {entityRating > 0 && (
                     <View style={styles.ratingBadge}>
@@ -1116,7 +1118,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Save Top Songs Playlist
+                    {t('saveTopSongsPlaylist')}
                   </Text>
                 </Pressable>
               )}
@@ -1137,7 +1139,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Play Similar Artists
+                    {t('playSimilarArtists')}
                   </Text>
                 </Pressable>
               )}
@@ -1158,7 +1160,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Add to Playlist
+                    {t('addToPlaylist')}
                   </Text>
                 </Pressable>
               )}
@@ -1179,7 +1181,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Play More Like This
+                    {t('playMoreLikeThis')}
                   </Text>
                 </Pressable>
               )}
@@ -1200,7 +1202,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Play More by This Artist
+                    {t('playMoreByThisArtist')}
                   </Text>
                 </Pressable>
               )}
@@ -1221,7 +1223,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Add to Queue
+                    {t('addToQueue')}
                   </Text>
                 </Pressable>
               )}
@@ -1242,7 +1244,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Go to Album
+                    {t('goToAlbum')}
                   </Text>
                 </Pressable>
               )}
@@ -1263,7 +1265,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Go to Artist
+                    {t('goToArtist')}
                   </Text>
                 </Pressable>
               )}
@@ -1284,7 +1286,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Share
+                    {t('share')}
                   </Text>
                 </Pressable>
               )}
@@ -1305,7 +1307,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Album Details
+                    {t('albumDetails')}
                   </Text>
                 </Pressable>
               )}
@@ -1326,7 +1328,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Track Details
+                    {t('trackDetails')}
                   </Text>
                 </Pressable>
               )}
@@ -1347,7 +1349,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    Set MusicBrainz ID
+                    {t('setMusicBrainzId')}
                   </Text>
                 </Pressable>
               )}
@@ -1368,7 +1370,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-                    {isScrobbleExcluded ? 'Include in Scrobbling' : 'Exclude from Scrobbling'}
+                    {isScrobbleExcluded ? t('includeInScrobbling') : t('excludeFromScrobbling')}
                   </Text>
                 </Pressable>
               )}
@@ -1395,8 +1397,8 @@ export function MoreOptionsSheet() {
                   />
                   <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
                     {downloadStatus === 'queued' || downloadStatus === 'downloading'
-                      ? 'Cancel Download'
-                      : 'Download'}
+                      ? t('cancelDownload')
+                      : t('download')}
                   </Text>
                 </Pressable>
               )}
@@ -1418,7 +1420,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.red }]}>
-                    Remove Download
+                    {t('removeDownload')}
                   </Text>
                 </Pressable>
               )}
@@ -1440,7 +1442,7 @@ export function MoreOptionsSheet() {
                     style={styles.optionIcon}
                   />
                   <Text style={[styles.optionLabel, { color: colors.red }]}>
-                    Delete Playlist
+                    {t('deletePlaylist')}
                   </Text>
                 </Pressable>
               )}

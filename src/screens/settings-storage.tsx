@@ -6,6 +6,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { StorageUsageBar } from '../components/StorageUsageBar';
@@ -58,6 +59,7 @@ const ERROR_DELAY_MS = 2000;
 type RestoreState = 'idle' | 'restoring' | 'success' | 'error';
 
 export function SettingsStorageScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
@@ -174,12 +176,12 @@ export function SettingsStorageScreen() {
 
   const handleClearCache = useCallback(() => {
     alert(
-      'Clear Image Cache',
-      `This will remove ${formatBytes(totalBytes)} of cached images. Continue?\n\nThis may affect offline access to your music.`,
+      t('clearImageCache'),
+      t('clearImageCacheMessage', { size: formatBytes(totalBytes) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('clear'),
           style: 'destructive',
           onPress: async () => {
             await clearImageCache();
@@ -192,12 +194,12 @@ export function SettingsStorageScreen() {
 
   const handleClearMetadataCache = useCallback(() => {
     alert(
-      'Clear Metadata Cache',
-      `This will remove ${totalMetadataCount} cached ${totalMetadataCount === 1 ? 'item' : 'items'}. Continue?\n\nThis may affect offline access to your music.`,
+      t('clearMetadataCache'),
+      t('clearMetadataCacheMessage', { count: totalMetadataCount }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('clear'),
           style: 'destructive',
           onPress: () => {
             albumDetailStore.getState().clearAlbums();
@@ -211,12 +213,12 @@ export function SettingsStorageScreen() {
 
   const handleClearMusicCache = useCallback(() => {
     alert(
-      'Clear Downloaded Music',
-      `This will remove ${formatBytes(musicCacheBytes)} of downloaded music. Continue?\n\nThis will stop playback and clear the current queue, as any downloaded items in the queue would fail to play. This will also break offline access to your music.`,
+      t('clearDownloadedMusic'),
+      t('clearDownloadedMusicMessage', { size: formatBytes(musicCacheBytes) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('clear'),
           style: 'destructive',
           onPress: async () => {
             await clearQueue();
@@ -230,12 +232,12 @@ export function SettingsStorageScreen() {
 
   const handleClearAll = useCallback(() => {
     alert(
-      'Clear All Data',
-      'This will remove ALL offline data including downloaded music, cached cover art, and metadata.\n\nThis data is needed for offline playback and efficient online functionality. Rebuilding it requires re-downloading music and re-fetching metadata from your server.\n\nDon\'t do this unless you are really sure.',
+      t('clearAllData'),
+      t('clearAllDataMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear Everything',
+          text: t('clearEverything'),
           style: 'destructive',
           onPress: async () => {
             await clearQueue();
@@ -261,7 +263,7 @@ export function SettingsStorageScreen() {
       await createBackup();
       await pruneBackups();
     } catch {
-      alert('Backup Failed', 'Something went wrong while creating the backup. Please try again.');
+      alert(t('backupFailed'), t('backupFailedMessage'));
     } finally {
       setBackingUp(false);
     }
@@ -309,13 +311,13 @@ export function SettingsStorageScreen() {
     const entry = selectedBackup;
     const parts: string[] = [];
     if (entry.scrobbleCount > 0) {
-      parts.push(`${entry.scrobbleCount.toLocaleString()} scrobbles`);
+      parts.push(t('backupScrobbleCount', { count: entry.scrobbleCount }));
     }
     if (entry.mbidOverrideCount > 0) {
-      parts.push(`${entry.mbidOverrideCount.toLocaleString()} MBID overrides`);
+      parts.push(t('backupMbidOverrideCount', { count: entry.mbidOverrideCount }));
     }
     if (entry.scrobbleExclusionCount > 0) {
-      parts.push(`${entry.scrobbleExclusionCount.toLocaleString()} exclusions`);
+      parts.push(t('backupExclusionCount', { count: entry.scrobbleExclusionCount }));
     }
     const dateStr = new Date(entry.createdAt).toLocaleString(undefined, {
       dateStyle: 'medium',
@@ -323,12 +325,12 @@ export function SettingsStorageScreen() {
     });
 
     alert(
-      'Restore Backup?',
-      `This will replace your current data with the backup from ${dateStr} (${parts.join(', ')}).\n\nThis cannot be undone.`,
+      t('restoreBackupConfirm'),
+      t('restoreBackupConfirmMessage', { date: dateStr, details: parts.join(', ') }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Restore',
+          text: t('restore'),
           style: 'destructive',
           onPress: async () => {
             setRestoreState('restoring');
@@ -394,17 +396,17 @@ export function SettingsStorageScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Storage usage</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('storageUsage')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <StorageUsageBar />
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Storage limit</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('storageLimit')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Limit</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('limit')}</Text>
             <Switch
               value={limitMode === 'fixed'}
               onValueChange={handleToggleLimitMode}
@@ -416,7 +418,7 @@ export function SettingsStorageScreen() {
             <>
               <View style={styles.sliderSection}>
                 <Text style={[styles.sliderLabel, { color: colors.textPrimary }]}>
-                  Maximum cache size
+                  {t('maximumCacheSize')}
                 </Text>
                 <Text style={[styles.sliderValue, { color: colors.primary }]}>
                   {maxCacheSizeGB} GB
@@ -438,7 +440,7 @@ export function SettingsStorageScreen() {
                 <View style={styles.warningRow}>
                   <Ionicons name="warning" size={16} color={colors.red} style={styles.warningIcon} />
                   <Text style={[styles.warningText, { color: colors.red }]}>
-                    You've selected {maxCacheSizeGB} GB but only {availableForWarning} is available
+                    {t('storageLimitWarning', { selected: maxCacheSizeGB, available: availableForWarning })}
                   </Text>
                 </View>
               )}
@@ -448,10 +450,10 @@ export function SettingsStorageScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Backup</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('backup')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Auto backup</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('autoBackup')}</Text>
             <Switch
               value={autoBackupEnabled}
               onValueChange={handleToggleAutoBackup}
@@ -459,14 +461,14 @@ export function SettingsStorageScreen() {
             />
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Last backup</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('lastBackup')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {lastBackupTime
                 ? new Date(lastBackupTime).toLocaleString(undefined, {
                     dateStyle: 'medium',
                     timeStyle: 'short',
                   })
-                : 'Never'}
+                : t('never')}
             </Text>
           </View>
           <View style={styles.backupButtonRow}>
@@ -484,7 +486,7 @@ export function SettingsStorageScreen() {
               ) : (
                 <>
                   <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
-                  <Text style={styles.backupActionButtonText}>Back Up</Text>
+                  <Text style={styles.backupActionButtonText}>{t('backUp')}</Text>
                 </>
               )}
             </Pressable>
@@ -497,32 +499,32 @@ export function SettingsStorageScreen() {
               ]}
             >
               <Ionicons name="cloud-download-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.backupActionButtonText, { color: colors.textPrimary }]}>Restore</Text>
+              <Text style={[styles.backupActionButtonText, { color: colors.textPrimary }]}>{t('restore')}</Text>
             </Pressable>
           </View>
         </View>
         <Text style={[styles.backupDescription, { color: colors.textSecondary }]}>
-          Your listening history, MBID overrides, and scrobble exclusions are backed up to {Platform.OS === 'ios' ? 'iCloud' : 'Google Backup'}, as this data is only available locally.
+          {Platform.OS === 'ios' ? t('backupDescriptionIos') : t('backupDescriptionAndroid')}
         </Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Scrobbles</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('scrobbles')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Pending scrobbles</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('pendingScrobbles')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {pendingScrobbleCount}
             </Text>
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Completed scrobbles</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('completedScrobbles')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {completedScrobbleCount}
             </Text>
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Scrobble exclusions</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('scrobbleExclusions')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {scrobbleExclusionCount}
             </Text>
@@ -538,7 +540,7 @@ export function SettingsStorageScreen() {
             <View style={styles.browseCacheLeft}>
               <Ionicons name="list-outline" size={18} color={colors.textPrimary} />
               <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                Browse Scrobbles
+                {t('browseScrobbles')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -554,7 +556,7 @@ export function SettingsStorageScreen() {
             <View style={styles.browseCacheLeft}>
               <Ionicons name="analytics-outline" size={18} color={colors.textPrimary} />
               <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                My Listening
+                {t('myListening')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -570,7 +572,7 @@ export function SettingsStorageScreen() {
             <View style={styles.browseCacheLeft}>
               <Ionicons name="eye-off-outline" size={18} color={colors.textPrimary} />
               <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                Manage Exclusions
+                {t('manageExclusions')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -579,16 +581,16 @@ export function SettingsStorageScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>MBID Overrides</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('mbidOverrides')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Artist overrides</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('artistOverrides')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {mbidArtistOverrideCount}
             </Text>
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Album overrides</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('albumOverrides')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {mbidAlbumOverrideCount}
             </Text>
@@ -604,7 +606,7 @@ export function SettingsStorageScreen() {
             <View style={styles.browseCacheLeft}>
               <Ionicons name="finger-print-outline" size={18} color={colors.textPrimary} />
               <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                Browse MBID Overrides
+                {t('browseMbidOverrides')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -613,16 +615,16 @@ export function SettingsStorageScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Image cache</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('imageCache')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Cached images</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('cachedImages')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {imageCount} {imageCount === 1 ? 'image' : 'images'}
+              {t('imageCount', { count: imageCount })}
             </Text>
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Disk usage</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('diskUsage')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {formatBytes(totalBytes)}
             </Text>
@@ -635,7 +637,7 @@ export function SettingsStorageScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Concurrent downloads</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('concurrentDownloads')}</Text>
             <Text style={[styles.infoValue, { color: colors.primary }]}>
               {maxConcurrentImageDownloads}
             </Text>
@@ -650,7 +652,7 @@ export function SettingsStorageScreen() {
           >
             <View style={styles.browseCacheLeft}>
               <Ionicons name="images-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>Browse Image Cache</Text>
+              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>{t('browseImageCache')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
@@ -658,22 +660,22 @@ export function SettingsStorageScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Downloaded music</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('downloadedMusic')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Downloaded items</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('downloadedItems')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {musicCachedItemCount} {musicCachedItemCount === 1 ? 'item' : 'items'}
+              {t('itemCount', { count: musicCachedItemCount })}
             </Text>
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Downloaded files</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('downloadedFiles')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {musicFileCount} {musicFileCount === 1 ? 'file' : 'files'}
+              {t('fileCount', { count: musicFileCount })}
             </Text>
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Disk usage</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('diskUsage')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {formatBytes(musicCacheBytes)}
             </Text>
@@ -686,7 +688,7 @@ export function SettingsStorageScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Concurrent downloads</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('concurrentDownloads')}</Text>
             <Text style={[styles.infoValue, { color: colors.primary }]}>
               {maxConcurrentDownloads}
             </Text>
@@ -701,7 +703,7 @@ export function SettingsStorageScreen() {
           >
             <View style={styles.browseCacheLeft}>
               <Ionicons name="musical-notes-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>Browse Downloaded Music</Text>
+              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>{t('browseDownloadedMusic')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
@@ -716,7 +718,7 @@ export function SettingsStorageScreen() {
             <View style={styles.browseCacheLeft}>
               <Ionicons name="cloud-download-outline" size={18} color={colors.textPrimary} />
               <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                Download Queue{musicQueueCount > 0 ? ` (${musicQueueCount})` : ''}
+                {musicQueueCount > 0 ? t('downloadQueueWithCount', { count: musicQueueCount }) : t('downloadQueue')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -725,22 +727,22 @@ export function SettingsStorageScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Metadata cache</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('metadataCache')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Cached albums</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('cachedAlbums')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {cachedAlbumCount}
             </Text>
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Cached artists</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('cachedArtists')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {cachedArtistCount}
             </Text>
           </View>
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>Cached playlists</Text>
+            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('cachedPlaylists')}</Text>
             <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
               {cachedPlaylistCount}
             </Text>
@@ -755,7 +757,7 @@ export function SettingsStorageScreen() {
           >
             <View style={styles.browseCacheLeft}>
               <Ionicons name="library-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>Browse Metadata Cache</Text>
+              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>{t('browseMetadataCache')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
@@ -768,7 +770,7 @@ export function SettingsStorageScreen() {
           style={({ pressed }) => [styles.dangerousHeader, pressed && styles.pressed]}
         >
           <Text style={[styles.sectionTitle, styles.dangerousSectionTitle, { color: colors.red }]}>
-            Dangerous
+            {t('dangerous')}
           </Text>
           <Animated.View style={chevronStyle}>
             <Ionicons name="chevron-forward" size={16} color={colors.red} />
@@ -785,7 +787,7 @@ export function SettingsStorageScreen() {
               ]}
             >
               <Ionicons name="warning" size={18} color={colors.red} />
-              <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Image Cache</Text>
+              <Text style={[styles.clearCacheText, { color: colors.red }]}>{t('clearImageCache')}</Text>
             </Pressable>
             <Pressable
               onPress={handleClearMusicCache}
@@ -796,7 +798,7 @@ export function SettingsStorageScreen() {
               ]}
             >
               <Ionicons name="warning" size={18} color={colors.red} />
-              <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Downloaded Music</Text>
+              <Text style={[styles.clearCacheText, { color: colors.red }]}>{t('clearDownloadedMusic')}</Text>
             </Pressable>
             <Pressable
               onPress={handleClearMetadataCache}
@@ -807,7 +809,7 @@ export function SettingsStorageScreen() {
               ]}
             >
               <Ionicons name="warning" size={18} color={colors.red} />
-              <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear Metadata Cache</Text>
+              <Text style={[styles.clearCacheText, { color: colors.red }]}>{t('clearMetadataCache')}</Text>
             </Pressable>
             <Pressable
               onPress={handleClearAll}
@@ -818,7 +820,7 @@ export function SettingsStorageScreen() {
               ]}
             >
               <Ionicons name="warning" size={18} color={colors.red} />
-              <Text style={[styles.clearCacheText, { color: colors.red }]}>Clear All Data</Text>
+              <Text style={[styles.clearCacheText, { color: colors.red }]}>{t('clearAllData')}</Text>
             </Pressable>
           </View>
         )}
@@ -845,10 +847,10 @@ export function SettingsStorageScreen() {
       >
         <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
         <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
-          Concurrent Downloads
+          {t('concurrentDownloads')}
         </Text>
         <Text style={[styles.sheetSubtitle, { color: colors.textSecondary }]}>
-          Select how many tracks to download simultaneously.
+          {t('concurrentDownloadsHint')}
         </Text>
         {CONCURRENT_OPTIONS.map((opt) => (
           <Pressable
@@ -860,7 +862,7 @@ export function SettingsStorageScreen() {
             ]}
           >
             <Text style={[styles.sheetOptionLabel, { color: colors.textPrimary }]}>
-              {opt} {opt === 1 ? 'track' : 'tracks'}
+              {t('trackWithCount', { count: opt })}
             </Text>
             {maxConcurrentDownloads === opt && (
               <Ionicons name="checkmark" size={22} color={colors.primary} />
@@ -888,10 +890,10 @@ export function SettingsStorageScreen() {
       >
         <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
         <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
-          Concurrent Image Downloads
+          {t('concurrentImageDownloads')}
         </Text>
         <Text style={[styles.sheetSubtitle, { color: colors.textSecondary }]}>
-          Select how many images to download simultaneously.
+          {t('concurrentImageDownloadsHint')}
         </Text>
         {IMAGE_CONCURRENT_OPTIONS.map((opt) => (
           <Pressable
@@ -903,7 +905,7 @@ export function SettingsStorageScreen() {
             ]}
           >
             <Text style={[styles.sheetOptionLabel, { color: colors.textPrimary }]}>
-              {opt} {opt === 1 ? 'image' : 'images'}
+              {t('imageCount', { count: opt })}
             </Text>
             {maxConcurrentImageDownloads === opt && (
               <Ionicons name="checkmark" size={22} color={colors.primary} />
@@ -931,16 +933,16 @@ export function SettingsStorageScreen() {
       >
         <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
         <Text style={[styles.restoreTitle, { color: colors.textPrimary }]}>
-          Restore Backup
+          {t('restoreBackup')}
         </Text>
         <Text style={[styles.restoreSubtitle, { color: colors.textSecondary }]}>
-          Select a backup to restore. This will replace your current data.
+          {t('restoreBackupHint')}
         </Text>
         {restoreBackups.length === 0 && otherBackups.length === 0 ? (
           <View style={styles.emptyBackups}>
             <Ionicons name="cloud-offline-outline" size={32} color={colors.primary} />
             <Text style={[styles.emptyBackupsText, { color: colors.textSecondary }]}>
-              No backups available
+              {t('noBackupsAvailable')}
             </Text>
           </View>
         ) : (
@@ -953,10 +955,10 @@ export function SettingsStorageScreen() {
               });
               const details: string[] = [];
               if (entry.scrobbleCount > 0) {
-                details.push(`${entry.scrobbleCount.toLocaleString()} scrobbles`);
+                details.push(t('backupScrobbleCount', { count: entry.scrobbleCount }));
               }
               if (entry.mbidOverrideCount > 0) {
-                details.push(`${entry.mbidOverrideCount.toLocaleString()} MBID overrides`);
+                details.push(t('backupMbidOverrideCount', { count: entry.mbidOverrideCount }));
               }
               const totalBytes = entry.scrobbleSizeBytes + entry.mbidOverrideSizeBytes + entry.scrobbleExclusionSizeBytes;
               return (
@@ -998,7 +1000,7 @@ export function SettingsStorageScreen() {
                   style={[styles.otherBackupsHeader, { borderBottomColor: colors.border }]}
                 >
                   <Text style={[styles.otherBackupsTitle, { color: colors.textSecondary }]}>
-                    Other Backups
+                    {t('otherBackups')}
                   </Text>
                   <Animated.View style={otherChevronStyle}>
                     <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
@@ -1012,10 +1014,10 @@ export function SettingsStorageScreen() {
                   });
                   const details: string[] = [];
                   if (entry.scrobbleCount > 0) {
-                    details.push(`${entry.scrobbleCount.toLocaleString()} scrobbles`);
+                    details.push(t('backupScrobbleCount', { count: entry.scrobbleCount }));
                   }
                   if (entry.mbidOverrideCount > 0) {
-                    details.push(`${entry.mbidOverrideCount.toLocaleString()} MBID overrides`);
+                    details.push(t('backupMbidOverrideCount', { count: entry.mbidOverrideCount }));
                   }
                   const totalBytes = entry.scrobbleSizeBytes + entry.mbidOverrideSizeBytes + entry.scrobbleExclusionSizeBytes;
                   return (
@@ -1075,11 +1077,11 @@ export function SettingsStorageScreen() {
                   <View style={styles.restoreErrorContent}>
                     <Ionicons name="alert-circle" size={20} color="#fff" />
                     <Text style={styles.restoreButtonText}>
-                      Failed to restore — tap to retry
+                      {t('failedToRestoreTapToRetry')}
                     </Text>
                   </View>
                 ) : (
-                  <Text style={styles.restoreButtonText}>Restore</Text>
+                  <Text style={styles.restoreButtonText}>{t('restore')}</Text>
                 )}
               </Pressable>
             </View>

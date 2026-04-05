@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import i18n from 'i18next';
+
 import { sqliteStorage } from './sqliteStorage';
 
 import {
@@ -81,7 +83,7 @@ export const favoritesStore = create<FavoritesState>()(
         } catch (e) {
           set({
             loading: false,
-            error: e instanceof Error ? e.message : 'Failed to load favorites',
+            error: e instanceof Error ? e.message : i18n.t('failedToLoadFavorites'),
           });
         }
       },

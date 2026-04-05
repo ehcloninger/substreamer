@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Keyboard, View } from 'react-native';
 
 import WaveformLogo from '../../components/WaveformLogo';
@@ -17,6 +18,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { searchStore } from '../../store/searchStore';
 
 export default function TabLayout() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const layoutMode = useLayoutMode();
   const isWide = layoutMode === 'wide';
@@ -60,7 +62,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
+            title: t('home'),
             tabBarIcon: ({ color, size }) => (
               <WaveformLogo size={size} color={color} />
             ),
@@ -69,7 +71,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="library"
           options={{
-            title: 'Library',
+            title: t('library'),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="musical-notes" size={size} color={color} />
             ),
@@ -78,7 +80,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="favorites"
           options={{
-            title: 'Favorites',
+            title: t('favorites'),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="heart" size={size} color={color} />
             ),
@@ -87,7 +89,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="search"
           options={{
-            title: 'Search',
+            title: t('search'),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="search" size={size} color={color} />
             ),
@@ -96,7 +98,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="settings"
           options={{
-            title: 'Settings',
+            title: t('settings'),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="settings" size={size} color={color} />
             ),

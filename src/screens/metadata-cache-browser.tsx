@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from '../components/CachedImage';
 import { EmptyState } from '../components/EmptyState';
@@ -87,10 +88,10 @@ function buildEntries(): MetadataEntry[] {
   return entries;
 }
 
-const TYPE_LABELS: Record<MetadataEntry['type'], string> = {
-  album: 'Album',
-  artist: 'Artist',
-  playlist: 'Playlist',
+const TYPE_LABEL_KEYS: Record<MetadataEntry['type'], string> = {
+  album: 'album',
+  artist: 'artist',
+  playlist: 'playlist',
 };
 
 /* ------------------------------------------------------------------ */
@@ -110,6 +111,7 @@ const MetadataRow = memo(function MetadataRow({
   onRefresh: (entry: MetadataEntry) => void;
   onDelete: (entry: MetadataEntry) => void;
 }) {
+  const { t } = useTranslation();
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
   const handleDelete = useCallback(() => {
@@ -121,13 +123,13 @@ const MetadataRow = memo(function MetadataRow({
   }, [entry, onRefresh]);
 
   const rightActions: SwipeAction[] = useMemo(
-    () => [{ icon: 'trash-outline' as const, color: colors.red, label: 'Delete', onPress: handleDelete }],
-    [colors.red, handleDelete],
+    () => [{ icon: 'trash-outline' as const, color: colors.red, label: t('delete'), onPress: handleDelete }],
+    [colors.red, handleDelete, t],
   );
 
   const leftActions: SwipeAction[] = useMemo(
-    () => offlineMode ? [] : [{ icon: 'refresh-outline' as const, color: colors.primary, label: 'Refresh', onPress: handleRefreshAction }],
-    [offlineMode, colors.primary, handleRefreshAction],
+    () => offlineMode ? [] : [{ icon: 'refresh-outline' as const, color: colors.primary, label: t('refresh'), onPress: handleRefreshAction }],
+    [offlineMode, colors.primary, handleRefreshAction, t],
   );
 
   return (
@@ -152,24 +154,24 @@ const MetadataRow = memo(function MetadataRow({
               {entry.name}
             </Text>
             <Text style={[styles.typeLabel, { color: colors.textSecondary }]}>
-              {TYPE_LABELS[entry.type]}
+              {t(TYPE_LABEL_KEYS[entry.type])}
             </Text>
             <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
               {formatDate(entry.retrievedAt)}
             </Text>
             {status === 'refreshing' && (
               <Text style={[styles.statusText, { color: colors.primary }]}>
-                Refreshing…
+                {t('refreshingEllipsis')}
               </Text>
             )}
             {status === 'success' && (
               <Text style={[styles.statusText, { color: '#00BA7C' }]}>
-                Refreshed successfully
+                {t('refreshedSuccessfully')}
               </Text>
             )}
             {status === 'error' && (
               <Text style={[styles.statusText, { color: colors.red }]}>
-                Refresh failed
+                {t('refreshFailed')}
               </Text>
             )}
           </View>
@@ -188,6 +190,7 @@ const MetadataRow = memo(function MetadataRow({
 
 export function MetadataCacheBrowserScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { alert, alertProps } = useThemedAlert();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [entries, setEntries] = useState<MetadataEntry[]>(() => buildEntries());
@@ -256,12 +259,12 @@ export function MetadataCacheBrowserScreen() {
   const handleDelete = useCallback(
     (entry: MetadataEntry) => {
       alert(
-        'Delete Cached Metadata',
-        `Remove cached data for "${entry.name}"?\n\nThis may affect offline access to your music.`,
+        t('deleteCachedMetadata'),
+        t('deleteCachedMetadataMessage', { name: entry.name }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('delete'),
             style: 'destructive',
             onPress: () => {
               if (entry.type === 'album') {
@@ -305,8 +308,8 @@ export function MetadataCacheBrowserScreen() {
   );
 
   const isFiltered = filter.trim().length > 0;
-  const emptyMessage = isFiltered ? 'No matching items' : 'No cached metadata';
-  const emptySubtitle = isFiltered ? undefined : 'Metadata is cached automatically as you browse';
+  const emptyMessage = isFiltered ? t('noMatchingItems') : t('noCachedMetadata');
+  const emptySubtitle = isFiltered ? undefined : t('metadataCachedAutomatically');
 
   const listEmpty = useMemo(
     () => (
@@ -322,7 +325,7 @@ export function MetadataCacheBrowserScreen() {
           <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.filterIcon} />
           <TextInput
             style={[styles.filterInput, { color: colors.textPrimary }]}
-            placeholder="Filter..."
+            placeholder={t('filterPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={filter}
             onChangeText={handleFilterChange}

@@ -17,6 +17,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { getGenreNames } from '../utils/genreHelpers';
 import { type Child } from '../services/subsonicService';
@@ -52,6 +53,7 @@ export const AlbumInfoContent = memo(function AlbumInfoContent({
   onRefresh,
   colors,
 }: AlbumInfoContentProps) {
+  const { t } = useTranslation();
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(false);
 
@@ -66,27 +68,27 @@ export const AlbumInfoContent = memo(function AlbumInfoContent({
   // Build detail rows from track metadata
   const details = useMemo(() => {
     const rows: { label: string; value: string }[] = [];
-    if (track.album) rows.push({ label: 'Album', value: track.album });
-    if (track.artist) rows.push({ label: 'Artist', value: track.artist });
+    if (track.album) rows.push({ label: t('detailAlbum'), value: track.album });
+    if (track.artist) rows.push({ label: t('detailArtist'), value: track.artist });
     if (track.displayAlbumArtist && track.displayAlbumArtist !== track.artist) {
-      rows.push({ label: 'Album Artist', value: track.displayAlbumArtist });
+      rows.push({ label: t('detailAlbumArtist'), value: track.displayAlbumArtist });
     }
-    if (track.displayComposer) rows.push({ label: 'Composer', value: track.displayComposer });
-    if (track.year) rows.push({ label: 'Year', value: String(track.year) });
+    if (track.displayComposer) rows.push({ label: t('detailComposer'), value: track.displayComposer });
+    if (track.year) rows.push({ label: t('detailYear'), value: String(track.year) });
     const genreNames = getGenreNames(track);
     const genreText = genreNames.length > 0 ? genreNames.join(', ') : null;
-    if (genreText) rows.push({ label: genreNames.length > 1 ? 'Genres' : 'Genre', value: genreText });
-    if (track.bpm) rows.push({ label: 'BPM', value: String(track.bpm) });
+    if (genreText) rows.push({ label: genreNames.length > 1 ? t('detailGenres') : t('detailGenre'), value: genreText });
+    if (track.bpm) rows.push({ label: t('detailBpm'), value: String(track.bpm) });
     if (track.suffix && track.bitRate) {
-      rows.push({ label: 'Format', value: `${track.suffix.toUpperCase()} · ${track.bitRate} kbps` });
+      rows.push({ label: t('detailFormat'), value: `${track.suffix.toUpperCase()} · ${track.bitRate} kbps` });
     } else if (track.suffix) {
-      rows.push({ label: 'Format', value: track.suffix.toUpperCase() });
+      rows.push({ label: t('detailFormat'), value: track.suffix.toUpperCase() });
     }
     if (track.playCount != null && track.playCount > 0) {
-      rows.push({ label: 'Play Count', value: String(track.playCount) });
+      rows.push({ label: t('detailPlayCount'), value: String(track.playCount) });
     }
     return rows;
-  }, [track]);
+  }, [track, t]);
 
   const handleLastFm = useCallback(() => {
     if (albumInfo?.lastFmUrl) Linking.openURL(albumInfo.lastFmUrl);
@@ -174,7 +176,7 @@ export const AlbumInfoContent = memo(function AlbumInfoContent({
                   style={({ pressed }) => pressed && styles.pressed}
                 >
                   <Text style={[styles.infoReadMore, { color: colors.primary }]}>
-                    {notesExpanded ? 'Show less' : 'Show more'}
+                    {notesExpanded ? t('showLess') : t('showMore')}
                   </Text>
                 </Pressable>
               )}
@@ -183,10 +185,10 @@ export const AlbumInfoContent = memo(function AlbumInfoContent({
                   onPress={handleWikipedia}
                   style={({ pressed }) => [styles.infoAttribution, pressed && styles.pressed]}
                   accessibilityRole="link"
-                  accessibilityLabel="Source: Wikipedia"
+                  accessibilityLabel={t('sourceWikipedia')}
                 >
                   <Text style={[styles.infoAttributionText, { color: colors.textSecondary }]}>
-                    Source: Wikipedia
+                    {t('sourceWikipedia')}
                   </Text>
                   <Ionicons name="open-outline" size={11} color={colors.textSecondary} style={styles.infoLinkArrow} />
                 </Pressable>
@@ -203,7 +205,7 @@ export const AlbumInfoContent = memo(function AlbumInfoContent({
             <Pressable
               onPress={handleLastFm}
               accessibilityRole="link"
-              accessibilityLabel="View on Last.fm"
+              accessibilityLabel={t('viewOnLastFm')}
               style={({ pressed }) => [styles.infoLinkChip, pressed && styles.pressed]}
             >
               <Ionicons name="musical-notes" size={14} color={colors.textPrimary} />
@@ -215,7 +217,7 @@ export const AlbumInfoContent = memo(function AlbumInfoContent({
             <Pressable
               onPress={handleMusicBrainz}
               accessibilityRole="link"
-              accessibilityLabel="View on MusicBrainz"
+              accessibilityLabel={t('viewOnMusicBrainz')}
               style={({ pressed }) => [styles.infoLinkChip, pressed && styles.pressed]}
             >
               <Ionicons name="disc" size={14} color={colors.textPrimary} />
@@ -227,7 +229,7 @@ export const AlbumInfoContent = memo(function AlbumInfoContent({
             <Pressable
               onPress={handleWikipedia}
               accessibilityRole="link"
-              accessibilityLabel="View on Wikipedia"
+              accessibilityLabel={t('viewOnWikipedia')}
               style={({ pressed }) => [styles.infoLinkChip, pressed && styles.pressed]}
             >
               <Ionicons name="globe-outline" size={14} color={colors.textPrimary} />

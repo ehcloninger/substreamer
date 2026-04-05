@@ -37,6 +37,7 @@ import { serverInfoStore } from './serverInfoStore';
 import { shareSettingsStore } from './shareSettingsStore';
 import { sharesStore } from './sharesStore';
 import { sslCertStore } from './sslCertStore';
+import { localeStore } from './localeStore';
 import { storageLimitStore } from './storageLimitStore';
 
 // Non-persisted stores
@@ -73,6 +74,7 @@ const allStores = [
   genreStore,
   imageCacheStore,
   layoutPreferencesStore,
+  localeStore,
   mbidOverrideStore,
   musicCacheStore,
   offlineModeStore,

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CachedImage } from '../components/CachedImage';
@@ -72,6 +73,7 @@ function groupTracksByDisc(songs: Child[]): Map<number, Child[]> {
 }
 
 export function AlbumDetailScreen() {
+  const { t } = useTranslation();
   const { colors, theme } = useTheme();
   const offlineMode = offlineModeStore((s) => s.offlineMode);
   const insets = useSafeAreaInsets();
@@ -137,7 +139,7 @@ export function AlbumDetailScreen() {
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (!id) {
-      setError('Missing album id');
+      setError(t('missingAlbumId'));
       if (!isRefresh) setLoading(false);
       return;
     }
@@ -148,13 +150,13 @@ export function AlbumDetailScreen() {
       const delay = isRefresh ? minDelay() : null;
       const data = await fetchAlbum(id);
       setAlbum(data);
-      if (!data) setError('Album not found');
+      if (!data) setError(t('albumNotFound'));
       if (isRefresh && data?.coverArt) {
         refreshCachedImage(data.coverArt).catch(() => { /* non-critical */ });
       }
       await delay;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load album');
+      setError(e instanceof Error ? e.message : t('failedToLoadAlbum'));
     } finally {
       if (isRefresh) setRefreshing(false);
       else setLoading(false);
@@ -191,7 +193,7 @@ export function AlbumDetailScreen() {
           <View style={[styles.discHeaderWrap, index > 0 && styles.discHeaderGap]}>
             <Ionicons name="disc-outline" size={16} color={colors.primary} style={styles.discIcon} />
             <Text style={[styles.discTitle, { color: colors.label }]}>
-              Disc {item.discNumber}
+              {t('discNumber', { number: item.discNumber })}
             </Text>
           </View>
         );
@@ -207,7 +209,7 @@ export function AlbumDetailScreen() {
         </View>
       );
     },
-    [colors, allSongs],
+    [colors, allSongs, t],
   );
 
   const keyExtractor = useCallback(
@@ -242,7 +244,7 @@ export function AlbumDetailScreen() {
           <View style={styles.subtitleRow}>
             <View style={styles.subtitleText}>
               <Text style={[styles.artistName, { color: colors.textSecondary }]}>
-                {album.artist ?? album.displayArtist ?? 'Unknown Artist'}
+                {album.artist ?? album.displayArtist ?? t('unknownArtist')}
               </Text>
               {album.year ? (
                 <Text style={[styles.albumYear, { color: colors.textSecondary }]}>
@@ -261,7 +263,7 @@ export function AlbumDetailScreen() {
                   pressed && styles.shufflePlayButtonPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Shuffle play"
+                accessibilityLabel={t('shufflePlay')}
               >
                 <Ionicons name="shuffle" size={18} color="#000" />
               </Pressable>
@@ -283,20 +285,20 @@ export function AlbumDetailScreen() {
         <View style={styles.trackListSpacer} />
       </>
     );
-  }, [album, colors, allSongs]);
+  }, [album, colors, allSongs, t]);
 
   const listEmpty = useMemo(
     () => (
       <View style={styles.emptyTracks}>
         <Text style={[styles.emptyTracksTitle, { color: colors.textPrimary }]}>
-          No tracks found
+          {t('noTracksFound')}
         </Text>
         <Text style={[styles.emptyTracksSubtitle, { color: colors.textSecondary }]}>
-          Please check your server is online and reachable, then pull to refresh
+          {t('noTracksFoundSubtitle')}
         </Text>
       </View>
     ),
-    [colors.textPrimary, colors.textSecondary],
+    [colors.textPrimary, colors.textSecondary, t],
   );
 
   const gradientStart = coverBackgroundColor ?? colors.background;
@@ -318,8 +320,8 @@ export function AlbumDetailScreen() {
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <EmptyState
           icon="disc-outline"
-          title="Couldn't Load Album"
-          subtitle={`Substreamer ran into an issue loading this album.\n\n${error ?? 'Unknown error'}`}
+          title={t('couldntLoadAlbum')}
+          subtitle={`${t('loadAlbumError')}\n\n${error ?? t('unknownError')}`}
         />
       </View>
     );

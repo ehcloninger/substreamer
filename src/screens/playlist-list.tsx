@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { PlaylistListView, type PlaylistLayout } from '../components/PlaylistListView';
 import { musicCacheStore } from '../store/musicCacheStore';
@@ -16,6 +17,7 @@ export function PlaylistListScreen({
   downloadedOnly?: boolean;
   contentInsetTop?: number;
 }) {
+  const { t } = useTranslation();
   const offlineMode = offlineModeStore((s) => s.offlineMode);
   const playlists = playlistLibraryStore((s) => s.playlists);
   const loading = playlistLibraryStore((s) => s.loading);
@@ -49,8 +51,8 @@ export function PlaylistListScreen({
   const emptyProps = offlineMode
     ? {
         emptyIcon: 'cloud-offline-outline' as const,
-        emptyMessage: 'No downloaded playlists',
-        emptySubtitle: 'Download playlists from your library to listen offline. They will appear here when you are in offline mode.',
+        emptyMessage: t('noDownloadedPlaylists'),
+        emptySubtitle: t('noDownloadedPlaylistsSubtitle'),
       }
     : {};
 

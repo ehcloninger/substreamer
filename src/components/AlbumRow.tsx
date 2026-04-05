@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
@@ -22,6 +23,7 @@ const COVER_SIZE = 300;
 
 export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const starred = useIsStarred('album', album.id);
   const downloaded = useDownloadStatus('album', album.id) === 'complete';
@@ -49,8 +51,8 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
   }, [album]);
 
   const rightActions: SwipeAction[] = useMemo(
-    () => [{ icon: 'playlist-play', iconFamily: 'mdi' as const, color: colors.primary, label: 'Queue', onPress: handleAddToQueue }],
-    [colors.primary, handleAddToQueue],
+    () => [{ icon: 'playlist-play', iconFamily: 'mdi' as const, color: colors.primary, label: t('queue'), onPress: handleAddToQueue }],
+    [colors.primary, handleAddToQueue, t],
   );
 
   const leftActions: SwipeAction[] = useMemo(
@@ -62,17 +64,17 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
               icon: 'playlist-plus',
               iconFamily: 'mdi' as const,
               color: colors.primary,
-              label: 'Playlist',
+              label: t('playlist'),
               onPress: handleAddToPlaylist,
             },
             {
               icon: starred ? 'heart' : 'heart-outline',
               color: colors.red,
-              label: starred ? 'Remove' : 'Add',
+              label: starred ? t('remove') : t('add'),
               onPress: handleToggleStar,
             },
           ],
-    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode],
+    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode, t],
   );
 
   return (
@@ -105,13 +107,13 @@ export const AlbumRow = memo(function AlbumRow({ album }: { album: AlbumID3 }) {
             style={[styles.artistName, { color: colors.textSecondary }]}
             numberOfLines={1}
           >
-            {album.artist ?? 'Unknown Artist'}
+            {album.artist ?? t('unknownArtist')}
           </Text>
           <View style={styles.meta}>
             <View style={styles.metaLeft}>
               <Ionicons name="musical-notes-outline" size={14} color={colors.primary} />
               <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                {album.songCount} {album.songCount === 1 ? 'track' : 'tracks'}
+                {t('trackCount', { count: album.songCount })}
               </Text>
             </View>
             {rating > 0 && (

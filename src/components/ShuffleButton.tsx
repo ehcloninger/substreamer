@@ -7,6 +7,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { useTheme } from '../hooks/useTheme';
@@ -20,6 +21,7 @@ export const ShuffleButton = memo(function ShuffleButton({
   onPress,
   disabled = false,
 }: ShuffleButtonProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
 
   return (
@@ -28,7 +30,7 @@ export const ShuffleButton = memo(function ShuffleButton({
       disabled={disabled}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel="Shuffle queue"
+      accessibilityLabel={t('shuffleQueue')}
       style={({ pressed }) => [
         styles.container,
         (pressed || disabled) && styles.pressed,

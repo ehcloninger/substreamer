@@ -19,6 +19,8 @@ export const VARIOUS_ARTISTS_BIO =
   'releases that feature songs from multiple artists.\n\n' +
   "Browse the albums below to discover what's in your collection.";
 export const VARIOUS_ARTISTS_COVER_ART_ID = '__various_artists_cover__';
+export const getVariousArtistsName = () => VARIOUS_ARTISTS_NAME;
+export const getVariousArtistsBio = () => VARIOUS_ARTISTS_BIO;
 
 export const isVariousArtists = (name: string | undefined) =>
   name?.trim().toLowerCase() === 'various artists';

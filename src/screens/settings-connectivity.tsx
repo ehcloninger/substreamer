@@ -3,6 +3,7 @@ import { HeaderHeightContext } from '@react-navigation/elements';
 import { useNavigation } from 'expo-router';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CertificatePromptModal } from '../components/CertificatePromptModal';
 import { GradientBackground } from '../components/GradientBackground';
@@ -29,6 +30,7 @@ import { sslCertStore, type TrustedCertEntry } from '../store/sslCertStore';
 import { getCertificateInfo, type CertificateInfo } from '../../modules/expo-ssl-trust/src';
 
 export function SettingsConnectivityScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
   const navigation = useNavigation();
@@ -113,16 +115,16 @@ export function SettingsConnectivityScreen() {
 
       e.preventDefault();
       Alert.alert(
-        'Incomplete Setup',
-        'Home WiFi mode needs location permission and at least one network name to work. Disable auto-offline?',
+        t('incompleteSetup'),
+        t('incompleteSetupMessage'),
         [
           {
-            text: 'Keep Enabled',
+            text: t('keepEnabled'),
             style: 'cancel',
             onPress: () => navigation.dispatch(e.data.action),
           },
           {
-            text: 'Disable',
+            text: t('disable'),
             style: 'destructive',
             onPress: () => {
               autoOfflineStore.getState().setEnabled(false);
@@ -208,10 +210,10 @@ export function SettingsConnectivityScreen() {
   const handleAddSSIDManual = useCallback(() => {
     const defaultValue = currentSSID && !homeSSIDs.includes(currentSSID) ? currentSSID : '';
     if (Platform.OS === 'ios') {
-      Alert.prompt('Add Network', 'Enter the WiFi network name (case-sensitive).', [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.prompt(t('addNetwork'), t('enterWifiName'), [
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Add',
+          text: t('add'),
           onPress: (value?: string) => {
             const trimmed = value?.trim();
             if (trimmed) autoOfflineStore.getState().addSSID(trimmed);
@@ -227,10 +229,10 @@ export function SettingsConnectivityScreen() {
 
   const handleEditSSID = useCallback((ssid: string) => {
     if (Platform.OS === 'ios') {
-      Alert.prompt('Edit Network', 'Update the WiFi network name (case-sensitive).', [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.prompt(t('editNetwork'), t('updateWifiName'), [
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Save',
+          text: t('save'),
           onPress: (value?: string) => {
             const trimmed = value?.trim();
             if (trimmed) autoOfflineStore.getState().updateSSID(ssid, trimmed);
@@ -260,12 +262,12 @@ export function SettingsConnectivityScreen() {
 
   const handleRemoveSSID = useCallback((ssid: string) => {
     alert(
-      'Remove Network',
-      `Remove "${ssid}" from your home networks?`,
+      t('removeNetwork'),
+      t('removeNetworkMessage', { ssid }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('remove'),
           style: 'destructive',
           onPress: () => autoOfflineStore.getState().removeSSID(ssid),
         },
@@ -292,14 +294,14 @@ export function SettingsConnectivityScreen() {
   const handleRemoveTrustedCert = useCallback((hostname: string) => {
     const isActive = hostname === activeHostname;
     alert(
-      isActive ? 'Remove Active Certificate' : 'Remove Trusted Certificate',
+      isActive ? t('removeActiveCertificate') : t('removeTrustedCertificate'),
       isActive
-        ? `This certificate is used to connect to your current server. Removing it may prevent the app from communicating with ${hostname} until you re-accept the certificate.`
-        : `Remove the trusted certificate for ${hostname}? You will need to re-accept the certificate on next connection.`,
+        ? t('removeActiveCertificateMessage', { hostname })
+        : t('removeTrustedCertificateMessage', { hostname }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('remove'),
           style: 'destructive',
           onPress: () => {
             removeTrustForHost(hostname).catch(() => {
@@ -333,7 +335,7 @@ export function SettingsConnectivityScreen() {
   const handleFetchCertificate = useCallback(async () => {
     const result = normalizeUrl(certUrlValue);
     if (!result) {
-      alert('Invalid URL', 'Please enter a valid server address.');
+      alert(t('invalidUrl'), t('invalidUrlMessage'));
       return;
     }
     setCertUrlPromptVisible(false);
@@ -344,7 +346,7 @@ export function SettingsConnectivityScreen() {
       setCertHostname(result.hostname);
       setCertModalVisible(true);
     } catch (e) {
-      alert('Certificate Error', e instanceof Error ? e.message : 'Failed to fetch certificate from server.');
+      alert(t('certificateError'), e instanceof Error ? e.message : t('failedToFetchCertificate'));
     } finally {
       setCertFetching(false);
     }
@@ -381,15 +383,15 @@ export function SettingsConnectivityScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Offline</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('offline')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           <View style={[styles.toggleRow, { borderBottomColor: colors.border }]}>
             <View style={styles.toggleTextWrap}>
               <Text style={[styles.label, { color: colors.textPrimary }]}>
-                Offline Mode
+                {t('offlineMode')}
               </Text>
               <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                When enabled, only downloaded content is available. Searches are performed locally against cached content.
+                {t('offlineModeHint')}
               </Text>
             </View>
             <Switch
@@ -401,10 +403,10 @@ export function SettingsConnectivityScreen() {
           <View style={[styles.toggleRow, { borderBottomColor: colors.border }]}>
             <View style={styles.toggleTextWrap}>
               <Text style={[styles.label, { color: colors.textPrimary }]}>
-                Show in Filter Bar
+                {t('showInFilterBar')}
               </Text>
               <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                Display the offline mode toggle in the filter bar for quick access.
+                {t('showInFilterBarHint')}
               </Text>
             </View>
             <Switch
@@ -416,10 +418,10 @@ export function SettingsConnectivityScreen() {
           <View style={[styles.toggleRow, autoEnabled ? { borderBottomColor: colors.border } : styles.toggleRowLast]}>
             <View style={styles.toggleTextWrap}>
               <Text style={[styles.label, { color: colors.textPrimary }]}>
-                Auto Offline
+                {t('autoOffline')}
               </Text>
               <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                Automatically switch between online and offline mode based on your network connection.
+                {t('autoOfflineHint')}
               </Text>
             </View>
             <Switch
@@ -440,9 +442,9 @@ export function SettingsConnectivityScreen() {
                 ]}
               >
                 <View style={styles.toggleTextWrap}>
-                  <Text style={[styles.label, { color: colors.textPrimary }]}>WiFi Only</Text>
+                  <Text style={[styles.label, { color: colors.textPrimary }]}>{t('wifiOnly')}</Text>
                   <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                    Go offline when not connected to WiFi.
+                    {t('wifiOnlyHint')}
                   </Text>
                 </View>
                 {autoMode === 'wifi-only' && (
@@ -459,9 +461,9 @@ export function SettingsConnectivityScreen() {
                 ]}
               >
                 <View style={styles.toggleTextWrap}>
-                  <Text style={[styles.label, { color: colors.textPrimary }]}>Home WiFi</Text>
+                  <Text style={[styles.label, { color: colors.textPrimary }]}>{t('homeWifi')}</Text>
                   <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                    Go offline when not connected to a specific home WiFi network. Network names are case-sensitive.
+                    {t('homeWifiHint')}
                   </Text>
                 </View>
                 {autoMode === 'home-wifi' && (
@@ -475,15 +477,15 @@ export function SettingsConnectivityScreen() {
                   <View style={styles.permissionWarningText}>
                     <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
                       {Platform.OS === 'ios'
-                        ? 'To detect which WiFi network you\'re on, Substreamer needs location access. When prompted, choose "Allow While Using the App" so the app can check your network each time it opens. Choosing "Allow Once" means you\'d need to grant permission again every time.'
-                        : 'To detect which WiFi network you\'re on, Substreamer needs location access. When prompted, choose "While using the app" so the app can check your network each time it opens. Choosing "Only this time" means you\'d need to grant permission again every time.'}
+                        ? t('locationPermissionHintIos')
+                        : t('locationPermissionHintAndroid')}
                     </Text>
                     <Pressable
                       onPress={handleGrantPermission}
                       style={({ pressed }) => [pressed && styles.pressed]}
                     >
                       <Text style={[styles.permissionButton, { color: colors.primary }]}>
-                        Grant Permission
+                        {t('grantPermission')}
                       </Text>
                     </Pressable>
                   </View>
@@ -497,13 +499,12 @@ export function SettingsConnectivityScreen() {
                     {homeSSIDs.length > 0 ? (
                       <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
                         {Platform.OS === 'ios'
-                          ? 'Unable to read your WiFi network name. Location permission may have been revoked or set to "Allow Once". In your device Settings, make sure location access for Substreamer is set to "Allow While Using the App".'
-                          : 'Unable to read your WiFi network name. Location permission may have been revoked or set to "Only this time". In your device Settings, make sure location access for Substreamer is set to "While using the app".'}
+                          ? t('ssidReadFailedWithNetworksIos')
+                          : t('ssidReadFailedWithNetworksAndroid')}
                       </Text>
                     ) : (
                       <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                        Permission was granted but we still can't read your WiFi network name. This feature may not work correctly on your device. You can try again later, or switch to the{' '}
-                        <Text style={{ fontWeight: '600' }}>WiFi Only</Text> option instead which doesn't need location access.
+                        {t('ssidReadFailedNoNetworks')}
                       </Text>
                     )}
                     <Pressable
@@ -511,7 +512,7 @@ export function SettingsConnectivityScreen() {
                       style={({ pressed }) => [pressed && styles.pressed]}
                     >
                       <Text style={[styles.permissionButton, { color: colors.primary }]}>
-                        {homeSSIDs.length > 0 ? 'Grant Permission' : 'Try Again'}
+                        {homeSSIDs.length > 0 ? t('grantPermission') : t('tryAgain')}
                       </Text>
                     </Pressable>
                   </View>
@@ -523,7 +524,7 @@ export function SettingsConnectivityScreen() {
                   <Ionicons name="wifi-outline" size={20} color={colors.textSecondary} />
                   <View style={styles.permissionWarningText}>
                     <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                      Connect to WiFi to detect your network name.{homeSSIDs.length === 0 ? ' You can also add a network manually below.' : ''}
+                      {homeSSIDs.length === 0 ? t('connectToWifiWithManualHint') : t('connectToWifi')}
                     </Text>
                   </View>
                 </View>
@@ -540,7 +541,7 @@ export function SettingsConnectivityScreen() {
                     hitSlop={8}
                     style={({ pressed }) => [pressed && styles.pressed]}
                   >
-                    <Text style={[styles.ssidActionText, { color: colors.primary }]}>Add</Text>
+                    <Text style={[styles.ssidActionText, { color: colors.primary }]}>{t('add')}</Text>
                   </Pressable>
                 </View>
               )}
@@ -585,7 +586,7 @@ export function SettingsConnectivityScreen() {
                   style={({ pressed }) => [styles.addSsidRow, pressed && styles.pressed]}
                 >
                   <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-                  <Text style={[styles.addSsidText, { color: colors.primary }]}>Add Network</Text>
+                  <Text style={[styles.addSsidText, { color: colors.primary }]}>{t('addNetwork')}</Text>
                 </Pressable>
               )}
 
@@ -594,7 +595,7 @@ export function SettingsConnectivityScreen() {
                   <View style={styles.setupHeader}>
                     <Ionicons name="wifi" size={18} color={colors.primary} />
                     <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
-                      Current network detected
+                      {t('currentNetworkDetected')}
                     </Text>
                   </View>
                   <View style={styles.setupRow}>
@@ -602,7 +603,7 @@ export function SettingsConnectivityScreen() {
                       style={[styles.setupInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.border }]}
                       value={ssidSetupValue}
                       onChangeText={setSsidSetupValue}
-                      placeholder="WiFi network name"
+                      placeholder={t('wifiNetworkName')}
                       placeholderTextColor={colors.textSecondary}
                       onSubmitEditing={handleSetupAdd}
                       returnKeyType="done"
@@ -612,11 +613,11 @@ export function SettingsConnectivityScreen() {
                       hitSlop={8}
                       style={({ pressed }) => [pressed && styles.pressed]}
                     >
-                      <Text style={[styles.ssidActionText, { color: colors.primary }]}>Add</Text>
+                      <Text style={[styles.ssidActionText, { color: colors.primary }]}>{t('add')}</Text>
                     </Pressable>
                   </View>
                   <Text style={[styles.setupHint, { color: colors.textSecondary }]}>
-                    Verify the name is correct, then tap Add.
+                    {t('verifyNameHint')}
                   </Text>
                 </View>
               )}
@@ -628,7 +629,7 @@ export function SettingsConnectivityScreen() {
 
       {Platform.OS === 'android' && batteryOptRestricted !== null && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Background playback</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('backgroundPlayback')}</Text>
           <View style={[styles.card, dynamicStyles.card]}>
             <Pressable
               onPress={batteryOptRestricted ? handleRequestBatteryExemption : undefined}
@@ -641,12 +642,12 @@ export function SettingsConnectivityScreen() {
             >
               <View style={styles.toggleTextWrap}>
                 <Text style={[styles.label, { color: colors.textPrimary }]}>
-                  Battery Optimization
+                  {t('batteryOptimization')}
                 </Text>
                 <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
                   {batteryOptRestricted
-                    ? 'Some Android devices may stop background music streaming to save battery. Tap to request an exemption.'
-                    : 'Background playback should not be interrupted by battery optimization.'}
+                    ? t('batteryOptimizationRestrictedHint')
+                    : t('batteryOptimizationOkHint')}
                 </Text>
               </View>
               {batteryOptRestricted ? (
@@ -669,13 +670,13 @@ export function SettingsConnectivityScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setSsidPromptVisible(false)}>
           <Pressable style={[styles.modalCard, { backgroundColor: colors.card }]} onPress={() => {}}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {ssidEditTarget ? 'Edit Network' : 'Add Network'}
+              {ssidEditTarget ? t('editNetwork') : t('addNetwork')}
             </Text>
             <TextInput
               style={[styles.modalInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.border }]}
               value={ssidPromptValue}
               onChangeText={setSsidPromptValue}
-              placeholder="WiFi network name"
+              placeholder={t('wifiNetworkName')}
               placeholderTextColor={colors.textSecondary}
               autoFocus
               onSubmitEditing={handleSsidPromptSubmit}
@@ -685,14 +686,14 @@ export function SettingsConnectivityScreen() {
                 onPress={() => setSsidPromptVisible(false)}
                 style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}
               >
-                <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+                <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={handleSsidPromptSubmit}
                 style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}
               >
                 <Text style={[styles.modalButtonText, { color: colors.primary }]}>
-                  {ssidEditTarget ? 'Save' : 'Add'}
+                  {ssidEditTarget ? t('save') : t('add')}
                 </Text>
               </Pressable>
             </View>
@@ -701,7 +702,7 @@ export function SettingsConnectivityScreen() {
       </Modal>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Trusted certificates</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('trustedCertificates')}</Text>
         <View style={[styles.card, dynamicStyles.card]}>
           {trustedCertEntries.length > 0 ? (
             trustedCertEntries.map(([hostname, entry], index) => {
@@ -729,16 +730,16 @@ export function SettingsConnectivityScreen() {
                         <View style={[styles.activeDot, { backgroundColor: colors.primary }]} />
                       )}
                       {isExpired && (
-                        <Text style={[styles.expiredBadge, { color: colors.red }]}>Expired</Text>
+                        <Text style={[styles.expiredBadge, { color: colors.red }]}>{t('expired')}</Text>
                       )}
                     </View>
                     <Text style={[styles.trustedCertFingerprint, { color: colors.textSecondary }]} numberOfLines={1}>
                       {entry.sha256.substring(0, 23)}...
                     </Text>
                     <Text style={[styles.trustedCertDate, { color: isExpired ? colors.red : colors.textSecondary }]}>
-                      Trusted {new Date(entry.acceptedAt).toLocaleDateString()}
+                      {t('trustedDate', { date: new Date(entry.acceptedAt).toLocaleDateString() })}
                       {entry.validTo && entry.validTo !== 'Unknown'
-                        ? `  ·  ${isExpired ? 'Expired' : 'Expires'} ${new Date(entry.validTo).toLocaleDateString()}`
+                        ? `  ·  ${isExpired ? t('expiredDate', { date: new Date(entry.validTo).toLocaleDateString() }) : t('expiresDate', { date: new Date(entry.validTo).toLocaleDateString() })}`
                         : ''}
                     </Text>
                   </View>
@@ -754,13 +755,13 @@ export function SettingsConnectivityScreen() {
             })
           ) : (
             <Text style={[styles.placeholder, dynamicStyles.placeholder]}>
-              No trusted certificates. Self-signed certificates accepted during login will appear here.
+              {t('noTrustedCertificates')}
             </Text>
           )}
           {certFetching ? (
             <View style={styles.addCertRow}>
               <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={[styles.addCertText, { color: colors.primary }]}>Fetching Certificate...</Text>
+              <Text style={[styles.addCertText, { color: colors.primary }]}>{t('fetchingCertificate')}</Text>
             </View>
           ) : (
             <Pressable
@@ -768,7 +769,7 @@ export function SettingsConnectivityScreen() {
               style={({ pressed }) => [styles.addCertRow, pressed && styles.pressed]}
             >
               <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-              <Text style={[styles.addCertText, { color: colors.primary }]}>Add Certificate</Text>
+              <Text style={[styles.addCertText, { color: colors.primary }]}>{t('addCertificate')}</Text>
             </Pressable>
           )}
         </View>
@@ -786,10 +787,10 @@ export function SettingsConnectivityScreen() {
       <Pressable style={styles.modalBackdrop} onPress={() => setCertUrlPromptVisible(false)}>
         <Pressable style={[styles.modalCard, { backgroundColor: colors.card }]} onPress={() => {}}>
           <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-            Add Certificate
+            {t('addCertificate')}
           </Text>
           <Text style={[styles.certUrlHint, { color: colors.textSecondary }]}>
-            Enter the server address to fetch its SSL certificate.
+            {t('addCertificateHint')}
           </Text>
           <TextInput
             style={[styles.modalInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.border }]}
@@ -808,13 +809,13 @@ export function SettingsConnectivityScreen() {
               onPress={() => setCertUrlPromptVisible(false)}
               style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}
             >
-              <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>{t('cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={handleFetchCertificate}
               style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}
             >
-              <Text style={[styles.modalButtonText, { color: colors.primary }]}>Fetch</Text>
+              <Text style={[styles.modalButtonText, { color: colors.primary }]}>{t('fetch')}</Text>
             </Pressable>
           </View>
         </Pressable>

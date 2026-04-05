@@ -9,6 +9,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../hooks/useTheme';
 import { cycleRepeatMode } from '../services/playerService';
@@ -21,6 +22,7 @@ const ICON_SIZE = 28;
 
 export const RepeatButton = memo(function RepeatButton() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const repeatMode = playbackSettingsStore((s) => s.repeatMode);
 
   const handlePress = useCallback(() => {
@@ -34,7 +36,7 @@ export const RepeatButton = memo(function RepeatButton() {
       onPress={handlePress}
       hitSlop={12}
       accessibilityRole="button"
-      accessibilityLabel={getAccessibilityLabel(repeatMode)}
+      accessibilityLabel={getAccessibilityLabel(repeatMode, t)}
       style={({ pressed }) => [
         styles.container,
         pressed && styles.pressed,
@@ -57,14 +59,14 @@ export const RepeatButton = memo(function RepeatButton() {
   );
 });
 
-function getAccessibilityLabel(mode: RepeatModeSetting): string {
+function getAccessibilityLabel(mode: RepeatModeSetting, t: (key: string) => string): string {
   switch (mode) {
     case 'off':
-      return 'Repeat off. Tap to repeat queue.';
+      return t('repeatOffLabel');
     case 'all':
-      return 'Repeat queue. Tap to repeat current track.';
+      return t('repeatAllLabel');
     case 'one':
-      return 'Repeat current track. Tap to turn off repeat.';
+      return t('repeatOneLabel');
   }
 }
 

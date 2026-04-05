@@ -17,6 +17,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import i18n from 'i18next';
 import { listDirectoryAsync, getDirectorySizeAsync, downloadFileAsyncWithProgress } from 'expo-async-fs';
 import { checkStorageLimit } from './storageService';
 import { beginDownload, clearDownload } from './downloadSpeedTracker';
@@ -464,7 +465,7 @@ async function downloadItem(queueItem: DownloadQueueItemSnapshot, myId: number):
         completedTracks.push({
           id: track.id,
           title: track.title ?? 'Unknown',
-          artist: track.artist ?? 'Unknown Artist',
+          artist: track.artist ?? i18n.t('unknownArtist'),
           fileName: existingFileName,
           bytes,
           duration: track.duration ?? 0,
@@ -620,7 +621,7 @@ async function downloadTrack(
     return {
       id: track.id,
       title: track.title ?? 'Unknown',
-      artist: track.artist ?? 'Unknown Artist',
+      artist: track.artist ?? i18n.t('unknownArtist'),
       fileName,
       bytes,
       duration: track.duration ?? 0,

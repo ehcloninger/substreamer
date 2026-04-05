@@ -8,6 +8,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { memo, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Pressable,
@@ -68,6 +69,7 @@ const COVER_SIZE = 300;
 const PADDING = 16;
 
 export function PlayerPanel() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
   const insets = useSafeAreaInsets();
@@ -90,11 +92,11 @@ export function PlayerPanel() {
 
   const handleClearQueue = useCallback(() => {
     alert(
-      'Clear Queue',
-      'This will stop playback and clear the queue.',
+      t('clearQueue'),
+      t('clearQueueMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: clearQueue },
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('clear'), style: 'destructive', onPress: clearQueue },
       ],
     );
   }, []);
@@ -181,7 +183,7 @@ export function PlayerPanel() {
           <View style={styles.loadingFallback}>
             <ActivityIndicator size="large" color={colors.textSecondary} />
             <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading...
+              {t('loading')}
             </Text>
           </View>
         </GradientBackground>
@@ -216,7 +218,7 @@ export function PlayerPanel() {
                 onPress={handleShareQueue}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Share queue"
+                accessibilityLabel={t('shareQueue')}
                 style={({ pressed }) => [
                   styles.queueActionButton,
                   pressed && styles.pressed,
@@ -228,7 +230,7 @@ export function PlayerPanel() {
                 onPress={handleClearQueue}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Clear queue"
+                accessibilityLabel={t('clearQueue')}
                 style={({ pressed }) => [
                   styles.queueActionButton,
                   pressed && styles.pressed,
@@ -288,6 +290,7 @@ const PanelFavoriteButton = memo(function PanelFavoriteButton({
   trackId: string;
   colors: { red: string; textSecondary: string };
 }) {
+  const { t } = useTranslation();
   const starred = useIsStarred('song', trackId);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
@@ -301,7 +304,7 @@ const PanelFavoriteButton = memo(function PanelFavoriteButton({
       disabled={offlineMode}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel={starred ? 'Remove from favorites' : 'Add to favorites'}
+      accessibilityLabel={starred ? t('removeFromFavorites') : t('addToFavorites')}
       style={({ pressed }) => [
         styles.favoriteButton,
         pressed && !offlineMode && styles.pressed,
@@ -334,6 +337,7 @@ const PanelHeader = memo(function PanelHeader({
   handleSeek,
   handleExpand,
 }: PanelHeaderProps) {
+  const { t } = useTranslation();
   const playbackState = playerStore((s) => s.playbackState);
   const position = playerStore((s) => s.position);
   const duration = playerStore((s) => s.duration);
@@ -364,7 +368,7 @@ const PanelHeader = memo(function PanelHeader({
               onPress={handleExpand}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Expand player"
+              accessibilityLabel={t('expandPlayer')}
               style={({ pressed }) => pressed && styles.pressed}
             >
               <Ionicons name="expand-outline" size={22} color={colors.textPrimary} />
@@ -400,7 +404,7 @@ const PanelHeader = memo(function PanelHeader({
                   style={[styles.trackArtist, { color: colors.textSecondary }]}
                   numberOfLines={1}
                 >
-                  {currentTrack.artist ?? 'Unknown Artist'}
+                  {currentTrack.artist ?? t('unknownArtist')}
                 </Text>
               </View>
               <PanelFavoriteButton trackId={currentTrack.id} colors={colors} />

@@ -4,6 +4,7 @@
  */
 
 import { AppState, type AppStateStatus } from 'react-native';
+import i18n from 'i18next';
 import TrackPlayer, {
   Capability,
   Event,
@@ -92,7 +93,7 @@ function childToTrack(child: Child): Track {
     id: child.id,
     url: localUri ?? getStreamUrl(child.id) ?? '',
     title: child.title,
-    artist: child.artist ?? 'Unknown Artist',
+    artist: child.artist ?? i18n.t('unknownArtist'),
     album: child.album ?? undefined,
     artwork: cachedArt ?? getCoverArtUrl(child.coverArt ?? '', 600) ?? undefined,
     duration: child.duration ?? 0,
@@ -262,7 +263,7 @@ export async function initPlayer(): Promise<void> {
 
   TrackPlayer.addEventListener(Event.PlaybackError, async (e) => {
     const message =
-      (e as { message?: string }).message ?? 'Playback error occurred';
+      (e as { message?: string }).message ?? i18n.t('playbackErrorOccurred');
     const errorPosition = (e as { position?: number }).position ?? 0;
     const store = playerStore.getState();
 
@@ -571,7 +572,7 @@ export async function playTrack(
     playbackToastStore.getState().succeed();
   } catch (e) {
     playbackToastStore.getState().fail(
-      e instanceof Error ? e.message : 'Playback error',
+      e instanceof Error ? e.message : i18n.t('playbackError'),
     );
   } finally {
     isSettingQueue = false;

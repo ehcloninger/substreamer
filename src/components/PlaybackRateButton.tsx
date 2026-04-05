@@ -8,6 +8,7 @@
 
 import { memo, useCallback } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../hooks/useTheme';
 import { cyclePlaybackRate } from '../services/playerService';
@@ -22,6 +23,7 @@ function formatRate(rate: number): string {
 
 export const PlaybackRateButton = memo(function PlaybackRateButton() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const playbackRate = playbackSettingsStore((s) => s.playbackRate);
 
   const handlePress = useCallback(() => {
@@ -36,7 +38,7 @@ export const PlaybackRateButton = memo(function PlaybackRateButton() {
       onPress={handlePress}
       hitSlop={12}
       accessibilityRole="button"
-      accessibilityLabel={`Playback speed ${playbackRate}x. Tap to change.`}
+      accessibilityLabel={t('playbackSpeedLabel', { rate: playbackRate })}
       style={({ pressed }) => [
         styles.container,
         pressed && styles.pressed,

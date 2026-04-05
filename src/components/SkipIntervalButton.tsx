@@ -12,6 +12,7 @@
 import { memo, useCallback } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Svg, { G, Path, Text as SvgText } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../hooks/useTheme';
 import { skipByInterval } from '../services/playerService';
@@ -95,6 +96,7 @@ export const SkipIntervalButton = memo(function SkipIntervalButton({
   size = 24,
 }: SkipIntervalButtonProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const interval = playbackSettingsStore((s) =>
     direction === 'forward' ? s.skipForwardInterval : s.skipBackwardInterval,
   );
@@ -105,8 +107,8 @@ export const SkipIntervalButton = memo(function SkipIntervalButton({
 
   const label =
     direction === 'forward'
-      ? `Skip forward ${interval} seconds`
-      : `Skip backward ${interval} seconds`;
+      ? t('skipForwardLabel', { interval })
+      : t('skipBackwardLabel', { interval });
 
   // Backward icon is the forward icon mirrored horizontally
   const mirror = direction === 'backward';

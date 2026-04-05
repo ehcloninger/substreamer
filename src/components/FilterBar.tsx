@@ -1,5 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DownloadButton } from './DownloadButton';
@@ -54,6 +55,7 @@ export const FilterBar = memo(function FilterBar({
 }: {
   routeName: string;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
 
   const downloadedOnly = filterBarStore((s) => s.downloadedOnly);
@@ -90,7 +92,7 @@ export const FilterBar = memo(function FilterBar({
       <View style={styles.chips}>
         {showOfflineChip && (
           <FilterChip
-            label="Offline"
+            label={t('offline')}
             icon="cloud-offline"
             active={offlineMode}
             onToggle={toggleOfflineMode}
@@ -99,7 +101,7 @@ export const FilterBar = memo(function FilterBar({
         )}
         {showDownloadedChip && (
           <FilterChip
-            label="Downloaded"
+            label={t('downloaded')}
             icon="arrow-down-circle"
             active={downloadedOnly}
             locked={offlineMode}
@@ -109,7 +111,7 @@ export const FilterBar = memo(function FilterBar({
         )}
         {showFavoritesChip && (
           <FilterChip
-            label="Favorites"
+            label={t('favorites')}
             icon="heart"
             active={favoritesOnly}
             onToggle={toggleFavorites}

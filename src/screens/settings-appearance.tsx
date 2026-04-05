@@ -2,8 +2,10 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
+import { LanguageSelector } from '../components/LanguageSelector';
 import { useTheme } from '../hooks/useTheme';
 import type { ThemePreference } from '../store/themeStore';
 import { DEFAULT_PRIMARY_COLOR } from '../store/themeStore';
@@ -15,51 +17,52 @@ import {
   type ItemLayout,
 } from '../store/layoutPreferencesStore';
 
-const THEME_OPTIONS: { value: ThemePreference; label: string; icon: 'phone-portrait-outline' | 'sunny-outline' | 'moon-outline' }[] = [
-  { value: 'system', label: 'System', icon: 'phone-portrait-outline' },
-  { value: 'light', label: 'Light', icon: 'sunny-outline' },
-  { value: 'dark', label: 'Dark', icon: 'moon-outline' },
+const THEME_OPTIONS: { value: ThemePreference; labelKey: string; icon: 'phone-portrait-outline' | 'sunny-outline' | 'moon-outline' }[] = [
+  { value: 'system', labelKey: 'themeSystem', icon: 'phone-portrait-outline' },
+  { value: 'light', labelKey: 'themeLight', icon: 'sunny-outline' },
+  { value: 'dark', labelKey: 'themeDark', icon: 'moon-outline' },
 ];
 
-const LAYOUT_ROWS: { key: 'albumLayout' | 'artistLayout' | 'playlistLayout'; label: string }[] = [
-  { key: 'albumLayout', label: 'Albums' },
-  { key: 'artistLayout', label: 'Artists' },
-  { key: 'playlistLayout', label: 'Playlists' },
+const LAYOUT_ROWS: { key: 'albumLayout' | 'artistLayout' | 'playlistLayout'; labelKey: string }[] = [
+  { key: 'albumLayout', labelKey: 'albums' },
+  { key: 'artistLayout', labelKey: 'artists' },
+  { key: 'playlistLayout', labelKey: 'playlists' },
 ];
 
-const FAV_LAYOUT_ROWS: { key: 'favSongLayout' | 'favAlbumLayout' | 'favArtistLayout'; label: string }[] = [
-  { key: 'favSongLayout', label: 'Songs' },
-  { key: 'favAlbumLayout', label: 'Albums' },
-  { key: 'favArtistLayout', label: 'Artists' },
+const FAV_LAYOUT_ROWS: { key: 'favSongLayout' | 'favAlbumLayout' | 'favArtistLayout'; labelKey: string }[] = [
+  { key: 'favSongLayout', labelKey: 'songs' },
+  { key: 'favAlbumLayout', labelKey: 'albums' },
+  { key: 'favArtistLayout', labelKey: 'artists' },
 ];
 
-const ALBUM_SORT_OPTIONS: { value: AlbumSortOrder; label: string }[] = [
-  { value: 'artist', label: 'Artist name' },
-  { value: 'title', label: 'Album title' },
+const ALBUM_SORT_OPTIONS: { value: AlbumSortOrder; labelKey: string }[] = [
+  { value: 'artist', labelKey: 'sortArtistName' },
+  { value: 'title', labelKey: 'sortAlbumTitle' },
 ];
 
-const ARTIST_ALBUM_SORT_OPTIONS: { value: ArtistAlbumSortOrder; label: string }[] = [
-  { value: 'newest', label: 'Newest first' },
-  { value: 'oldest', label: 'Oldest first' },
+const ARTIST_ALBUM_SORT_OPTIONS: { value: ArtistAlbumSortOrder; labelKey: string }[] = [
+  { value: 'newest', labelKey: 'sortNewestFirst' },
+  { value: 'oldest', labelKey: 'sortOldestFirst' },
 ];
 
-const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string; example: string }[] = [
-  { value: 'yyyy/mm/dd', label: 'Month/Day', example: '02/21' },
-  { value: 'yyyy/dd/mm', label: 'Day/Month', example: '21/02' },
+const DATE_FORMAT_OPTIONS: { value: DateFormat; labelKey: string; example: string }[] = [
+  { value: 'yyyy/mm/dd', labelKey: 'dateFormatMonthDay', example: '02/21' },
+  { value: 'yyyy/dd/mm', labelKey: 'dateFormatDayMonth', example: '21/02' },
 ];
 
-const ACCENT_COLORS: { label: string; hex: string }[] = [
-  { label: 'Blue (default)', hex: '#1D9BF0' },
-  { label: 'Red', hex: '#E91429' },
-  { label: 'Green', hex: '#00BA7C' },
-  { label: 'Orange', hex: '#FF6F00' },
-  { label: 'Purple', hex: '#7B61FF' },
-  { label: 'Pink', hex: '#F91880' },
-  { label: 'Teal', hex: '#00BCD4' },
-  { label: 'Yellow', hex: '#FFD600' },
+const ACCENT_COLORS: { labelKey: string; hex: string }[] = [
+  { labelKey: 'colorBlueDefault', hex: '#1D9BF0' },
+  { labelKey: 'colorRed', hex: '#E91429' },
+  { labelKey: 'colorGreen', hex: '#00BA7C' },
+  { labelKey: 'colorOrange', hex: '#FF6F00' },
+  { labelKey: 'colorPurple', hex: '#7B61FF' },
+  { labelKey: 'colorPink', hex: '#F91880' },
+  { labelKey: 'colorTeal', hex: '#00BCD4' },
+  { labelKey: 'colorYellow', hex: '#FFD600' },
 ];
 
 export function SettingsAppearanceScreen() {
+  const { t } = useTranslation();
   const { colors, preference, primaryColor, setThemePreference, setPrimaryColor } = useTheme();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const activePrimary = primaryColor ?? DEFAULT_PRIMARY_COLOR;
@@ -67,7 +70,8 @@ export function SettingsAppearanceScreen() {
   const [sortOrderOpen, setSortOrderOpen] = useState(false);
   const [artistAlbumSortOpen, setArtistAlbumSortOpen] = useState(false);
   const [dateFormatOpen, setDateFormatOpen] = useState(false);
-  const activeAccentLabel = ACCENT_COLORS.find((c) => c.hex === activePrimary)?.label ?? 'Custom';
+  const activeAccentMatch = ACCENT_COLORS.find((c) => c.hex === activePrimary);
+  const activeAccentLabel = activeAccentMatch ? t(activeAccentMatch.labelKey) : t('custom');
 
   const handleAccentSelect = useCallback(
     (hex: string) => {
@@ -144,7 +148,7 @@ export function SettingsAppearanceScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Appearance</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('appearance')}</Text>
         <View style={styles.themeCard}>
           {THEME_OPTIONS.map((opt) => {
             const isSelected = preference === opt.value;
@@ -165,7 +169,7 @@ export function SettingsAppearanceScreen() {
                     color={isSelected ? colors.primary : colors.textSecondary}
                   />
                   <Text style={[styles.themeRowLabel, dynamicStyles.themeRowText]}>
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </Text>
                 </View>
                 {isSelected && (
@@ -178,7 +182,7 @@ export function SettingsAppearanceScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Accent color</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('accentColor')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setAccentOpen((prev) => !prev)}
@@ -216,7 +220,7 @@ export function SettingsAppearanceScreen() {
                     <View style={styles.accentChip}>
                       <View style={[styles.chipDot, { backgroundColor: c.hex }]} />
                       <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
-                        {c.label}
+                        {t(c.labelKey)}
                       </Text>
                     </View>
                     {isActive && (
@@ -237,7 +241,7 @@ export function SettingsAppearanceScreen() {
                   ]}
                 >
                   <Text style={[styles.resetButtonText, { color: colors.textSecondary }]}>
-                    Reset to default
+                    {t('resetToDefault')}
                   </Text>
                 </Pressable>
               )}
@@ -247,7 +251,12 @@ export function SettingsAppearanceScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Album sort order</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('language')}</Text>
+        <LanguageSelector />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('albumSortOrder')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setSortOrderOpen((prev) => !prev)}
@@ -257,7 +266,7 @@ export function SettingsAppearanceScreen() {
             ]}
           >
             <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
-              {ALBUM_SORT_OPTIONS.find((o) => o.value === albumSortOrder)?.label ?? 'Artist name'}
+              {t(ALBUM_SORT_OPTIONS.find((o) => o.value === albumSortOrder)?.labelKey ?? 'sortArtistName')}
             </Text>
             <Ionicons
               name={sortOrderOpen ? 'chevron-up' : 'chevron-down'}
@@ -283,7 +292,7 @@ export function SettingsAppearanceScreen() {
                     ]}
                   >
                     <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                     {isActive && (
                       <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -297,7 +306,7 @@ export function SettingsAppearanceScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Artist album sort order</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('artistAlbumSortOrder')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setArtistAlbumSortOpen((prev) => !prev)}
@@ -307,7 +316,7 @@ export function SettingsAppearanceScreen() {
             ]}
           >
             <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
-              {ARTIST_ALBUM_SORT_OPTIONS.find((o) => o.value === artistAlbumSortOrder)?.label ?? 'Newest first'}
+              {t(ARTIST_ALBUM_SORT_OPTIONS.find((o) => o.value === artistAlbumSortOrder)?.labelKey ?? 'sortNewestFirst')}
             </Text>
             <Ionicons
               name={artistAlbumSortOpen ? 'chevron-up' : 'chevron-down'}
@@ -333,7 +342,7 @@ export function SettingsAppearanceScreen() {
                     ]}
                   >
                     <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                     {isActive && (
                       <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -347,7 +356,7 @@ export function SettingsAppearanceScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Date format</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('dateFormat')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setDateFormatOpen((prev) => !prev)}
@@ -357,7 +366,7 @@ export function SettingsAppearanceScreen() {
             ]}
           >
             <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
-              {DATE_FORMAT_OPTIONS.find((o) => o.value === dateFormat)!.label}{' '}
+              {t(DATE_FORMAT_OPTIONS.find((o) => o.value === dateFormat)!.labelKey)}{' '}
               <Text style={{ color: colors.textSecondary }}>
                 ({DATE_FORMAT_OPTIONS.find((o) => o.value === dateFormat)!.example})
               </Text>
@@ -386,7 +395,7 @@ export function SettingsAppearanceScreen() {
                     ]}
                   >
                     <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
-                      {opt.label}{' '}
+                      {t(opt.labelKey)}{' '}
                       <Text style={{ color: colors.textSecondary }}>({opt.example})</Text>
                     </Text>
                     {isActive && (
@@ -401,7 +410,7 @@ export function SettingsAppearanceScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Library layout</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('libraryLayout')}</Text>
         <View style={styles.themeCard}>
           {LAYOUT_ROWS.map((row) => {
             const currentValue = layoutValues[row.key];
@@ -411,7 +420,7 @@ export function SettingsAppearanceScreen() {
                 style={[styles.layoutRow, dynamicStyles.layoutRow]}
               >
                 <Text style={[styles.layoutRowLabel, dynamicStyles.layoutRowLabel]}>
-                  {row.label}
+                  {t(row.labelKey)}
                 </Text>
                 <View style={styles.layoutIcons}>
                   <Pressable
@@ -444,7 +453,7 @@ export function SettingsAppearanceScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Favorites layout</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('favoritesLayout')}</Text>
         <View style={styles.themeCard}>
           {FAV_LAYOUT_ROWS.map((row) => {
             const currentValue = favLayoutValues[row.key];
@@ -454,7 +463,7 @@ export function SettingsAppearanceScreen() {
                 style={[styles.layoutRow, dynamicStyles.layoutRow]}
               >
                 <Text style={[styles.layoutRowLabel, dynamicStyles.layoutRowLabel]}>
-                  {row.label}
+                  {t(row.labelKey)}
                 </Text>
                 <View style={styles.layoutIcons}>
                   <Pressable
@@ -485,6 +494,7 @@ export function SettingsAppearanceScreen() {
           })}
         </View>
       </View>
+
 
     </ScrollView>
     </GradientBackground>

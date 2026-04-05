@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { useGridColumns, getGridItemPadding, GRID_GAP, LIST_PADDING } from '../hooks/useGridColumns';
@@ -62,13 +63,16 @@ export function PlaylistListView({
   onRefresh,
   refreshing = false,
   showAlphabetScroller = false,
-  emptyMessage = 'No playlists',
-  emptySubtitle = 'Playlists from your server will appear here. Pull to refresh to check for updates.',
+  emptyMessage,
+  emptySubtitle,
   emptyIcon = 'list-outline',
   scrollToTopTrigger,
   contentInsetTop = 0,
 }: PlaylistListViewProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
+  const resolvedEmptyMessage = emptyMessage ?? t('noPlaylists');
+  const resolvedEmptySubtitle = emptySubtitle ?? t('playlistsEmptySubtitle');
   const gridColumns = useGridColumns();
   const listRef = useRef<FlashListRef<Playlist>>(null);
   const scrollY = useSharedValue(0);
@@ -112,11 +116,11 @@ export function PlaylistListView({
     () => (
       <EmptyState
         icon={emptyIcon as any}
-        title={emptyMessage}
-        subtitle={emptySubtitle}
+        title={resolvedEmptyMessage}
+        subtitle={resolvedEmptySubtitle}
       />
     ),
-    [emptyIcon, emptyMessage, emptySubtitle]
+    [emptyIcon, resolvedEmptyMessage, resolvedEmptySubtitle]
   );
 
   /* ---- Alphabet scroller support ---- */

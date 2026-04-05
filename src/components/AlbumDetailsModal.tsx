@@ -5,6 +5,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BottomSheet } from './BottomSheet';
 import { CachedImage } from './CachedImage';
@@ -89,57 +90,58 @@ function formatDate(date: Date | string): string {
 
 export function AlbumDetailsModal({ album, visible, onClose }: AlbumDetailsModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const rows = useMemo(() => {
     const result: { label: string; value: string }[] = [];
 
     const artist = album.artist ?? album.displayArtist;
-    if (artist) result.push({ label: 'Artist', value: artist });
+    if (artist) result.push({ label: t('detailArtist'), value: artist });
 
     if (album.year != null && album.year > 0) {
-      result.push({ label: 'Year', value: String(album.year) });
+      result.push({ label: t('detailYear'), value: String(album.year) });
     }
 
     const genreNames = getGenreNames(album);
     const genre = genreNames.length > 0 ? genreNames.join(', ') : null;
-    if (genre) result.push({ label: 'Genre', value: genre });
+    if (genre) result.push({ label: t('detailGenre'), value: genre });
 
-    result.push({ label: 'Tracks', value: String(album.songCount) });
+    result.push({ label: t('detailTracks'), value: String(album.songCount) });
 
     const songs = hasSongs(album) ? album.song ?? [] : [];
 
     if (songs.length > 0) {
       const discCount = getDiscCount(songs);
       if (discCount > 1) {
-        result.push({ label: 'Discs', value: String(discCount) });
+        result.push({ label: t('detailDiscs'), value: String(discCount) });
       }
     }
 
     if (album.duration > 0) {
-      result.push({ label: 'Duration', value: formatCompactDuration(album.duration) });
+      result.push({ label: t('detailDuration'), value: formatCompactDuration(album.duration) });
     }
 
     if (album.playCount != null) {
-      result.push({ label: 'Play Count', value: String(album.playCount) });
+      result.push({ label: t('detailPlayCount'), value: String(album.playCount) });
     }
 
     if (songs.length > 0) {
       const format = getMostCommonFormat(songs);
-      if (format) result.push({ label: 'Format', value: format });
+      if (format) result.push({ label: t('detailFormat'), value: format });
 
       const bitrate = getAverageBitrate(songs);
-      if (bitrate != null) result.push({ label: 'Bitrate', value: `${bitrate} kbps` });
+      if (bitrate != null) result.push({ label: t('detailBitrate'), value: `${bitrate} kbps` });
 
       const totalSize = getTotalSize(songs);
-      if (totalSize != null) result.push({ label: 'Total Size', value: formatSize(totalSize) });
+      if (totalSize != null) result.push({ label: t('detailTotalSize'), value: formatSize(totalSize) });
     }
 
     if (album.created) {
-      result.push({ label: 'Added', value: formatDate(album.created) });
+      result.push({ label: t('detailAdded'), value: formatDate(album.created) });
     }
 
     return result;
-  }, [album]);
+  }, [album, t]);
 
   return (
     <BottomSheet visible={visible} onClose={onClose} maxHeight="60%">
@@ -149,7 +151,7 @@ export function AlbumDetailsModal({ album, visible, onClose }: AlbumDetailsModal
         )}
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Album Details
+            {t('albumDetails')}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
             {album.name}

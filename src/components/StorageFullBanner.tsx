@@ -9,6 +9,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
 import Animated, {
   Easing,
@@ -40,6 +41,7 @@ const LAYOUT_ANIM_EXPAND = LayoutAnimation.create(EXPAND_MS, LayoutAnimation.Typ
 const LAYOUT_ANIM_COLLAPSE = LayoutAnimation.create(COLLAPSE_MS, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity);
 
 export const StorageFullBanner = memo(function StorageFullBanner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const isStorageFull = storageLimitStore((s) => s.isStorageFull);
   const prevVisible = useRef(isStorageFull);
@@ -96,7 +98,7 @@ export const StorageFullBanner = memo(function StorageFullBanner() {
           <Animated.View style={[styles.capsule, capsuleStyle]}>
             <Ionicons name="alert-circle" size={16} color={ERROR_RED} />
             <Text style={styles.label} numberOfLines={1}>
-              Storage limit reached
+              {t('storageLimitReached')}
             </Text>
           </Animated.View>
         </Pressable>

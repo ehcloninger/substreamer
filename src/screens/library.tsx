@@ -1,6 +1,7 @@
 import { useIsFocused } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '../components/EmptyState';
 import { SegmentControl } from '../components/SegmentControl';
@@ -17,10 +18,10 @@ import { PlaylistListScreen } from './playlist-list';
 
 type LibrarySegment = 'albums' | 'artists' | 'playlists';
 
-const SEGMENTS = [
-  { key: 'albums', label: 'Albums' },
-  { key: 'artists', label: 'Artists' },
-  { key: 'playlists', label: 'Playlists' },
+const SEGMENT_KEYS = [
+  { key: 'albums', labelKey: 'albums' },
+  { key: 'artists', labelKey: 'artists' },
+  { key: 'playlists', labelKey: 'playlists' },
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -28,9 +29,15 @@ const SEGMENTS = [
 /* ------------------------------------------------------------------ */
 
 export function LibraryScreen() {
+  const { t } = useTranslation();
   const isFocused = useIsFocused();
   const headerHeight = searchStore((s) => s.headerHeight);
   const [activeSegment, setActiveSegment] = useState<LibrarySegment>('albums');
+
+  const segments = useMemo(
+    () => SEGMENT_KEYS.map((s) => ({ key: s.key, label: t(s.labelKey) })),
+    [t],
+  );
 
   const albumLayout = layoutPreferencesStore((s) => s.albumLayout);
   const artistLayout = layoutPreferencesStore((s) => s.artistLayout);
@@ -103,8 +110,8 @@ export function LibraryScreen() {
             <View style={[styles.emptyContainer, { paddingTop: contentInsetTop }]}>
               <EmptyState
                 icon="cloud-offline-outline"
-                title="Not available offline"
-                subtitle="Artists are not available in offline mode"
+                title={t('notAvailableOffline')}
+                subtitle={t('artistsNotAvailableOffline')}
               />
             </View>
           ) : (
@@ -125,7 +132,7 @@ export function LibraryScreen() {
         )}
       </View>
       <View style={[styles.segmentOverlay, { top: headerHeight }]}>
-        <SegmentControl segments={SEGMENTS} selected={activeSegment} onSelect={setActiveSegment} />
+        <SegmentControl segments={segments} selected={activeSegment} onSelect={setActiveSegment} />
       </View>
     </View>
   );

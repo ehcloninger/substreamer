@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -36,6 +37,7 @@ const PLACEHOLDER_BG = '#969696';
 
 export function MiniPlayer() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const currentTrack = playerStore((s) => s.currentTrack);
   const playbackState = playerStore((s) => s.playbackState);
   const position = playerStore((s) => s.position);
@@ -184,11 +186,11 @@ export function MiniPlayer() {
         {/* Track info */}
         <View style={styles.info}>
           <MarqueeText style={marqueeStyle}>
-            {queueLoading ? 'Loading...' : currentTrack.title}
+            {queueLoading ? t('loading') : currentTrack.title}
           </MarqueeText>
           {!queueLoading && (
             <Text style={[styles.artist, { color: colors.textSecondary }]} numberOfLines={1}>
-              {currentTrack.artist ?? 'Unknown Artist'}
+              {currentTrack.artist ?? t('unknownArtist')}
             </Text>
           )}
         </View>

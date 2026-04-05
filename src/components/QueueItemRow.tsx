@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { CachedImage } from './CachedImage';
 import { DownloadedIcon } from './DownloadedIcon';
@@ -56,6 +57,7 @@ export const QueueItemRow = memo(function QueueItemRow({
     onLongPress?.(track);
   }, [onLongPress, track]);
 
+  const { t } = useTranslation();
   const starred = useIsStarred('song', track.id);
   const downloaded = useDownloadStatus('song', track.id) === 'complete';
   const rating = useRating(track.id, track.userRating);
@@ -83,12 +85,12 @@ export const QueueItemRow = memo(function QueueItemRow({
       {
         icon: 'trash-outline',
         color: colors.red,
-        label: 'Remove',
+        label: t('remove'),
         onPress: handleRemove,
         removesRow: true,
       },
     ],
-    [colors.red, handleRemove],
+    [colors.red, handleRemove, t],
   );
 
   const leftActions: SwipeAction[] = useMemo(
@@ -100,17 +102,17 @@ export const QueueItemRow = memo(function QueueItemRow({
               icon: 'playlist-plus',
               iconFamily: 'mdi' as const,
               color: colors.primary,
-              label: 'Playlist',
+              label: t('playlist'),
               onPress: handleAddToPlaylist,
             },
             {
               icon: starred ? 'heart' : 'heart-outline',
               color: colors.red,
-              label: starred ? 'Remove' : 'Add',
+              label: starred ? t('remove') : t('add'),
               onPress: handleToggleStar,
             },
           ],
-    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode],
+    [starred, colors.red, colors.primary, handleToggleStar, handleAddToPlaylist, offlineMode, t],
   );
 
   return (

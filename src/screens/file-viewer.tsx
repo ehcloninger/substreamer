@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { useTheme } from '../hooks/useTheme';
@@ -38,6 +39,7 @@ export function isViewableFile(name: string): boolean {
 
 export function FileViewerScreen({ uri, name }: { uri: string; name: string }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function FileViewerScreen({ uri, name }: { uri: string; name: string }) {
         if (!cancelled) setContent(text);
       } catch (e) {
         if (!cancelled)
-          setError(e instanceof Error ? e.message : 'Failed to read file');
+          setError(e instanceof Error ? e.message : t('failedToReadFile'));
       }
     })();
     return () => {
@@ -72,7 +74,7 @@ export function FileViewerScreen({ uri, name }: { uri: string; name: string }) {
       <Stack.Screen
         options={{
           title: name,
-          headerBackTitle: 'Back',
+          headerBackTitle: t('back'),
           headerRight: () =>
             content != null ? (
               <Ionicons
@@ -104,7 +106,7 @@ export function FileViewerScreen({ uri, name }: { uri: string; name: string }) {
         ) : content.length === 0 ? (
           <View style={styles.center}>
             <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-              File is empty
+              {t('fileIsEmpty')}
             </Text>
           </View>
         ) : (

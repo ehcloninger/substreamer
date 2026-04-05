@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Pressable,
@@ -233,6 +234,7 @@ export const GenreChipSection = memo(function GenreChipSection({
   genreCounts,
   colors,
 }: GenreChipSectionProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const serverGenres = genreStore((s) => s.genres);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
@@ -284,7 +286,7 @@ export const GenreChipSection = memo(function GenreChipSection({
             style={({ pressed }) => [{ flex: 1 }, pressed && styles.headerPressed]}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Open Tuned In"
+            accessibilityLabel={t('openTunedIn')}
           >
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               Tuned In

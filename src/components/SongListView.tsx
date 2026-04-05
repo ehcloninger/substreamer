@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { useGridColumns, getGridItemPadding, GRID_GAP, LIST_PADDING } from '../hooks/useGridColumns';
@@ -60,14 +61,17 @@ export function SongListView({
   error = null,
   onRefresh,
   refreshing = false,
-  emptyMessage = 'No songs found',
-  emptySubtitle = 'Try adjusting your filters, or pull to refresh',
+  emptyMessage,
+  emptySubtitle,
   emptyIcon,
   scrollToTopTrigger,
   contentInsetTop = 0,
   listHeaderExtra,
 }: SongListViewProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
+  const resolvedEmptyMessage = emptyMessage ?? t('noSongsFound');
+  const resolvedEmptySubtitle = emptySubtitle ?? t('tryAdjustingFilters');
   const gridColumns = useGridColumns();
   const scrollY = useSharedValue(0);
 
@@ -112,11 +116,11 @@ export function SongListView({
     () => (
       <EmptyState
         icon={(emptyIcon as any) ?? 'musical-notes-outline'}
-        title={emptyMessage}
-        subtitle={emptySubtitle}
+        title={resolvedEmptyMessage}
+        subtitle={resolvedEmptySubtitle}
       />
     ),
-    [emptyIcon, emptyMessage, emptySubtitle]
+    [emptyIcon, resolvedEmptyMessage, resolvedEmptySubtitle]
   );
 
   if (loading && songs.length === 0) {

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { useTheme } from '../hooks/useTheme';
@@ -13,21 +14,22 @@ import {
   type StreamFormat,
 } from '../store/playbackSettingsStore';
 
-const BITRATE_OPTIONS: { value: MaxBitRate; label: string }[] = [
-  { value: 64, label: '64 kbps' },
-  { value: 128, label: '128 kbps' },
-  { value: 192, label: '192 kbps' },
-  { value: 256, label: '256 kbps' },
-  { value: 320, label: '320 kbps' },
-  { value: null, label: 'No limit' },
+const BITRATE_OPTIONS: { value: MaxBitRate; labelKey: string }[] = [
+  { value: 64, labelKey: 'bitrate64' },
+  { value: 128, labelKey: 'bitrate128' },
+  { value: 192, labelKey: 'bitrate192' },
+  { value: 256, labelKey: 'bitrate256' },
+  { value: 320, labelKey: 'bitrate320' },
+  { value: null, labelKey: 'bitrateNoLimit' },
 ];
 
-const FORMAT_OPTIONS: { value: StreamFormat; label: string }[] = [
-  { value: 'raw', label: 'Original' },
-  { value: 'mp3', label: 'MP3' },
+const FORMAT_OPTIONS: { value: StreamFormat; labelKey: string }[] = [
+  { value: 'raw', labelKey: 'formatOriginal' },
+  { value: 'mp3', labelKey: 'formatMp3' },
 ];
 
 export function SettingsAudioQualityScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
@@ -52,12 +54,12 @@ export function SettingsAudioQualityScreen() {
 
   const handleResetDefaults = useCallback(() => {
     alert(
-      'Reset to Defaults',
-      'This will reset all audio quality settings to their default values. Continue?',
+      t('resetToDefaults'),
+      t('resetAudioQualityMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Reset',
+          text: t('reset'),
           style: 'destructive',
           onPress: () => {
             setMaxBitRate(null);
@@ -92,7 +94,7 @@ export function SettingsAudioQualityScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Streaming</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('streaming')}</Text>
         <View style={[styles.dropdown, { backgroundColor: colors.card }]}>
           {/* Max bitrate dropdown */}
           <Pressable
@@ -103,10 +105,10 @@ export function SettingsAudioQualityScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Max bitrate</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('maxBitrate')}</Text>
             <View style={styles.dropdownRight}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {BITRATE_OPTIONS.find((o) => o.value === maxBitRate)?.label ?? 'No limit'}
+                {t(BITRATE_OPTIONS.find((o) => o.value === maxBitRate)?.labelKey ?? 'bitrateNoLimit')}
               </Text>
               <Ionicons
                 name={bitrateOpen ? 'chevron-up' : 'chevron-down'}
@@ -133,7 +135,7 @@ export function SettingsAudioQualityScreen() {
                     ]}
                   >
                     <Text style={[styles.label, { color: colors.textPrimary }]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                     {isActive && (
                       <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -153,10 +155,10 @@ export function SettingsAudioQualityScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Format</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('format')}</Text>
             <View style={styles.dropdownRight}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {FORMAT_OPTIONS.find((o) => o.value === streamFormat)?.label ?? 'Original'}
+                {t(FORMAT_OPTIONS.find((o) => o.value === streamFormat)?.labelKey ?? 'formatOriginal')}
               </Text>
               <Ionicons
                 name={formatOpen ? 'chevron-up' : 'chevron-down'}
@@ -183,7 +185,7 @@ export function SettingsAudioQualityScreen() {
                     ]}
                   >
                     <Text style={[styles.label, { color: colors.textPrimary }]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                     {isActive && (
                       <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -200,7 +202,7 @@ export function SettingsAudioQualityScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Downloading</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('downloading')}</Text>
         <View style={[styles.dropdown, { backgroundColor: colors.card }]}>
           {/* Download max bitrate dropdown */}
           <Pressable
@@ -211,10 +213,10 @@ export function SettingsAudioQualityScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Max bitrate</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('maxBitrate')}</Text>
             <View style={styles.dropdownRight}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {BITRATE_OPTIONS.find((o) => o.value === downloadMaxBitRate)?.label ?? 'No limit'}
+                {t(BITRATE_OPTIONS.find((o) => o.value === downloadMaxBitRate)?.labelKey ?? 'bitrateNoLimit')}
               </Text>
               <Ionicons
                 name={dlBitrateOpen ? 'chevron-up' : 'chevron-down'}
@@ -241,7 +243,7 @@ export function SettingsAudioQualityScreen() {
                     ]}
                   >
                     <Text style={[styles.label, { color: colors.textPrimary }]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                     {isActive && (
                       <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -260,10 +262,10 @@ export function SettingsAudioQualityScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Format</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('format')}</Text>
             <View style={styles.dropdownRight}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {FORMAT_OPTIONS.find((o) => o.value === downloadFormat)?.label ?? 'Original'}
+                {t(FORMAT_OPTIONS.find((o) => o.value === downloadFormat)?.labelKey ?? 'formatOriginal')}
               </Text>
               <Ionicons
                 name={dlFormatOpen ? 'chevron-up' : 'chevron-down'}
@@ -290,7 +292,7 @@ export function SettingsAudioQualityScreen() {
                     ]}
                   >
                     <Text style={[styles.label, { color: colors.textPrimary }]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                     {isActive && (
                       <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -314,7 +316,7 @@ export function SettingsAudioQualityScreen() {
         >
           <Ionicons name="refresh-outline" size={16} color={colors.textPrimary} />
           <Text style={[styles.resetButtonText, { color: colors.textPrimary }]}>
-            Reset to defaults
+            {t('resetToDefaults')}
           </Text>
         </Pressable>
       )}

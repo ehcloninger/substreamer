@@ -12,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { listDirectoryAsync } from 'expo-async-fs';
 import { EmptyState } from '../components/EmptyState';
@@ -20,14 +21,14 @@ import { useTheme } from '../hooks/useTheme';
 import { isViewableFile } from './file-viewer';
 
 interface RootEntry {
-  label: string;
+  labelKey: string;
   directory: Directory;
 }
 
 const ROOTS: RootEntry[] = [
-  { label: 'Document', directory: Paths.document },
-  { label: 'Cache', directory: Paths.cache },
-  { label: 'Bundle', directory: Paths.bundle },
+  { labelKey: 'documentDirectory', directory: Paths.document },
+  { labelKey: 'cacheDirectory', directory: Paths.cache },
+  { labelKey: 'bundleDirectory', directory: Paths.bundle },
 ];
 
 type Entry = {
@@ -78,6 +79,7 @@ async function listDirectoryEntries(dir: Directory): Promise<Entry[]> {
 
 export function FileExplorerScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const [path, setPath] = useState<string[] | null>(null);
@@ -111,8 +113,8 @@ export function FileExplorerScreen() {
     if (!path) return '';
     const root = ROOTS[Number(path[0])];
     if (!root) return '';
-    return [root.label, ...path.slice(1)].join('/');
-  }, [path]);
+    return [t(root.labelKey), ...path.slice(1)].join('/');
+  }, [path, t]);
 
   const handleBack = useCallback(() => {
     if (!path) return;
@@ -216,7 +218,7 @@ export function FileExplorerScreen() {
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             {ROOTS.map((root, index) => (
               <Pressable
-                key={root.label}
+                key={root.labelKey}
                 onPress={() => handleRootPress(index)}
                 style={({ pressed }) => [
                   styles.row,
@@ -235,7 +237,7 @@ export function FileExplorerScreen() {
                 />
                 <View style={styles.rootText}>
                   <Text style={[styles.name, { color: colors.textPrimary }]}>
-                    {root.label}
+                    {t(root.labelKey)}
                   </Text>
                   <Text
                     style={[styles.subtitle, { color: colors.textSecondary }]}
@@ -264,7 +266,7 @@ export function FileExplorerScreen() {
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : entries && entries.length === 0 ? (
-        <EmptyState icon="folder-open-outline" title="Empty directory" subtitle="This directory contains no files or folders" />
+        <EmptyState icon="folder-open-outline" title={t('emptyDirectory')} subtitle={t('emptyDirectorySubtitle')} />
       ) : (
         <FlatList
           data={entries}

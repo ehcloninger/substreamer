@@ -8,6 +8,7 @@ module.exports = {
         '<rootDir>/src/**/__tests__/**/*.(test|spec).[jt]s?(x)',
       ],
       moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+      setupFiles: ['<rootDir>/src/test-utils/i18nSetup.ts'],
     },
     {
       preset: 'jest-expo/android',
@@ -17,6 +18,7 @@ module.exports = {
         '<rootDir>/src/**/__tests__/**/*.(test|spec).[jt]s?(x)',
       ],
       moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+      setupFiles: ['<rootDir>/src/test-utils/i18nSetup.ts'],
     },
   ],
   collectCoverageFrom: [

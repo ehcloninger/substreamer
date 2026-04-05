@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '../components/EmptyState';
 import { GradientBackground } from '../components/GradientBackground';
@@ -47,6 +48,7 @@ const CacheRow = memo(function CacheRow({
   onRefresh: (coverArtId: string) => void;
   onDelete: (coverArtId: string) => void;
 }) {
+  const { t } = useTranslation();
   const thumbUri = entry.files[0]?.uri;
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
@@ -59,13 +61,13 @@ const CacheRow = memo(function CacheRow({
   }, [entry.coverArtId, onRefresh]);
 
   const rightActions: SwipeAction[] = useMemo(
-    () => [{ icon: 'trash-outline' as const, color: colors.red, label: 'Delete', onPress: handleDelete }],
-    [colors.red, handleDelete],
+    () => [{ icon: 'trash-outline' as const, color: colors.red, label: t('delete'), onPress: handleDelete }],
+    [colors.red, handleDelete, t],
   );
 
   const leftActions: SwipeAction[] = useMemo(
-    () => offlineMode ? [] : [{ icon: 'refresh-outline' as const, color: colors.primary, label: 'Refresh', onPress: handleRefreshAction }],
-    [offlineMode, colors.primary, handleRefreshAction],
+    () => offlineMode ? [] : [{ icon: 'refresh-outline' as const, color: colors.primary, label: t('refresh'), onPress: handleRefreshAction }],
+    [offlineMode, colors.primary, handleRefreshAction, t],
   );
 
   return (
@@ -98,17 +100,17 @@ const CacheRow = memo(function CacheRow({
             ))}
             {status === 'refreshing' && (
               <Text style={[styles.statusText, { color: colors.primary }]}>
-                Downloading…
+                {t('downloadingEllipsis')}
               </Text>
             )}
             {status === 'success' && (
               <Text style={[styles.statusText, { color: '#00BA7C' }]}>
-                Refreshed successfully
+                {t('refreshedSuccessfully')}
               </Text>
             )}
             {status === 'error' && (
               <Text style={[styles.statusText, { color: colors.red }]}>
-                Refresh failed
+                {t('refreshFailed')}
               </Text>
             )}
           </View>
@@ -123,6 +125,7 @@ const CacheRow = memo(function CacheRow({
 
 export function ImageCacheBrowserScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { alert, alertProps } = useThemedAlert();
   const transitionComplete = useTransitionComplete();
@@ -133,12 +136,12 @@ export function ImageCacheBrowserScreen() {
 
   const handleClearAll = useCallback(() => {
     alert(
-      'Clear Image Cache',
-      'Delete all cached images? They will be re-downloaded as you browse.',
+      t('clearImageCache'),
+      t('clearImageCacheConfirmMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear All',
+          text: t('clearAll'),
           style: 'destructive',
           onPress: async () => {
             await clearImageCache();
@@ -147,7 +150,7 @@ export function ImageCacheBrowserScreen() {
         },
       ],
     );
-  }, [alert]);
+  }, [alert, t]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -158,7 +161,7 @@ export function ImageCacheBrowserScreen() {
               hitSlop={8}
               style={({ pressed }) => pressed && styles.pressed}
             >
-              <Text style={[styles.clearButton, { color: colors.primary }]}>Clear</Text>
+              <Text style={[styles.clearButton, { color: colors.primary }]}>{t('clear')}</Text>
             </Pressable>
           )
         : undefined,
@@ -234,12 +237,12 @@ export function ImageCacheBrowserScreen() {
   const handleDelete = useCallback(
     (coverArtId: string) => {
       alert(
-        'Delete Cached Image',
-        'Remove all cached variants for this image?\n\nThis may affect offline access to your music.',
+        t('deleteCachedImage'),
+        t('deleteCachedImageMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('delete'),
             style: 'destructive',
             onPress: async () => {
               await deleteCachedImage(coverArtId);
@@ -276,8 +279,8 @@ export function ImageCacheBrowserScreen() {
   );
 
   const isFiltered = filter.trim().length > 0;
-  const emptyMessage = isFiltered ? 'No matching images' : 'No cached images';
-  const emptySubtitle = isFiltered ? undefined : 'Images are cached automatically as you browse';
+  const emptyMessage = isFiltered ? t('noMatchingImages') : t('noCachedImages');
+  const emptySubtitle = isFiltered ? undefined : t('imagesCachedAutomatically');
 
   const listEmpty = useMemo(
     () =>
@@ -298,7 +301,7 @@ export function ImageCacheBrowserScreen() {
           <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.filterIcon} />
           <TextInput
             style={[styles.filterInput, { color: colors.textPrimary }]}
-            placeholder="Filter..."
+            placeholder={t('filterPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={filter}
             onChangeText={handleFilterChange}

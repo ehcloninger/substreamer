@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AlbumRow } from '../components/AlbumRow';
 import { EmptyState } from '../components/EmptyState';
@@ -36,7 +37,7 @@ type SectionItem =
   | { type: 'song'; data: Child };
 
 interface ResultSection {
-  title: string;
+  titleKey: string;
   data: SectionItem[];
 }
 
@@ -46,6 +47,7 @@ interface ResultSection {
 
 export function SearchScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const isFocused = useIsFocused();
   const headerHeight = searchStore((s) => s.headerHeight);
 
@@ -114,19 +116,19 @@ export function SearchScreen() {
   const sections: ResultSection[] = [];
   if (filtered.artists.length > 0) {
     sections.push({
-      title: 'Artists',
+      titleKey: 'artists',
       data: filtered.artists.map((a) => ({ type: 'artist' as const, data: a })),
     });
   }
   if (filtered.albums.length > 0) {
     sections.push({
-      title: 'Albums',
+      titleKey: 'albums',
       data: filtered.albums.map((a) => ({ type: 'album' as const, data: a })),
     });
   }
   if (filtered.songs.length > 0) {
     sections.push({
-      title: 'Songs',
+      titleKey: 'songs',
       data: filtered.songs.map((s) => ({ type: 'song' as const, data: s })),
     });
   }
@@ -164,10 +166,10 @@ export function SearchScreen() {
   const renderSectionHeader = useCallback(
     ({ section }: { section: ResultSection }) => (
       <Text style={[styles.sectionTitle, { color: colors.label }]}>
-        {section.title}
+        {t(section.titleKey)}
       </Text>
     ),
-    [colors.label]
+    [colors.label, t]
   );
 
   const keyExtractor = useCallback(
@@ -179,14 +181,14 @@ export function SearchScreen() {
     const emptyQuery = !query.trim();
     const title = emptyQuery
       ? offlineMode
-        ? 'Search downloaded music'
-        : 'Search for music'
-      : 'No results found';
+        ? t('searchDownloadedMusic')
+        : t('searchForMusic')
+      : t('noResultsFound');
     const subtitle = emptyQuery
       ? offlineMode
-        ? 'Find songs and albums in your downloaded music'
-        : 'Find songs, albums, and artists'
-      : `No results for "${query}"`;
+        ? t('findDownloadedMusic')
+        : t('findMusic')
+      : t('noResultsFor', { query });
 
     return (
       <View style={[styles.container, { paddingTop: headerHeight }]}>

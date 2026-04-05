@@ -12,6 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Pressable,
@@ -85,6 +86,7 @@ interface ExpandedPlayerViewProps {
 export function ExpandedPlayerView({
   expandProgress,
 }: ExpandedPlayerViewProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { alert, alertProps } = useThemedAlert();
   const insets = useSafeAreaInsets();
@@ -240,11 +242,11 @@ export function ExpandedPlayerView({
 
   const handleClearQueue = useCallback(() => {
     alert(
-      'Clear Queue',
-      'This will stop playback and clear the queue.',
+      t('clearQueue'),
+      t('clearQueueMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: clearQueue },
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('clear'), style: 'destructive', onPress: clearQueue },
       ],
     );
   }, []);
@@ -360,7 +362,7 @@ export function ExpandedPlayerView({
               onPress={handleCollapse}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Collapse player"
+              accessibilityLabel={t('collapsePlayer')}
               style={({ pressed }) => [styles.collapseButton, pressed && styles.pressed]}
             >
               <Ionicons name="contract-outline" size={22} color={colors.textPrimary} />
@@ -417,7 +419,7 @@ export function ExpandedPlayerView({
                   style={[styles.trackArtist, { color: colors.textSecondary }]}
                   numberOfLines={1}
                 >
-                  {currentTrack.artist ?? 'Unknown Artist'}
+                  {currentTrack.artist ?? t('unknownArtist')}
                 </Text>
                 {albumLine && (
                   <Text
@@ -529,7 +531,7 @@ export function ExpandedPlayerView({
                         onPress={handleShareQueue}
                         hitSlop={8}
                         accessibilityRole="button"
-                        accessibilityLabel="Share queue"
+                        accessibilityLabel={t('shareQueue')}
                         style={({ pressed }) => [
                           styles.queueActionButton,
                           pressed && styles.pressed,
@@ -541,7 +543,7 @@ export function ExpandedPlayerView({
                         onPress={handleClearQueue}
                         hitSlop={8}
                         accessibilityRole="button"
-                        accessibilityLabel="Clear queue"
+                        accessibilityLabel={t('clearQueue')}
                         style={({ pressed }) => [
                           styles.queueActionButton,
                           pressed && styles.pressed,
@@ -597,7 +599,7 @@ export function ExpandedPlayerView({
                       onPress={() => setRightPanelMode('lyrics')}
                       hitSlop={8}
                       accessibilityRole="button"
-                      accessibilityLabel="Show lyrics"
+                      accessibilityLabel={t('showLyrics')}
                       style={({ pressed }) => [styles.toggleButton, pressed && styles.pressed]}
                     >
                       <MaterialCommunityIcons
@@ -612,7 +614,7 @@ export function ExpandedPlayerView({
                       onPress={() => setRightPanelMode('info')}
                       hitSlop={8}
                       accessibilityRole="button"
-                      accessibilityLabel="Show album info"
+                      accessibilityLabel={t('showAlbumInfo')}
                       style={({ pressed }) => [styles.toggleButton, pressed && styles.pressed]}
                     >
                       <MaterialCommunityIcons
@@ -626,7 +628,7 @@ export function ExpandedPlayerView({
                     onPress={() => setRightPanelMode('queue')}
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel="Show queue"
+                    accessibilityLabel={t('showQueue')}
                     style={({ pressed }) => [styles.toggleButton, pressed && styles.pressed]}
                   >
                     <MaterialCommunityIcons
@@ -674,6 +676,7 @@ const ExpandedFavoriteButton = memo(function ExpandedFavoriteButton({
   trackId: string;
   colors: { red: string; textSecondary: string };
 }) {
+  const { t } = useTranslation();
   const starred = useIsStarred('song', trackId);
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
@@ -687,7 +690,7 @@ const ExpandedFavoriteButton = memo(function ExpandedFavoriteButton({
       disabled={offlineMode}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel={starred ? 'Remove from favorites' : 'Add to favorites'}
+      accessibilityLabel={starred ? t('removeFromFavorites') : t('addToFavorites')}
       style={({ pressed }) => [
         styles.favoriteButton,
         pressed && !offlineMode && styles.pressed,

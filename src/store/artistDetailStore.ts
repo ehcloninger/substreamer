@@ -10,7 +10,7 @@ import {
   getArtistInfo2,
   getTopSongs,
   isVariousArtists,
-  VARIOUS_ARTISTS_BIO,
+  getVariousArtistsBio,
   VARIOUS_ARTISTS_COVER_ART_ID,
   type ArtistInfo2,
   type ArtistWithAlbumsID3,
@@ -65,7 +65,7 @@ export const artistDetailStore = create<ArtistDetailState>()(
             },
             artistInfo: null,
             topSongs: [],
-            biography: VARIOUS_ARTISTS_BIO,
+            biography: getVariousArtistsBio(),
             resolvedMbid: null,
             retrievedAt: Date.now(),
           };
