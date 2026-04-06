@@ -1,5 +1,5 @@
 import { Event, RepeatMode } from './constants';
-import type { AddTrack, EventPayloadByEvent, NowPlayingMetadata, PlaybackState, PlayerOptions, Progress, ServiceHandler, Track, TrackMetadataBase, UpdateOptions } from './interfaces';
+import type { AddTrack, EventPayloadByEvent, NowPlayingMetadata, PlaybackState, PlayerOptions, Progress, ServiceHandler, SleepTimerChangedEvent, Track, TrackMetadataBase, UpdateOptions } from './interfaces';
 /**
  * Initializes the player with the specified options.
  *
@@ -235,4 +235,21 @@ export declare function abandonWakeLock(): Promise<void>;
  * if musicservice is restarted or not.
  */
 export declare function validateOnStartCommandIntent(): Promise<boolean>;
+/**
+ * Sets a sleep timer that will pause playback after the specified duration.
+ * Pass -1 to set "end of current track" mode (pauses when current track finishes).
+ *
+ * @param seconds The number of seconds until playback pauses, or -1 for end of track.
+ */
+export declare function setSleepTimer(seconds: number): Promise<void>;
+/**
+ * Gets the current sleep timer state.
+ *
+ * @returns An object with endTime (epoch seconds or null), endOfTrack flag, and active flag.
+ */
+export declare function getSleepTimer(): Promise<SleepTimerChangedEvent>;
+/**
+ * Clears the active sleep timer, restoring volume if fading.
+ */
+export declare function clearSleepTimer(): Promise<void>;
 //# sourceMappingURL=trackPlayer.d.ts.map

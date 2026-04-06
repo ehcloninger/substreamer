@@ -8,6 +8,7 @@ import { useIsPlaying, isPlaying } from '../hooks/useIsPlaying';
 import { usePlayWhenReady } from '../hooks/usePlayWhenReady';
 import { usePlaybackState } from '../hooks/usePlaybackState';
 import { useProgress } from '../hooks/useProgress';
+import { useSleepTimer } from '../hooks/useSleepTimer';
 import { useTrackPlayerEvents } from '../hooks/useTrackPlayerEvents';
 
 jest.mock('../NativeTrackPlayer');
@@ -34,6 +35,7 @@ const mockGetActiveTrack = jest.fn().mockResolvedValue(undefined);
 const mockGetPlaybackState = jest.fn().mockResolvedValue({ state: 'none' });
 const mockGetPlayWhenReady = jest.fn().mockResolvedValue(false);
 const mockGetProgress = jest.fn().mockResolvedValue({ position: 0, duration: 0, buffered: 0 });
+const mockGetSleepTimer = jest.fn().mockResolvedValue({ active: false });
 
 jest.mock('../trackPlayer', () => ({
   addEventListener: (...args: [string, Listener]) => mockAddEventListener(...args),
@@ -41,6 +43,7 @@ jest.mock('../trackPlayer', () => ({
   getPlaybackState: () => mockGetPlaybackState(),
   getPlayWhenReady: () => mockGetPlayWhenReady(),
   getProgress: () => mockGetProgress(),
+  getSleepTimer: () => mockGetSleepTimer(),
 }));
 
 beforeEach(() => {
@@ -53,6 +56,7 @@ beforeEach(() => {
   mockGetPlaybackState.mockResolvedValue({ state: 'none' });
   mockGetPlayWhenReady.mockResolvedValue(false);
   mockGetProgress.mockResolvedValue({ position: 0, duration: 0, buffered: 0 });
+  mockGetSleepTimer.mockResolvedValue({ active: false });
 });
 
 afterEach(() => {
@@ -553,5 +557,174 @@ describe('useTrackPlayerEvents', () => {
     expect(warnSpy).not.toHaveBeenCalled();
 
     warnSpy.mockRestore();
+  });
+});
+
+// -- useSleepTimer --
+
+describe('useSleepTimer', () => {
+  it('returns inactive initial state', () => {
+    const { result } = renderHook(() => useSleepTimer());
+    expect(result.current).toEqual({
+      active: false,
+      remaining: null,
+      endOfTrack: false,
+      completed: false,
+    });
+  });
+
+  it('syncs with native state on mount when timed timer is active', async () => {
+    const endTime = Date.now() / 1000 + 300;
+    mockGetSleepTimer.mockResolvedValue({ active: true, endTime, endOfTrack: false });
+
+    const { result } = renderHook(() => useSleepTimer());
+
+    await waitFor(() => {
+      expect(result.current.active).toBe(true);
+    });
+    expect(result.current.endOfTrack).toBe(false);
+    expect(result.current.remaining).toBeGreaterThan(0);
+  });
+
+  it('syncs with native state on mount when endOfTrack is active', async () => {
+    mockGetSleepTimer.mockResolvedValue({ active: true, endTime: null, endOfTrack: true });
+
+    const { result } = renderHook(() => useSleepTimer());
+
+    await waitFor(() => {
+      expect(result.current.active).toBe(true);
+    });
+    expect(result.current.endOfTrack).toBe(true);
+    expect(result.current.remaining).toBeNull();
+  });
+
+  it('handles getSleepTimer rejection gracefully', async () => {
+    mockGetSleepTimer.mockRejectedValue(new Error('not setup'));
+
+    const { result } = renderHook(() => useSleepTimer());
+
+    // Wait a tick to ensure the catch ran
+    await act(async () => {});
+
+    expect(result.current.active).toBe(false);
+  });
+
+  it('activates on SleepTimerChanged event with timed timer', async () => {
+    const { result } = renderHook(() => useSleepTimer());
+    await act(async () => {});
+
+    const endTime = Date.now() / 1000 + 600;
+    act(() => {
+      emitEvent(Event.SleepTimerChanged, { active: true, endTime, endOfTrack: false });
+    });
+
+    expect(result.current.active).toBe(true);
+    expect(result.current.endOfTrack).toBe(false);
+    expect(result.current.remaining).toBeGreaterThan(0);
+    expect(result.current.completed).toBe(false);
+  });
+
+  it('activates on SleepTimerChanged event with endOfTrack', async () => {
+    const { result } = renderHook(() => useSleepTimer());
+    await act(async () => {});
+
+    act(() => {
+      emitEvent(Event.SleepTimerChanged, { active: true, endTime: null, endOfTrack: true });
+    });
+
+    expect(result.current.active).toBe(true);
+    expect(result.current.endOfTrack).toBe(true);
+    expect(result.current.remaining).toBeNull();
+  });
+
+  it('deactivates on SleepTimerChanged event with active=false', async () => {
+    const { result } = renderHook(() => useSleepTimer());
+    await act(async () => {});
+
+    // First activate
+    act(() => {
+      emitEvent(Event.SleepTimerChanged, { active: true, endTime: Date.now() / 1000 + 600, endOfTrack: false });
+    });
+    expect(result.current.active).toBe(true);
+
+    // Then deactivate
+    act(() => {
+      emitEvent(Event.SleepTimerChanged, { active: false });
+    });
+    expect(result.current).toEqual({
+      active: false,
+      remaining: null,
+      endOfTrack: false,
+      completed: false,
+    });
+  });
+
+  it('sets completed on SleepTimerComplete event', async () => {
+    const { result } = renderHook(() => useSleepTimer());
+    await act(async () => {});
+
+    // Activate first
+    act(() => {
+      emitEvent(Event.SleepTimerChanged, { active: true, endTime: Date.now() / 1000 + 60, endOfTrack: false });
+    });
+
+    // Then complete
+    act(() => {
+      emitEvent(Event.SleepTimerComplete, {});
+    });
+
+    expect(result.current).toEqual({
+      active: false,
+      remaining: null,
+      endOfTrack: false,
+      completed: true,
+    });
+  });
+
+  it('counts down remaining seconds', async () => {
+    const { result } = renderHook(() => useSleepTimer());
+    await act(async () => {});
+
+    const endTime = Date.now() / 1000 + 10;
+    act(() => {
+      emitEvent(Event.SleepTimerChanged, { active: true, endTime, endOfTrack: false });
+    });
+
+    const initial = result.current.remaining!;
+    expect(initial).toBeGreaterThan(0);
+
+    // Advance timer by 2 seconds
+    act(() => { jest.advanceTimersByTime(2000); });
+
+    expect(result.current.remaining).toBeLessThan(initial);
+  });
+
+  it('cleans up interval on unmount', async () => {
+    const { result, unmount } = renderHook(() => useSleepTimer());
+    await act(async () => {});
+
+    act(() => {
+      emitEvent(Event.SleepTimerChanged, { active: true, endTime: Date.now() / 1000 + 600, endOfTrack: false });
+    });
+
+    expect(result.current.active).toBe(true);
+    unmount();
+    // No assertion needed — just ensuring no errors from orphaned intervals
+  });
+
+  it('does not update state after unmount when getSleepTimer resolves', async () => {
+    let resolveFetch!: (v: any) => void;
+    mockGetSleepTimer.mockImplementation(
+      () => new Promise((r) => { resolveFetch = r; })
+    );
+
+    const { result, unmount } = renderHook(() => useSleepTimer());
+    unmount();
+
+    await act(async () => {
+      resolveFetch({ active: true, endTime: Date.now() / 1000 + 300, endOfTrack: false });
+    });
+
+    expect(result.current.active).toBe(false);
   });
 });

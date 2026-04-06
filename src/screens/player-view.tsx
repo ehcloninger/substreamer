@@ -19,6 +19,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -45,6 +46,7 @@ import { PlayerTabBar, type PlayerTab } from '../components/PlayerTabBar';
 import { RepeatButton } from '../components/RepeatButton';
 import { ShuffleButton } from '../components/ShuffleButton';
 import { SkipIntervalButton } from '../components/SkipIntervalButton';
+import { SleepTimerButton } from '../components/SleepTimerButton';
 import { QueueItemRow } from '../components/QueueItemRow';
 import { closeOpenRow } from '../components/SwipeableRow';
 import { type ThemeColors } from '../constants/theme';
@@ -505,6 +507,8 @@ const PlayerContent = memo(function PlayerContent({
   handleSeek,
 }: PlayerContentProps) {
   const { t } = useTranslation();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const playbackState = playerStore((s) => s.playbackState);
   const position = playerStore((s) => s.position);
   const duration = playerStore((s) => s.duration);
@@ -513,7 +517,20 @@ const PlayerContent = memo(function PlayerContent({
   const retrying = playerStore((s) => s.retrying);
 
   const showSkipInterval = playbackSettingsStore((s) => s.showSkipIntervalButtons);
+  const showSleepTimer = playbackSettingsStore((s) => s.showSleepTimerButton);
   const { canSkipNext, canSkipPrevious } = useCanSkip();
+
+  // On small screens (Pixel 2 ≈ 731dp tall), shrink the hero to leave room
+  // for a secondary controls row. On larger screens heroSize equals the
+  // natural width so the layout is unchanged.
+  const heroSize = useMemo(() => {
+    const naturalWidth = Math.min(windowWidth - 2 * HERO_PADDING, 464 - 2 * HERO_PADDING);
+    // Non-hero vertical space: header, safe areas, tab bar, track info,
+    // progress, controls, secondary row, hero padding, spacer breathing room.
+    const reserved = insets.top + HEADER_BAR_HEIGHT + insets.bottom + 342;
+    const maxHero = windowHeight - reserved;
+    return Math.max(Math.min(naturalWidth, maxHero), 120);
+  }, [windowHeight, windowWidth, insets.top, insets.bottom]);
 
   const isPlaying =
     playbackState === 'playing' || playbackState === 'buffering';
@@ -538,10 +555,13 @@ const PlayerContent = memo(function PlayerContent({
 
   return (
     <View style={styles.playerContentContainer}>
-      <View style={styles.playerSpacer} />
+      {/* On iOS the panel extends behind the transparent header,
+          so use a fixed spacer to clear it. On Android the panel is
+          already offset via top: headerTopPadding. */}
+      {Platform.OS === 'ios' && <View style={{ height: insets.top + HEADER_BAR_HEIGHT }} />}
       {/* Hero cover art */}
       <View style={styles.hero}>
-        <View style={styles.heroImageWrap}>
+        <View style={[styles.heroImageWrap, { width: heroSize, height: heroSize }]}>
           <CachedImage
             coverArtId={currentTrack.coverArt}
             size={HERO_COVER_SIZE}
@@ -653,6 +673,16 @@ const PlayerContent = memo(function PlayerContent({
           <RepeatButton />
         </View>
       </View>
+
+      {/* Secondary controls row — mirrors primary controls layout */}
+      <View style={styles.secondaryControls}>
+        <View style={styles.controlSideLeft}>
+          {showSleepTimer && <SleepTimerButton />}
+        </View>
+        <View style={styles.secondaryCenter} />
+        <View style={styles.controlSideRight} />
+      </View>
+
       <View style={styles.playerSpacer} />
     </View>
   );
@@ -914,6 +944,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
+  },
+  secondaryCenter: {
+    width: 248,
+  },
+  secondaryControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+    paddingHorizontal: HERO_PADDING,
+    maxWidth: 464,
+    width: '100%',
+    alignSelf: 'center',
   },
   transportControls: {
     flexDirection: 'row',

@@ -191,6 +191,21 @@ RCT_EXPORT_MODULE()
 }
 
 /*****************************************
+ * Sleep Timer
+ *****************************************/
+- (void)setSleepTimer:(double)seconds resolve:(nonnull RCTPromiseResolveBlock)resolve reject:(nonnull RCTPromiseRejectBlock)reject {
+  [nativeTrackPlayer setSleepTimerWithSeconds:seconds resolve:resolve reject:reject];
+}
+
+- (void)getSleepTimer:(nonnull RCTPromiseResolveBlock)resolve reject:(nonnull RCTPromiseRejectBlock)reject {
+  [nativeTrackPlayer getSleepTimerWithResolve:resolve reject:reject];
+}
+
+- (void)clearSleepTimer:(nonnull RCTPromiseResolveBlock)resolve reject:(nonnull RCTPromiseRejectBlock)reject {
+  [nativeTrackPlayer clearSleepTimerWithResolve:resolve reject:reject];
+}
+
+/*****************************************
  * Android Only Methods (Stubs)
  *****************************************/
 - (void)validateOnStartCommandIntent:(nonnull RCTPromiseResolveBlock)resolve reject:(nonnull RCTPromiseRejectBlock)reject {

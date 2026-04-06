@@ -12,6 +12,7 @@ beforeEach(() => {
     downloadMaxBitRate: 320,
     downloadFormat: 'mp3',
     showSkipIntervalButtons: false,
+    showSleepTimerButton: false,
     skipBackwardInterval: 15,
     skipForwardInterval: 30,
     remoteControlMode: 'skip-track',
@@ -80,9 +81,15 @@ describe('playbackSettingsStore', () => {
     expect(playbackSettingsStore.getState().remoteControlMode).toBe('skip-interval');
   });
 
+  it('setShowSleepTimerButton updates flag', () => {
+    playbackSettingsStore.getState().setShowSleepTimerButton(true);
+    expect(playbackSettingsStore.getState().showSleepTimerButton).toBe(true);
+  });
+
   it('defaults for skip interval fields', () => {
     const state = playbackSettingsStore.getState();
     expect(state.showSkipIntervalButtons).toBe(false);
+    expect(state.showSleepTimerButton).toBe(false);
     expect(state.skipBackwardInterval).toBe(15);
     expect(state.skipForwardInterval).toBe(30);
     expect(state.remoteControlMode).toBe('skip-track');

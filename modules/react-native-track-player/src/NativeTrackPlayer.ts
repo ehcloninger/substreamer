@@ -96,6 +96,11 @@ export interface Spec extends TurboModule {
     PITCH_ALGORITHM_VOICE: number;
   };
 
+  // sleep timer
+  setSleepTimer(seconds: number): Promise<void>;
+  getSleepTimer(): Promise<UnsafeObject>;
+  clearSleepTimer(): Promise<void>;
+
   // android methods
   acquireWakeLock(): Promise<void>;
   abandonWakeLock(): Promise<void>;

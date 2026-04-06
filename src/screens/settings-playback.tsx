@@ -34,16 +34,19 @@ export function SettingsPlaybackScreen() {
   const [forwardOpen, setForwardOpen] = useState(false);
 
   const showSkipIntervalButtons = playbackSettingsStore((s) => s.showSkipIntervalButtons);
+  const showSleepTimerButton = playbackSettingsStore((s) => s.showSleepTimerButton);
   const skipBackwardInterval = playbackSettingsStore((s) => s.skipBackwardInterval);
   const skipForwardInterval = playbackSettingsStore((s) => s.skipForwardInterval);
   const remoteControlMode = playbackSettingsStore((s) => s.remoteControlMode);
   const setShowSkipIntervalButtons = playbackSettingsStore((s) => s.setShowSkipIntervalButtons);
+  const setShowSleepTimerButton = playbackSettingsStore((s) => s.setShowSleepTimerButton);
   const setSkipBackwardInterval = playbackSettingsStore((s) => s.setSkipBackwardInterval);
   const setSkipForwardInterval = playbackSettingsStore((s) => s.setSkipForwardInterval);
   const setRemoteControlMode = playbackSettingsStore((s) => s.setRemoteControlMode);
 
   const isDefault =
     !showSkipIntervalButtons &&
+    !showSleepTimerButton &&
     skipBackwardInterval === 15 &&
     skipForwardInterval === 30 &&
     remoteControlMode === 'skip-track';
@@ -67,6 +70,7 @@ export function SettingsPlaybackScreen() {
           style: 'destructive',
           onPress: () => {
             setShowSkipIntervalButtons(false);
+            setShowSleepTimerButton(false);
             setSkipBackwardInterval(15);
             setSkipForwardInterval(30);
             setRemoteControlMode('skip-track');
@@ -77,7 +81,7 @@ export function SettingsPlaybackScreen() {
         },
       ],
     );
-  }, [setShowSkipIntervalButtons, setSkipBackwardInterval, setSkipForwardInterval, setRemoteControlMode]);
+  }, [setShowSkipIntervalButtons, setShowSleepTimerButton, setSkipBackwardInterval, setSkipForwardInterval, setRemoteControlMode]);
 
   const dynamicStyles = useMemo(
     () =>
@@ -99,7 +103,7 @@ export function SettingsPlaybackScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('playerControls')}</Text>
             <View style={[styles.card, { backgroundColor: colors.card }]}>
-              <View style={[styles.toggleRow, { borderBottomColor: colors.border }]}>
+              <View style={[styles.toggleRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
                 <View style={styles.toggleTextWrap}>
                   <Text style={[styles.label, { color: colors.textPrimary }]}>
                     {t('showSkipIntervalButtons')}
@@ -111,6 +115,21 @@ export function SettingsPlaybackScreen() {
                 <Switch
                   value={showSkipIntervalButtons}
                   onValueChange={setShowSkipIntervalButtons}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                />
+              </View>
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleTextWrap}>
+                  <Text style={[styles.label, { color: colors.textPrimary }]}>
+                    {t('showSleepTimerButton')}
+                  </Text>
+                  <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
+                    {t('showSleepTimerButtonHint')}
+                  </Text>
+                </View>
+                <Switch
+                  value={showSleepTimerButton}
+                  onValueChange={setShowSleepTimerButton}
                   trackColor={{ false: colors.border, true: colors.primary }}
                 />
               </View>

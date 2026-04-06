@@ -70,6 +70,9 @@ export interface Spec extends TurboModule {
         PITCH_ALGORITHM_MUSIC: number;
         PITCH_ALGORITHM_VOICE: number;
     };
+    setSleepTimer(seconds: number): Promise<void>;
+    getSleepTimer(): Promise<UnsafeObject>;
+    clearSleepTimer(): Promise<void>;
     acquireWakeLock(): Promise<void>;
     abandonWakeLock(): Promise<void>;
     validateOnStartCommandIntent(): Promise<boolean>;

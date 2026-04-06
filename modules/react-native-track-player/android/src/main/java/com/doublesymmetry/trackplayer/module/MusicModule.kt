@@ -540,6 +540,23 @@ class MusicModule(reactContext: ReactApplicationContext) : NativeTrackPlayerSpec
         callback.resolve(musicService.onStartCommandIntentValid)
     }
 
+    override fun setSleepTimer(seconds: Double, callback: Promise) = launchInScope {
+        if (verifyServiceBoundOrReject(callback)) return@launchInScope
+        musicService.setSleepTimer(seconds)
+        callback.resolve(null)
+    }
+
+    override fun getSleepTimer(callback: Promise) = launchInScope {
+        if (verifyServiceBoundOrReject(callback)) return@launchInScope
+        callback.resolve(Arguments.fromBundle(musicService.getSleepTimerInfo()))
+    }
+
+    override fun clearSleepTimer(callback: Promise) = launchInScope {
+        if (verifyServiceBoundOrReject(callback)) return@launchInScope
+        musicService.clearSleepTimer()
+        callback.resolve(null)
+    }
+
     // React Native's bridgeless TurboModule interop tries to serialize the return value
     // to JS. scope.launch returns a Job, which isn't serializable and throws. This wrapper
     // ensures the return type is Unit.

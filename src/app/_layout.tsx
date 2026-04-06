@@ -42,6 +42,7 @@ import { MbidSearchSheet } from '../components/MbidSearchSheet';
 import { MoreOptionsSheet } from '../components/MoreOptionsSheet';
 import { OnboardingGuide } from '../components/OnboardingGuide';
 import { SetRatingSheet } from '../components/SetRatingSheet';
+import { SleepTimerSheet } from '../components/SleepTimerSheet';
 import { PlaybackToast } from '../components/PlaybackToast';
 import { ProcessingOverlay } from '../components/ProcessingOverlay';
 import { useDownloadBackgroundNotification } from '../hooks/useDownloadBackgroundNotification';
@@ -598,6 +599,9 @@ export default function RootLayout() {
 
       {/* Global MBID search sheet driven by mbidSearchStore */}
       <MbidSearchSheet />
+
+      {/* Global sleep timer sheet driven by sleepTimerStore */}
+      <SleepTimerSheet />
 
       {/* Global SSL certificate prompt driven by certPromptStore */}
       <CertificatePromptModal

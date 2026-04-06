@@ -22,4 +22,6 @@ export * from "./RemotePlaySearchEvent.js";
 export * from "./RemoteSeekEvent.js";
 export * from "./RemoteSetRatingEvent.js";
 export * from "./RemoteSkipEvent.js";
+export * from "./SleepTimerChangedEvent.js";
+export * from "./SleepTimerCompleteEvent.js";
 //# sourceMappingURL=index.js.map

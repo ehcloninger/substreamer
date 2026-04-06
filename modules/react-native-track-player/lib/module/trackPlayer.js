@@ -407,4 +407,32 @@ export async function validateOnStartCommandIntent() {
   if (!isAndroid) return true;
   return TrackPlayer.validateOnStartCommandIntent();
 }
+
+// MARK: - Sleep Timer API
+
+/**
+ * Sets a sleep timer that will pause playback after the specified duration.
+ * Pass -1 to set "end of current track" mode (pauses when current track finishes).
+ *
+ * @param seconds The number of seconds until playback pauses, or -1 for end of track.
+ */
+export async function setSleepTimer(seconds) {
+  return TrackPlayer.setSleepTimer(seconds);
+}
+
+/**
+ * Gets the current sleep timer state.
+ *
+ * @returns An object with endTime (epoch seconds or null), endOfTrack flag, and active flag.
+ */
+export async function getSleepTimer() {
+  return await TrackPlayer.getSleepTimer();
+}
+
+/**
+ * Clears the active sleep timer, restoring volume if fading.
+ */
+export async function clearSleepTimer() {
+  return TrackPlayer.clearSleepTimer();
+}
 //# sourceMappingURL=trackPlayer.js.map

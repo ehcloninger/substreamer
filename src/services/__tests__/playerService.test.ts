@@ -35,6 +35,8 @@ jest.mock('react-native-track-player', () => ({
     PlaybackBufferFull: 'playback-buffer-full',
     PlaybackSeekCompleted: 'playback-seek-completed',
     PlaybackProgressUpdated: 'playback-progress-updated',
+    SleepTimerChanged: 'sleep-timer-changed',
+    SleepTimerComplete: 'sleep-timer-complete',
   },
   AppKilledPlaybackBehavior: {
     ContinuePlayback: 'continue-playback',
@@ -1830,5 +1832,116 @@ describe('updateRemoteCapabilities', () => {
       appKilledPlaybackBehavior:
         AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sleep timer event handlers
+// ---------------------------------------------------------------------------
+
+describe('sleep timer events', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { sleepTimerStore } = require('../../store/sleepTimerStore');
+
+  beforeEach(() => {
+    sleepTimerStore.setState({
+      endTime: null,
+      endOfTrack: false,
+      remaining: null,
+      sheetVisible: false,
+    });
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+  });
+
+  it('sets timer in store on SleepTimerChanged with timed timer', () => {
+    const handler = eventHandlers[Event.SleepTimerChanged];
+    expect(handler).toBeDefined();
+
+    const endTime = Date.now() / 1000 + 600;
+    handler({ active: true, endTime, endOfTrack: false });
+
+    const state = sleepTimerStore.getState();
+    expect(state.endTime).toBe(endTime);
+    expect(state.endOfTrack).toBe(false);
+    expect(state.remaining).toBeGreaterThanOrEqual(0);
+  });
+
+  it('sets timer in store on SleepTimerChanged with endOfTrack', () => {
+    const handler = eventHandlers[Event.SleepTimerChanged];
+    handler({ active: true, endTime: null, endOfTrack: true });
+
+    const state = sleepTimerStore.getState();
+    expect(state.endTime).toBeNull();
+    expect(state.endOfTrack).toBe(true);
+    expect(state.remaining).toBeNull();
+  });
+
+  it('clears store on SleepTimerChanged with active=false', () => {
+    // First activate
+    const handler = eventHandlers[Event.SleepTimerChanged];
+    handler({ active: true, endTime: Date.now() / 1000 + 600, endOfTrack: false });
+    expect(sleepTimerStore.getState().endTime).not.toBeNull();
+
+    // Then deactivate
+    handler({ active: false });
+    const state = sleepTimerStore.getState();
+    expect(state.endTime).toBeNull();
+    expect(state.endOfTrack).toBe(false);
+    expect(state.remaining).toBeNull();
+  });
+
+  it('clears store on SleepTimerComplete', () => {
+    // Activate first
+    const changedHandler = eventHandlers[Event.SleepTimerChanged];
+    changedHandler({ active: true, endTime: Date.now() / 1000 + 60, endOfTrack: false });
+    expect(sleepTimerStore.getState().endTime).not.toBeNull();
+
+    // Fire complete
+    const completeHandler = eventHandlers[Event.SleepTimerComplete];
+    expect(completeHandler).toBeDefined();
+    completeHandler({});
+
+    const state = sleepTimerStore.getState();
+    expect(state.endTime).toBeNull();
+    expect(state.endOfTrack).toBe(false);
+    expect(state.remaining).toBeNull();
+  });
+
+  it('starts JS countdown interval for timed timer', () => {
+    const handler = eventHandlers[Event.SleepTimerChanged];
+    const endTime = Date.now() / 1000 + 10;
+    handler({ active: true, endTime, endOfTrack: false });
+
+    const initialRemaining = sleepTimerStore.getState().remaining;
+    expect(initialRemaining).toBeGreaterThan(0);
+
+    jest.advanceTimersByTime(2000);
+    expect(sleepTimerStore.getState().remaining).toBeLessThan(initialRemaining!);
+  });
+
+  it('clears interval when timer is cancelled', () => {
+    const handler = eventHandlers[Event.SleepTimerChanged];
+    handler({ active: true, endTime: Date.now() / 1000 + 600, endOfTrack: false });
+    handler({ active: false });
+
+    // Advance timers — remaining should stay null (interval cleared)
+    jest.advanceTimersByTime(5000);
+    expect(sleepTimerStore.getState().remaining).toBeNull();
+  });
+
+  it('clears interval on SleepTimerComplete', () => {
+    const changedHandler = eventHandlers[Event.SleepTimerChanged];
+    changedHandler({ active: true, endTime: Date.now() / 1000 + 600, endOfTrack: false });
+
+    const completeHandler = eventHandlers[Event.SleepTimerComplete];
+    completeHandler({});
+
+    jest.advanceTimersByTime(5000);
+    expect(sleepTimerStore.getState().remaining).toBeNull();
   });
 });

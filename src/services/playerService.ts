@@ -23,6 +23,7 @@ import {
 } from '../store/playbackSettingsStore';
 import { playbackToastStore } from '../store/playbackToastStore';
 import { playerStore, type PlaybackStatus } from '../store/playerStore';
+import { sleepTimerStore } from '../store/sleepTimerStore';
 import { serverInfoStore } from '../store/serverInfoStore';
 import { shuffleArray } from '../utils/arrayHelpers';
 import { addCompletedScrobble, sendNowPlaying } from './scrobbleService';
@@ -455,6 +456,43 @@ export async function initPlayer(): Promise<void> {
 
     previousActiveChild = resolvedChild;
 
+  });
+
+  // --- Sleep timer event listeners ---
+
+  let sleepTimerInterval: ReturnType<typeof setInterval> | null = null;
+
+  TrackPlayer.addEventListener(Event.SleepTimerChanged, (e) => {
+    if (sleepTimerInterval) {
+      clearInterval(sleepTimerInterval);
+      sleepTimerInterval = null;
+    }
+    const store = sleepTimerStore.getState();
+    if (e.active) {
+      store.setTimer(e.endTime ?? null, e.endOfTrack);
+      if (!e.endOfTrack && e.endTime != null) {
+        // Start JS-side countdown for UI display
+        const tick = () => {
+          const now = Date.now() / 1000;
+          const remaining = Math.max(0, Math.round((e.endTime as number) - now));
+          sleepTimerStore.getState().setRemaining(remaining);
+        };
+        tick();
+        sleepTimerInterval = setInterval(tick, 1000);
+      } else {
+        store.setRemaining(null);
+      }
+    } else {
+      store.clear();
+    }
+  });
+
+  TrackPlayer.addEventListener(Event.SleepTimerComplete, () => {
+    if (sleepTimerInterval) {
+      clearInterval(sleepTimerInterval);
+      sleepTimerInterval = null;
+    }
+    sleepTimerStore.getState().clear();
   });
 
   // --- AppState listener for background → foreground sync ---

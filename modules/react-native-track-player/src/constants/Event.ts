@@ -170,4 +170,14 @@ export enum Event {
    * typical controllers are media notification and Android Auto.
    **/
   AndroidConnectorDisconnected = 'android-controller-disconnected',
+
+  /**
+   * Fired when the sleep timer state changes (set, updated, or cleared).
+   * Payload includes endTime, endOfTrack flag, and whether the timer is active.
+   **/
+  SleepTimerChanged = 'sleep-timer-changed',
+  /**
+   * Fired when the sleep timer completes and playback is paused.
+   **/
+  SleepTimerComplete = 'sleep-timer-complete',
 }

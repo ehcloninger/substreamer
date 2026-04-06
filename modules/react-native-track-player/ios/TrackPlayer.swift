@@ -28,6 +28,12 @@ public class NativeTrackPlayerImpl: NSObject, AudioSessionControllerDelegate {
     private var sessionCategoryPolicy: AVAudioSession.RouteSharingPolicy = .default
     private var sessionCategoryOptions: AVAudioSession.CategoryOptions = []
 
+    // Sleep timer state
+    private var sleepTimerEndTime: TimeInterval? = nil
+    private var sleepTimerOriginalVolume: Float? = nil
+    private var sleepTimerFading: Bool = false
+    private var sleepTimerEndOfTrack: Bool = false
+
     // MARK: - Lifecycle Methods
 
     public override init() {
@@ -495,6 +501,15 @@ public class NativeTrackPlayerImpl: NSObject, AudioSessionControllerDelegate {
     public func reset(resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
         if (rejectWhenNotInitialized(reject: reject)) { return }
 
+        // Clear sleep timer state
+        if sleepTimerFading, let originalVolume = sleepTimerOriginalVolume {
+            player.volume = originalVolume
+        }
+        sleepTimerEndTime = nil
+        sleepTimerEndOfTrack = false
+        sleepTimerFading = false
+        sleepTimerOriginalVolume = nil
+
         player.stop()
         player.clear()
         resolve(NSNull())
@@ -866,6 +881,9 @@ public class NativeTrackPlayerImpl: NSObject, AudioSessionControllerDelegate {
                 "track": player.currentIndex,
             ]
         )
+
+        // Sleep timer check
+        checkSleepTimer()
     }
 
     func handlePlayWhenReadyChange(playWhenReady: Bool) {
@@ -934,6 +952,151 @@ public class NativeTrackPlayerImpl: NSObject, AudioSessionControllerDelegate {
                 "position": player.currentTime,
             ] as [String : Any]
         )
+    }
+
+    // MARK: - Sleep Timer
+
+    @objc
+    public func setSleepTimer(seconds: Double, resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
+        if (rejectWhenNotInitialized(reject: reject)) { return }
+
+        // Restore volume if we were fading
+        if sleepTimerFading, let originalVolume = sleepTimerOriginalVolume {
+            player.volume = originalVolume
+        }
+        sleepTimerFading = false
+        sleepTimerOriginalVolume = nil
+
+        if seconds < 0 {
+            // End of current track mode
+            sleepTimerEndOfTrack = true
+            sleepTimerEndTime = nil
+        } else {
+            sleepTimerEndOfTrack = false
+            sleepTimerEndTime = Date().timeIntervalSince1970 + seconds
+        }
+
+        emitSleepTimerChanged()
+        resolve(NSNull())
+    }
+
+    @objc
+    public func getSleepTimer(resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
+        if (rejectWhenNotInitialized(reject: reject)) { return }
+        resolve(sleepTimerInfo())
+    }
+
+    @objc
+    public func clearSleepTimer(resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
+        if (rejectWhenNotInitialized(reject: reject)) { return }
+
+        if sleepTimerFading, let originalVolume = sleepTimerOriginalVolume {
+            player.volume = originalVolume
+        }
+        sleepTimerEndTime = nil
+        sleepTimerEndOfTrack = false
+        sleepTimerFading = false
+        sleepTimerOriginalVolume = nil
+
+        emitSleepTimerChanged()
+        resolve(NSNull())
+    }
+
+    private func sleepTimerInfo() -> [String: Any] {
+        if sleepTimerEndOfTrack {
+            return [
+                "endTime": NSNull(),
+                "endOfTrack": true,
+                "active": true,
+            ]
+        } else if let endTime = sleepTimerEndTime {
+            return [
+                "endTime": endTime,
+                "endOfTrack": false,
+                "active": true,
+            ]
+        } else {
+            return [
+                "endTime": NSNull(),
+                "endOfTrack": false,
+                "active": false,
+            ]
+        }
+    }
+
+    private func emitSleepTimerChanged() {
+        emit(event: EventType.SleepTimerChanged, body: sleepTimerInfo())
+    }
+
+    private func completeSleepTimer(endOfTrack: Bool) {
+        if let originalVolume = sleepTimerOriginalVolume {
+            player.volume = originalVolume
+        }
+        sleepTimerEndTime = nil
+        sleepTimerEndOfTrack = false
+        sleepTimerFading = false
+        sleepTimerOriginalVolume = nil
+
+        player.pause()
+        emit(event: EventType.SleepTimerComplete, body: [
+            "endOfTrack": endOfTrack,
+        ])
+    }
+
+    private func checkSleepTimer() {
+        if sleepTimerEndOfTrack {
+            // End of current track mode: check if remaining time <= 60s
+            let duration = player.duration
+            let position = player.currentTime
+            if duration > 0 && position > 0 {
+                let remaining = duration - position
+                if remaining <= 60 {
+                    // Let the track finish naturally — completeSleepTimer will be
+                    // called when the track actually ends (via playbackEnd or stateChange)
+                    sleepTimerEndOfTrack = false
+                    // Set a deadline just past the track end so the timed check below handles it
+                    sleepTimerEndTime = Date().timeIntervalSince1970 + remaining + 1
+                    emitSleepTimerChanged()
+                }
+            }
+            return
+        }
+
+        guard let endTime = sleepTimerEndTime else { return }
+        let now = Date().timeIntervalSince1970
+        let remaining = endTime - now
+
+        if remaining <= 0 {
+            // Timer expired — check if current track has < 60s remaining
+            let duration = player.duration
+            let position = player.currentTime
+            let trackRemaining = (duration > 0 && position > 0) ? duration - position : Double.greatestFiniteMagnitude
+
+            if trackRemaining <= 60 {
+                // Let the track finish naturally — set endTime to just past track end
+                sleepTimerEndTime = now + trackRemaining + 1
+                if sleepTimerFading, let originalVolume = sleepTimerOriginalVolume {
+                    player.volume = originalVolume
+                    sleepTimerFading = false
+                    sleepTimerOriginalVolume = nil
+                }
+                return
+            }
+
+            // Pause immediately
+            completeSleepTimer(endOfTrack: false)
+            return
+        }
+
+        // Volume fade: linearly reduce over last 30 seconds
+        if remaining <= 30 {
+            if !sleepTimerFading {
+                sleepTimerFading = true
+                sleepTimerOriginalVolume = player.volume
+            }
+            let fraction = Float(remaining / 30.0)
+            player.volume = (sleepTimerOriginalVolume ?? 1.0) * fraction
+        }
     }
 }
 

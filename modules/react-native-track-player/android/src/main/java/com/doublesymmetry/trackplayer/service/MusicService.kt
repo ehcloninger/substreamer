@@ -157,6 +157,13 @@ class MusicService : HeadlessJsMediaService() {
             player.playWhenReady = value
         }
 
+    // Sleep timer state
+    private var sleepTimerEndTime: Long? = null
+    private var sleepTimerOriginalVolume: Float? = null
+    private var sleepTimerFading = false
+    private var sleepTimerEndOfTrack = false
+    private var sleepTimerJob: Job? = null
+
     private var latestOptions: Bundle? = null
     private var commandStarted = false
 
@@ -384,6 +391,7 @@ class MusicService : HeadlessJsMediaService() {
 
     @MainThread
     fun clear() {
+        clearSleepTimer()
         player.clear()
     }
 
@@ -922,6 +930,183 @@ class MusicService : HeadlessJsMediaService() {
         // kill the media service. The service must stay alive for background playback.
     }
 
+    // MARK: - Sleep Timer
+
+    @MainThread
+    fun setSleepTimer(seconds: Double) {
+        // Cancel any existing timer
+        sleepTimerJob?.cancel()
+        if (sleepTimerFading && sleepTimerOriginalVolume != null) {
+            player.volume = sleepTimerOriginalVolume!!
+        }
+        sleepTimerFading = false
+        sleepTimerOriginalVolume = null
+
+        if (seconds < 0) {
+            // End of current track mode
+            sleepTimerEndOfTrack = true
+            sleepTimerEndTime = null
+            startSleepTimerMonitor()
+            emitSleepTimerChanged()
+        } else {
+            sleepTimerEndOfTrack = false
+            sleepTimerEndTime = System.currentTimeMillis() + (seconds * 1000).toLong()
+            startSleepTimerMonitor()
+            emitSleepTimerChanged()
+        }
+    }
+
+    @MainThread
+    fun getSleepTimerInfo(): Bundle {
+        return Bundle().apply {
+            if (sleepTimerEndOfTrack) {
+                putString("endTime", null)
+                putBoolean("endOfTrack", true)
+                putBoolean("active", true)
+            } else if (sleepTimerEndTime != null) {
+                putDouble("endTime", sleepTimerEndTime!! / 1000.0)
+                putBoolean("endOfTrack", false)
+                putBoolean("active", true)
+            } else {
+                putString("endTime", null)
+                putBoolean("endOfTrack", false)
+                putBoolean("active", false)
+            }
+        }
+    }
+
+    @MainThread
+    fun clearSleepTimer() {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = null
+        if (sleepTimerFading && sleepTimerOriginalVolume != null) {
+            player.volume = sleepTimerOriginalVolume!!
+        }
+        sleepTimerEndTime = null
+        sleepTimerEndOfTrack = false
+        sleepTimerFading = false
+        sleepTimerOriginalVolume = null
+        emitSleepTimerChanged()
+    }
+
+    private fun startSleepTimerMonitor() {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = scope.launch {
+            while (isActive) {
+                delay(1000)
+                checkSleepTimer()
+            }
+        }
+    }
+
+    private fun checkSleepTimer() {
+        if (!::player.isInitialized) return
+
+        if (sleepTimerEndOfTrack) {
+            // End of current track mode: check if remaining time <= 60s
+            val duration = player.duration
+            val position = player.position
+            if (duration > 0 && position > 0) {
+                val remainingMs = duration - position
+                if (remainingMs <= 60_000) {
+                    // Let the track finish naturally — don't pause, just clear the timer
+                    // and wait for the track to end via queue-ended or track-changed events
+                    sleepTimerJob?.cancel()
+                    sleepTimerJob = null
+                    sleepTimerEndOfTrack = false
+                    sleepTimerEndTime = null
+
+                    // Set up a watcher to pause after track naturally ends
+                    scope.launch {
+                        // Poll until track ends or position resets
+                        while (isActive) {
+                            delay(500)
+                            val currentRemaining = player.duration - player.position
+                            if (currentRemaining <= 500 || player.playerState == AudioPlayerState.ENDED) {
+                                delay(500) // brief delay to let track finish cleanly
+                                player.pause()
+                                emit(MusicEvents.SLEEP_TIMER_COMPLETE, Bundle().apply {
+                                    putBoolean("endOfTrack", true)
+                                })
+                                break
+                            }
+                        }
+                    }
+                    return
+                }
+            }
+            return
+        }
+
+        val endTime = sleepTimerEndTime ?: return
+        val now = System.currentTimeMillis()
+        val remainingMs = endTime - now
+
+        if (remainingMs <= 0) {
+            // Timer expired — check if current track has < 60s remaining
+            val duration = player.duration
+            val position = player.position
+            val trackRemainingMs = if (duration > 0 && position > 0) duration - position else Long.MAX_VALUE
+
+            if (trackRemainingMs <= 60_000) {
+                // Let the track finish naturally
+                sleepTimerJob?.cancel()
+                sleepTimerJob = null
+                sleepTimerEndTime = null
+                sleepTimerFading = false
+                if (sleepTimerOriginalVolume != null) {
+                    player.volume = sleepTimerOriginalVolume!!
+                    sleepTimerOriginalVolume = null
+                }
+
+                scope.launch {
+                    while (isActive) {
+                        delay(500)
+                        val currentRemaining = player.duration - player.position
+                        if (currentRemaining <= 500 || player.playerState == AudioPlayerState.ENDED) {
+                            delay(500)
+                            player.pause()
+                            emit(MusicEvents.SLEEP_TIMER_COMPLETE, Bundle().apply {
+                                putBoolean("endOfTrack", false)
+                            })
+                            break
+                        }
+                    }
+                }
+                return
+            }
+
+            // Pause immediately
+            player.pause()
+            if (sleepTimerOriginalVolume != null) {
+                player.volume = sleepTimerOriginalVolume!!
+                sleepTimerOriginalVolume = null
+            }
+            sleepTimerEndTime = null
+            sleepTimerFading = false
+            sleepTimerJob?.cancel()
+            sleepTimerJob = null
+            emit(MusicEvents.SLEEP_TIMER_COMPLETE, Bundle().apply {
+                putBoolean("endOfTrack", false)
+            })
+            return
+        }
+
+        // Volume fade: linearly reduce over last 30 seconds
+        if (remainingMs <= 30_000) {
+            if (!sleepTimerFading) {
+                sleepTimerFading = true
+                sleepTimerOriginalVolume = player.volume
+            }
+            val fraction = remainingMs.toFloat() / 30_000f
+            player.volume = (sleepTimerOriginalVolume ?: 1f) * fraction
+        }
+    }
+
+    private fun emitSleepTimerChanged() {
+        emit(MusicEvents.SLEEP_TIMER_CHANGED, getSleepTimerInfo())
+    }
+
     @MainThread
     override fun onDestroy() {
         if (::player.isInitialized) {
@@ -930,6 +1115,7 @@ class MusicService : HeadlessJsMediaService() {
             player.destroy()
         }
 
+        sleepTimerJob?.cancel()
         progressUpdateJob?.cancel()
         super.onDestroy()
     }

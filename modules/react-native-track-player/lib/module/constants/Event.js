@@ -171,6 +171,15 @@ export let Event = /*#__PURE__*/function (Event) {
    * typical controllers are media notification and Android Auto.
    **/
   Event["AndroidConnectorDisconnected"] = "android-controller-disconnected";
+  /**
+   * Fired when the sleep timer state changes (set, updated, or cleared).
+   * Payload includes endTime, endOfTrack flag, and whether the timer is active.
+   **/
+  Event["SleepTimerChanged"] = "sleep-timer-changed";
+  /**
+   * Fired when the sleep timer completes and playback is paused.
+   **/
+  Event["SleepTimerComplete"] = "sleep-timer-complete";
   return Event;
 }({});
 //# sourceMappingURL=Event.js.map

@@ -40,6 +40,10 @@ object MusicEvents {
     const val METADATA_COMMON_RECEIVED = "metadata-common-received"
     const val METADATA_PAYLOAD_KEY = "metadata"
 
+    // Sleep Timer Events
+    const val SLEEP_TIMER_CHANGED = "sleep-timer-changed"
+    const val SLEEP_TIMER_COMPLETE = "sleep-timer-complete"
+
     // Other
     const val PLAYER_ERROR = "player-error"
     const val CONNECTOR_CONNECTED = "android-controller-connected"

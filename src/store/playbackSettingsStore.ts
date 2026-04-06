@@ -40,6 +40,8 @@ export interface PlaybackSettingsState {
 
   /** Whether skip-interval buttons appear on the player view. */
   showSkipIntervalButtons: boolean;
+  /** Whether the sleep timer button appears on the player view. */
+  showSleepTimerButton: boolean;
   /** Backward skip interval in seconds. */
   skipBackwardInterval: SkipInterval;
   /** Forward skip interval in seconds. */
@@ -55,6 +57,7 @@ export interface PlaybackSettingsState {
   setDownloadMaxBitRate: (bitRate: MaxBitRate) => void;
   setDownloadFormat: (format: StreamFormat) => void;
   setShowSkipIntervalButtons: (show: boolean) => void;
+  setShowSleepTimerButton: (show: boolean) => void;
   setSkipBackwardInterval: (interval: SkipInterval) => void;
   setSkipForwardInterval: (interval: SkipInterval) => void;
   setRemoteControlMode: (mode: RemoteControlMode) => void;
@@ -73,6 +76,7 @@ export const playbackSettingsStore = create<PlaybackSettingsState>()(
       downloadMaxBitRate: 320,
       downloadFormat: 'mp3',
       showSkipIntervalButtons: false,
+      showSleepTimerButton: false,
       skipBackwardInterval: 15,
       skipForwardInterval: 30,
       remoteControlMode: 'skip-track',
@@ -85,6 +89,7 @@ export const playbackSettingsStore = create<PlaybackSettingsState>()(
       setDownloadMaxBitRate: (downloadMaxBitRate) => set({ downloadMaxBitRate }),
       setDownloadFormat: (downloadFormat) => set({ downloadFormat }),
       setShowSkipIntervalButtons: (showSkipIntervalButtons) => set({ showSkipIntervalButtons }),
+      setShowSleepTimerButton: (showSleepTimerButton) => set({ showSleepTimerButton }),
       setSkipBackwardInterval: (skipBackwardInterval) => set({ skipBackwardInterval }),
       setSkipForwardInterval: (skipForwardInterval) => set({ skipForwardInterval }),
       setRemoteControlMode: (remoteControlMode) => set({ remoteControlMode }),
@@ -101,6 +106,7 @@ export const playbackSettingsStore = create<PlaybackSettingsState>()(
         downloadMaxBitRate: state.downloadMaxBitRate,
         downloadFormat: state.downloadFormat,
         showSkipIntervalButtons: state.showSkipIntervalButtons,
+        showSleepTimerButton: state.showSleepTimerButton,
         skipBackwardInterval: state.skipBackwardInterval,
         skipForwardInterval: state.skipForwardInterval,
         remoteControlMode: state.remoteControlMode,
