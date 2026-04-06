@@ -28,7 +28,7 @@ describe('InsetRefreshSpacer', () => {
     const { toJSON } = render(
       <InsetRefreshSpacer height={80} refreshing={false} scrollY={scrollY} color="#1D9BF0" />
     );
-    const root = toJSON();
+    const root = toJSON() as import('react-test-renderer').ReactTestRendererJSON;
     const flatStyle = Array.isArray(root.props.style)
       ? Object.assign({}, ...root.props.style.filter(Boolean))
       : root.props.style;
@@ -69,8 +69,8 @@ describe('InsetRefreshSpacer', () => {
     const { toJSON: json2 } = render(
       <InsetRefreshSpacer height={50} refreshing={false} scrollY={scrollY} color="#1D9BF0" />
     );
-    const root1 = json1();
-    const root2 = json2();
+    const root1 = json1() as import('react-test-renderer').ReactTestRendererJSON;
+    const root2 = json2() as import('react-test-renderer').ReactTestRendererJSON;
     const style1 = Array.isArray(root1.props.style)
       ? Object.assign({}, ...root1.props.style.filter(Boolean))
       : root1.props.style;
@@ -86,7 +86,7 @@ describe('InsetRefreshSpacer', () => {
     const { toJSON } = render(
       <InsetRefreshSpacer height={80} refreshing={false} scrollY={scrollY} color="#1D9BF0" />
     );
-    const root = toJSON();
+    const root = toJSON() as import('react-test-renderer').ReactTestRendererJSON;
     const flatStyle = Array.isArray(root.props.style)
       ? Object.assign({}, ...root.props.style.filter(Boolean))
       : root.props.style;

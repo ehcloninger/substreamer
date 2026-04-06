@@ -108,9 +108,9 @@ describe('ConnectivityBanner', () => {
       isInternetReachable: false,
     });
     const { toJSON } = render(<ConnectivityBanner />);
-    const root = toJSON();
+    const root = toJSON() as import('react-test-renderer').ReactTestRendererJSON;
     // Wrapper height should be 0 — banner is suppressed in offline mode
-    expect(root!.props.style).toEqual(
+    expect(root.props.style).toEqual(
       expect.objectContaining({ height: 0 }),
     );
   });

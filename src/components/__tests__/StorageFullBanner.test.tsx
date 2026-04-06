@@ -43,8 +43,8 @@ beforeEach(() => {
 describe('StorageFullBanner', () => {
   it('has collapsed height when storage is not full', () => {
     const { toJSON } = render(<StorageFullBanner />);
-    const root = toJSON();
-    expect(root!.props.style).toEqual(
+    const root = toJSON() as import('react-test-renderer').ReactTestRendererJSON;
+    expect(root.props.style).toEqual(
       expect.objectContaining({ height: 0 }),
     );
   });

@@ -112,7 +112,7 @@ describe('GradientBackground', () => {
         <Text>Content</Text>
       </GradientBackground>
     );
-    const root = toJSON();
+    const root = toJSON() as import('react-test-renderer').ReactTestRendererJSON;
     const flatStyle = Array.isArray(root.props.style)
       ? Object.assign({}, ...root.props.style.filter(Boolean))
       : root.props.style;

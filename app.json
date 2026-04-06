@@ -59,6 +59,7 @@
       "./plugins/silence-dev-launcher-warning",
       "./plugins/dedupe-lc++",
       "./plugins/fix-jvm-target",
+      "./plugins/large-heap",
       "./plugins/set-gradle-version",
       "expo-sqlite",
       "./modules/expo-ssl-trust/plugin",

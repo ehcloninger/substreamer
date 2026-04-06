@@ -1109,10 +1109,38 @@ class MusicService : HeadlessJsMediaService() {
 
     @MainThread
     override fun onDestroy() {
+        // Always release the MediaLibrarySession, even if setupPlayer() never ran.
+        // Media3 keeps a process-wide static map of live sessions keyed by ID
+        // (SESSION_ID_TO_SESSION_MAP). If we don't release here, the next
+        // onCreate() hits "Session ID must be unique. ID=TrackPlayer" at
+        // MediaSession.<init>:782 — observed on Android 16 (SDK 36) where
+        // tightened FGS lifecycle rules cause the system to recreate the
+        // service before JS has had a chance to call setupPlayer().
+        if (::mediaSession.isInitialized) {
+            try {
+                mediaSession.release()
+            } catch (e: Throwable) {
+                Timber.e(e, "Error releasing mediaSession")
+            }
+        }
+        // fakePlayer is normally released inside setupPlayer() once the real
+        // player is built. If we got destroyed before setupPlayer() ran, release
+        // it here so we don't leak an ExoPlayer instance per service cycle.
+        // ExoPlayer.release() is idempotent so a double-release is a no-op.
+        if (::fakePlayer.isInitialized) {
+            try {
+                fakePlayer.release()
+            } catch (e: Throwable) {
+                Timber.e(e, "Error releasing fakePlayer")
+            }
+        }
         if (::player.isInitialized) {
-            Timber.d("Releasing media session and destroying player")
-            mediaSession.release()
-            player.destroy()
+            Timber.d("Destroying player")
+            try {
+                player.destroy()
+            } catch (e: Throwable) {
+                Timber.e(e, "Error destroying player")
+            }
         }
 
         sleepTimerJob?.cancel()

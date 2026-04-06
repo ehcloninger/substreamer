@@ -18,7 +18,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from '@/utils/haptics';
 import { memo, useCallback, useMemo, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Animated as RNAnimated, Pressable, StyleSheet, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
   interpolate,
@@ -30,6 +30,10 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
+
+const PRESS_IN_DURATION = 80;
+const PRESS_OUT_DURATION = 150;
+const PRESS_OPACITY = 0.7;
 
 import { useTheme } from '../hooks/useTheme';
 
@@ -135,7 +139,11 @@ export const SwipeableRow = memo(function SwipeableRow({
   // SharedValues for UI-thread operations (haptic, icon pop) – race-free
   const fullSwipeRightTriggered = useSharedValue(false);
   const fullSwipeLeftTriggered = useSharedValue(false);
-  const dragProgress = useSharedValue(0);
+
+  // RN core Animated value for swipe background reveal — bridged from
+  // Reanimated's progress SharedValue via ActionPanel, so it stays off
+  // Reanimated's shadow-tree commit-hook walk.
+  const swipeBgOpacity = useRef(new RNAnimated.Value(0)).current;
 
   // JS refs for JS-thread reads (callbacks) – set via runOnJS to guarantee ordering
   const fullSwipeRightRef = useRef(false);
@@ -148,6 +156,11 @@ export const SwipeableRow = memo(function SwipeableRow({
   const setFullSwipeLeft = useCallback((v: boolean) => {
     fullSwipeLeftRef.current = v;
   }, []);
+
+  const updateSwipeBgOpacity = useCallback((progress: number) => {
+    // Map progress 0→0.5 to opacity 0→1, clamped at 1
+    swipeBgOpacity.setValue(Math.min(1, progress * 2));
+  }, [swipeBgOpacity]);
 
   /* ---- Swipeable event handlers ---- */
 
@@ -210,31 +223,35 @@ export const SwipeableRow = memo(function SwipeableRow({
     fullSwipeRightRef.current = false;
     fullSwipeLeftRef.current = false;
     pendingFullSwipeCloseRef.current = false;
+    swipeBgOpacity.setValue(0);
     if (_activeRef === swipeableRef.current) {
       _activeRef = null;
     }
-  }, []);
+  }, [swipeBgOpacity]);
 
   /* ---- Tap / long-press handlers ---- */
 
-  const pressOpacity = useSharedValue(1);
+  // Use RN core Animated for press opacity — runs on native driver but does
+  // NOT participate in Reanimated's shadow-tree commit-hook walk, reducing
+  // per-row memory pressure in long lists.
+  const pressOpacityAnim = useRef(new RNAnimated.Value(1)).current;
 
   const handlePressIn = useCallback(() => {
     if (isOpenRef.current) return;
-    pressOpacity.value = withTiming(0.7, { duration: 80 });
-  }, [pressOpacity]);
+    RNAnimated.timing(pressOpacityAnim, {
+      toValue: PRESS_OPACITY,
+      duration: PRESS_IN_DURATION,
+      useNativeDriver: true,
+    }).start();
+  }, [pressOpacityAnim]);
 
   const handlePressOut = useCallback(() => {
-    pressOpacity.value = withTiming(1, { duration: 150 });
-  }, [pressOpacity]);
-
-  const pressedStyle = useAnimatedStyle(() => ({
-    opacity: pressOpacity.value,
-  }));
-
-  const swipeBgStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(dragProgress.value, [0, 0.5, 1], [0, 1, 1], 'clamp'),
-  }));
+    RNAnimated.timing(pressOpacityAnim, {
+      toValue: 1,
+      duration: PRESS_OUT_DURATION,
+      useNativeDriver: true,
+    }).start();
+  }, [pressOpacityAnim]);
 
   const handlePress = useCallback(() => {
     if (isOpenRef.current) {
@@ -272,15 +289,15 @@ export const SwipeableRow = memo(function SwipeableRow({
       <ActionPanel
         actions={rightActions}
         progress={progress}
-        dragProgress={dragProgress}
         methods={methods}
         enableFullSwipe={enableFullSwipeRight}
         fullSwipeActionIndex={0}
         fullSwipeTriggered={fullSwipeRightTriggered}
         onFullSwipeChange={setFullSwipeRight}
+        onProgressChange={updateSwipeBgOpacity}
       />
     ),
-    [rightActions, dragProgress, enableFullSwipeRight, fullSwipeRightTriggered, setFullSwipeRight],
+    [rightActions, enableFullSwipeRight, fullSwipeRightTriggered, setFullSwipeRight, updateSwipeBgOpacity],
   );
 
   // renderRightActions = shown when swiping LEFT = our leftActions
@@ -294,15 +311,15 @@ export const SwipeableRow = memo(function SwipeableRow({
       <ActionPanel
         actions={leftActions}
         progress={progress}
-        dragProgress={dragProgress}
         methods={methods}
         enableFullSwipe={enableFullSwipeLeft}
         fullSwipeActionIndex={leftActions.length - 1}
         fullSwipeTriggered={fullSwipeLeftTriggered}
         onFullSwipeChange={setFullSwipeLeft}
+        onProgressChange={updateSwipeBgOpacity}
       />
     ),
-    [leftActions, dragProgress, enableFullSwipeLeft, fullSwipeLeftTriggered, setFullSwipeLeft],
+    [leftActions, enableFullSwipeLeft, fullSwipeLeftTriggered, setFullSwipeLeft, updateSwipeBgOpacity],
   );
 
   const swipeContainerStyle = useMemo(
@@ -342,15 +359,15 @@ export const SwipeableRow = memo(function SwipeableRow({
         onPressOut={handlePressOut}
         delayLongPress={400}
       >
-        <Animated.View style={[pressedStyle, contentClipStyle]}>
+        <RNAnimated.View style={[contentClipStyle, { opacity: pressOpacityAnim }]}>
           {effectiveRestingBg !== 'transparent' && (
             <View style={[styles.swipeBg, { backgroundColor: effectiveRestingBg }]} />
           )}
-          <Animated.View
-            style={[styles.swipeBg, { backgroundColor: colors.inputBg }, swipeBgStyle]}
+          <RNAnimated.View
+            style={[styles.swipeBg, { backgroundColor: colors.inputBg, opacity: swipeBgOpacity }]}
           />
           {children}
-        </Animated.View>
+        </RNAnimated.View>
       </Pressable>
     </ReanimatedSwipeable>
   );
@@ -363,31 +380,33 @@ export const SwipeableRow = memo(function SwipeableRow({
 interface ActionPanelProps {
   actions: SwipeAction[];
   progress: SharedValue<number>;
-  dragProgress: SharedValue<number>;
   methods: SwipeableMethods;
   enableFullSwipe: boolean;
   /** Which action index receives the pop animation on full swipe. */
   fullSwipeActionIndex: number;
   fullSwipeTriggered: SharedValue<boolean>;
   onFullSwipeChange: (triggered: boolean) => void;
+  /** Called from the UI thread (via runOnJS) with current progress value. */
+  onProgressChange: (progress: number) => void;
 }
 
 function ActionPanel({
   actions,
   progress,
-  dragProgress,
   methods,
   enableFullSwipe,
   fullSwipeActionIndex,
   fullSwipeTriggered,
   onFullSwipeChange,
+  onProgressChange,
 }: ActionPanelProps) {
   const iconPopScale = useSharedValue(1);
 
+  // Bridge Reanimated progress → JS callback for RN core Animated swipe bg
   useAnimatedReaction(
     () => progress.value,
     (current) => {
-      dragProgress.value = current;
+      runOnJS(onProgressChange)(current);
     },
   );
 

@@ -253,12 +253,20 @@ export const CachedImage = memo(function CachedImage({
           />
         </View>
       )}
-      {uri != null && (
+      {uri != null && showPlaceholder && (
         <Animated.Image
           {...imageProps}
           source={{ uri }}
           style={[StyleSheet.absoluteFill, fadeStyle]}
           onLoad={handleImageLoad}
+          onError={handleImageError}
+        />
+      )}
+      {uri != null && !showPlaceholder && (
+        <RNImage
+          {...imageProps}
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
           onError={handleImageError}
         />
       )}
