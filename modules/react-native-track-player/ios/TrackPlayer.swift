@@ -681,7 +681,10 @@ public class NativeTrackPlayerImpl: NSObject, AudioSessionControllerDelegate {
         }
         player.clear()
         player.add(items: tracks)
-        resolve(index)
+        // setQueue resolves with no value (the bridge contract is void). The previous
+        // `resolve(index)` referenced an undefined symbol — the JS layer ignores the
+        // resolved value here so NSNull is the safe choice.
+        resolve(NSNull())
     }
 
     @objc

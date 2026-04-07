@@ -70,7 +70,10 @@ class Track
         if (httpHeaders != null) {
             headers = HashMap()
             for (header in httpHeaders.keySet()) {
-                headers!![header] = httpHeaders.getString(header)!!
+                // Skip null header values rather than NPE-ing on `!!` — Bundle
+                // permits null string values and JS could send them.
+                val value = httpHeaders.getString(header) ?: continue
+                headers!![header] = value
             }
         }
         setMetadata(context, bundle, ratingType)

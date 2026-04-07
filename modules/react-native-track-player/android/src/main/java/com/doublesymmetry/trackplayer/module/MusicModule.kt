@@ -68,7 +68,17 @@ class MusicModule(reactContext: ReactApplicationContext) : NativeTrackPlayerSpec
         launchInScope {
             // If a binder already exists, don't get a new one
             if (!::musicService.isInitialized) {
-                val binder: MusicService.MusicBinder = service as MusicService.MusicBinder
+                // Defensive: a stale rebind from the system could in theory hand us
+                // a different IBinder type. ClassCastException here would crash the
+                // entire React module init, so reject the setup promise instead.
+                val binder = service as? MusicService.MusicBinder
+                if (binder == null) {
+                    playerSetUpPromise?.reject(
+                        "player_not_initialized",
+                        "Unexpected service binder type: ${service.javaClass.name}"
+                    )
+                    return@launchInScope
+                }
                 musicService = binder.service
                 musicService.setupPlayer(playerOptions)
                 playerSetUpPromise?.resolve(null)

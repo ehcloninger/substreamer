@@ -57,7 +57,15 @@ import kotlin.system.exitProcess
 class MusicService : HeadlessJsMediaService() {
     private lateinit var player: QueuedAudioPlayer
     private val binder = MusicBinder()
-    private val scope = MainScope()
+    // CoroutineExceptionHandler ensures any uncaught throwable inside a coroutine on
+    // this scope is logged rather than propagating to the global handler (which would
+    // crash the media service). All long-running flows on this scope (sleep timer
+    // monitor, progress update flow, sleep wake monitor) live for the lifetime of the
+    // service and a single bad iteration must not take it down.
+    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Timber.e(throwable, "Uncaught coroutine exception in MusicService scope")
+    }
+    private val scope = MainScope() + coroutineExceptionHandler
     private lateinit var fakePlayer: ExoPlayer
     private lateinit var mediaSession: MediaLibrarySession
     private var progressUpdateJob: Job? = null
@@ -300,11 +308,17 @@ class MusicService : HeadlessJsMediaService() {
                 }
             }
         }
+        // Defensive: JS may send out-of-range ints if the JS-side enum drifts from
+        // the native one (version skew, corrupted SQLite, future enum additions).
+        // Drop unknown values rather than IndexOutOfBoundsException-crashing the
+        // entire updateOptions call (which would tear down the media session).
         val capabilities =
-            options.getIntegerArrayList("capabilities")?.map { Capability.entries[it] }
+            options.getIntegerArrayList("capabilities")
+                ?.mapNotNull { Capability.entries.getOrNull(it) }
                 ?: emptyList()
         var notificationCapabilities = options.getIntegerArrayList("notificationCapabilities")
-            ?.map { Capability.entries[it] } ?: emptyList()
+            ?.mapNotNull { Capability.entries.getOrNull(it) }
+            ?: emptyList()
         if (notificationCapabilities.isEmpty()) notificationCapabilities = capabilities
 
         val playerCommandsBuilder = Player.Commands.Builder().addAll(
@@ -351,25 +365,31 @@ class MusicService : HeadlessJsMediaService() {
         sessionCommands = sessionCommandsBuilder.build()
         playerCommands = playerCommandsBuilder.build()
 
-        if (mediaSession.mediaNotificationControllerInfo != null) {
-            // https://github.com/androidx/media/blob/c35a9d62baec57118ea898e271ac66819399649b/demos/session_service/src/main/java/androidx/media3/demo/session/DemoMediaLibrarySessionCallback.kt#L107
-            mediaSession.setCustomLayout(
-                mediaSession.mediaNotificationControllerInfo!!,
-                customLayout
-            )
-            mediaSession.setAvailableCommands(
-                mediaSession.mediaNotificationControllerInfo!!,
-                sessionCommandsBuilder.build(),
-                playerCommands!!
-            )
+        // Capture controllerInfo into a local val so a controller disconnect between
+        // reads can't NPE the second access.
+        // https://github.com/androidx/media/blob/c35a9d62baec57118ea898e271ac66819399649b/demos/session_service/src/main/java/androidx/media3/demo/session/DemoMediaLibrarySessionCallback.kt#L107
+        mediaSession.mediaNotificationControllerInfo?.let { controllerInfo ->
+            mediaSession.setCustomLayout(controllerInfo, customLayout)
+            playerCommands?.let { cmds ->
+                mediaSession.setAvailableCommands(
+                    controllerInfo,
+                    sessionCommandsBuilder.build(),
+                    cmds
+                )
+            }
         }
     }
 
     @MainThread
     private fun progressUpdateEventFlow(interval: Double) = flow {
+        // Defensive: this flow is launched from updateOptions(), which can run before
+        // setupPlayer() initializes the lateinit `player`. The first iteration would
+        // otherwise UninitializedPropertyAccessException — wait it out instead.
         while (true) {
-            if (player.isPlaying || player.playerState == AudioPlayerState.BUFFERING
-                || player.playerState == AudioPlayerState.LOADING) {
+            if (::player.isInitialized
+                && (player.isPlaying || player.playerState == AudioPlayerState.BUFFERING
+                    || player.playerState == AudioPlayerState.LOADING)
+            ) {
                 val bundle = progressUpdateEvent()
                 emit(bundle)
             }
@@ -938,8 +958,12 @@ class MusicService : HeadlessJsMediaService() {
                 return false
             }
             lastWake = currentTime
+            // Defensive: getLaunchIntentForPackage returns null if the package has no
+            // launcher activity (some OEM kiosk builds strip the launcher entry).
+            // Bail rather than NPE the media service.
             val activityIntent = packageManager.getLaunchIntentForPackage(packageName)
-            activityIntent!!.data = Uri.parse("trackplayer://service-bound")
+                ?: return false
+            activityIntent.data = Uri.parse("trackplayer://service-bound")
             activityIntent.action = Intent.ACTION_VIEW
             activityIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             var activityOptions = ActivityOptions.makeBasic()
@@ -972,8 +996,8 @@ class MusicService : HeadlessJsMediaService() {
     fun setSleepTimer(seconds: Double) {
         // Cancel any existing timer
         sleepTimerJob?.cancel()
-        if (sleepTimerFading && sleepTimerOriginalVolume != null) {
-            player.volume = sleepTimerOriginalVolume!!
+        if (sleepTimerFading) {
+            sleepTimerOriginalVolume?.let { player.volume = it }
         }
         sleepTimerFading = false
         sleepTimerOriginalVolume = null
@@ -995,12 +1019,13 @@ class MusicService : HeadlessJsMediaService() {
     @MainThread
     fun getSleepTimerInfo(): Bundle {
         return Bundle().apply {
+            val endTime = sleepTimerEndTime
             if (sleepTimerEndOfTrack) {
                 putString("endTime", null)
                 putBoolean("endOfTrack", true)
                 putBoolean("active", true)
-            } else if (sleepTimerEndTime != null) {
-                putDouble("endTime", sleepTimerEndTime!! / 1000.0)
+            } else if (endTime != null) {
+                putDouble("endTime", endTime / 1000.0)
                 putBoolean("endOfTrack", false)
                 putBoolean("active", true)
             } else {
@@ -1015,8 +1040,8 @@ class MusicService : HeadlessJsMediaService() {
     fun clearSleepTimer() {
         sleepTimerJob?.cancel()
         sleepTimerJob = null
-        if (sleepTimerFading && sleepTimerOriginalVolume != null) {
-            player.volume = sleepTimerOriginalVolume!!
+        if (sleepTimerFading) {
+            sleepTimerOriginalVolume?.let { player.volume = it }
         }
         sleepTimerEndTime = null
         sleepTimerEndOfTrack = false
@@ -1090,8 +1115,8 @@ class MusicService : HeadlessJsMediaService() {
                 sleepTimerJob = null
                 sleepTimerEndTime = null
                 sleepTimerFading = false
-                if (sleepTimerOriginalVolume != null) {
-                    player.volume = sleepTimerOriginalVolume!!
+                sleepTimerOriginalVolume?.let {
+                    player.volume = it
                     sleepTimerOriginalVolume = null
                 }
 
@@ -1114,8 +1139,8 @@ class MusicService : HeadlessJsMediaService() {
 
             // Pause immediately
             player.pause()
-            if (sleepTimerOriginalVolume != null) {
-                player.volume = sleepTimerOriginalVolume!!
+            sleepTimerOriginalVolume?.let {
+                player.volume = it
                 sleepTimerOriginalVolume = null
             }
             sleepTimerEndTime = null

@@ -17,17 +17,20 @@ import androidx.media3.common.PercentageRating
  * @author Milen Pivchev @mpivchev
  */
 object BundleUtils {
-    @Suppress("DEPRECATION")
     fun getUri(context: Context, data: Bundle?, key: String?): Uri? {
-        if (!data!!.containsKey(key)) return null
-        val obj = data[key]
-        if (obj is String) {
-            // Remote or Local Uri
-            if (obj.trim { it <= ' ' }.isEmpty()) throw RuntimeException("$key: The URL cannot be empty")
-            return Uri.parse(obj as String?)
-        } else if (obj is Bundle) {
-            // require/import
-            val uri = obj.getString("uri")
+        if (data == null || key == null || !data.containsKey(key)) return null
+        // String path: remote or local URI sent by JS as a plain string
+        val stringValue = data.getString(key)
+        if (stringValue != null) {
+            if (stringValue.trim { it <= ' ' }.isEmpty()) {
+                throw RuntimeException("$key: The URL cannot be empty")
+            }
+            return Uri.parse(stringValue)
+        }
+        // Bundle path: require()/import() resource map
+        val bundleValue = data.getBundle(key)
+        if (bundleValue != null) {
+            val uri = bundleValue.getString("uri")
             val id = ResourceDrawableIdHelper.getResourceDrawableId(context, uri)
             return if (id > 0) {
                 // In production, we can obtain the resource uri
@@ -110,27 +113,28 @@ object BundleUtils {
         }
     }
 
-    @Suppress("DEPRECATION")
     fun getInt(data: Bundle?, key: String?, defaultValue: Int): Int {
-        val value = data!![key]
-        return if (value is Number) {
-            value.toInt()
-        } else defaultValue
+        if (data == null || key == null || !data.containsKey(key)) return defaultValue
+        // RN bridge can deliver numbers as Int, Long, Double, or Float — there is no
+        // typed Bundle accessor that handles "any Number" without a sentinel comparison.
+        // The deprecation on Bundle.get(key) is informational only; polymorphic dispatch
+        // is the cleanest path here. Kept narrowly scoped to one expression.
+        @Suppress("DEPRECATION")
+        val value = data[key]
+        return (value as? Number)?.toInt() ?: defaultValue
     }
 
-    @Suppress("DEPRECATION")
     fun getIntOrNull(data: Bundle?, key: String?): Int? {
-        val value = data!![key]
-        return if (value is Number) {
-            value.toInt()
-        } else null
+        if (data == null || key == null || !data.containsKey(key)) return null
+        @Suppress("DEPRECATION")
+        val value = data[key]
+        return (value as? Number)?.toInt()
     }
 
-    @Suppress("DEPRECATION")
     fun getDoubleOrNull(data: Bundle?, key: String?): Double? {
-        val value = data!![key]
-        return if (value is Number) {
-            value.toDouble()
-        } else null
+        if (data == null || key == null || !data.containsKey(key)) return null
+        @Suppress("DEPRECATION")
+        val value = data[key]
+        return (value as? Number)?.toDouble()
     }
 }
