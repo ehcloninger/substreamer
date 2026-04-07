@@ -14,7 +14,7 @@ import SubsonicAPI, {
   type Share,
 } from 'subsonic-api';
 
-import i18n from 'i18next';
+import i18n from '../i18n/i18n';
 
 import { authStore } from '../store/authStore';
 import { offlineModeStore } from '../store/offlineModeStore';

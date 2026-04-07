@@ -1,5 +1,5 @@
 import { type Ionicons } from '@expo/vector-icons';
-import i18n from 'i18next';
+import i18n from '../i18n/i18n';
 
 import {
   getRandomSongs,

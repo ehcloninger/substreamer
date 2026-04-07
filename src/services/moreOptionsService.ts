@@ -5,7 +5,7 @@
  * Keeps star/queue logic in one place so row and card components stay thin.
  */
 
-import i18n from 'i18next';
+import i18n from '../i18n/i18n';
 import { albumDetailStore } from '../store/albumDetailStore';
 import { artistDetailStore } from '../store/artistDetailStore';
 import { favoritesStore } from '../store/favoritesStore';

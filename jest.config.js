@@ -7,7 +7,10 @@ module.exports = {
         '<rootDir>/modules/**/__tests__/**/*.(test|spec).[jt]s?(x)',
         '<rootDir>/src/**/__tests__/**/*.(test|spec).[jt]s?(x)',
       ],
-      moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
+        '^.+/i18n/i18n$': '<rootDir>/src/test-utils/i18nMock.ts',
+      },
       setupFiles: ['<rootDir>/src/test-utils/i18nSetup.ts'],
     },
     {
@@ -17,7 +20,10 @@ module.exports = {
         '<rootDir>/modules/**/__tests__/**/*.(test|spec).[jt]s?(x)',
         '<rootDir>/src/**/__tests__/**/*.(test|spec).[jt]s?(x)',
       ],
-      moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
+        '^.+/i18n/i18n$': '<rootDir>/src/test-utils/i18nMock.ts',
+      },
       setupFiles: ['<rootDir>/src/test-utils/i18nSetup.ts'],
     },
   ],

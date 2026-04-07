@@ -4,7 +4,7 @@
  */
 
 import { AppState, type AppStateStatus } from 'react-native';
-import i18n from 'i18next';
+import i18n from '../i18n/i18n';
 import TrackPlayer, {
   AppKilledPlaybackBehavior,
   Capability,

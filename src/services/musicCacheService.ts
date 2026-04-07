@@ -17,7 +17,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { AppState, type AppStateStatus } from 'react-native';
 
-import i18n from 'i18next';
+import i18n from '../i18n/i18n';
 import { listDirectoryAsync, getDirectorySizeAsync, downloadFileAsyncWithProgress } from 'expo-async-fs';
 import { checkStorageLimit } from './storageService';
 import { beginDownload, clearDownload } from './downloadSpeedTracker';

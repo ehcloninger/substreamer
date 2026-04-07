@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import i18n from 'i18next';
+import i18n from '../i18n/i18n';
 
 import { sqliteStorage } from './sqliteStorage';
 
