@@ -34,10 +34,20 @@ class SslTrustURLProtocol: URLProtocol, URLSessionDataDelegate {
     }
     
     override func startLoading() {
-        // Mark this request as handled to prevent infinite loop
-        let mutableRequest = (request as NSURLRequest).mutableCopy() as! NSMutableURLRequest
+        // Mark this request as handled to prevent infinite loop.
+        // U6 hygiene: NSURLRequest.mutableCopy() is contractually NSMutableURLRequest
+        // but we replace the as!-cast with a guarded fallback so a misbehaving
+        // bridged subclass cannot crash the URL loading thread.
+        guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
+            client?.urlProtocol(self, didFailWithError: NSError(
+                domain: "expo.ssl.trust",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to create mutable request copy"]
+            ))
+            return
+        }
         URLProtocol.setProperty(true, forKey: SslTrustURLProtocol.handledKey, in: mutableRequest)
-        
+
         let config = URLSessionConfiguration.default
         urlSession = URLSession(configuration: config, delegate: self, delegateQueue: nil)
         dataTask = urlSession?.dataTask(with: mutableRequest as URLRequest)

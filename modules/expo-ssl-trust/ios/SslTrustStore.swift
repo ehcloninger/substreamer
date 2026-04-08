@@ -187,7 +187,9 @@ class SslTrustStore: NSObject {
     private func addFingerprintToKeychain(hostname: String) {
         guard let entry = trustedCerts[hostname] else { return }
         let tag = "expo.ssl.trust.fp.\(hostname)"
-        let data = entry.sha256Fingerprint.data(using: .utf8)!
+        // U6 hygiene: fingerprint is hex ASCII so UTF-8 encoding can't fail in
+        // practice, but the force-unwrap is still removed defensively.
+        guard let data = entry.sha256Fingerprint.data(using: .utf8) else { return }
         
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

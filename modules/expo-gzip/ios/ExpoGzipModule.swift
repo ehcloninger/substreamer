@@ -59,7 +59,14 @@ public class ExpoGzipModule: Module {
         defer { buffer.deallocate() }
 
         let result: Int32 = data.withUnsafeBytes { inPtr in
-            stream.next_in = UnsafeMutablePointer<Bytef>(mutating: inPtr.bindMemory(to: Bytef.self).baseAddress!)
+            // U6 hygiene: drop the force-unwrap. The `!data.isEmpty` guard above
+            // makes the nil path unreachable in practice, but returning Z_ERRNO
+            // here surfaces it as a normal compression failure rather than a
+            // process crash if a future caller sidesteps the guard.
+            guard let inBaseAddress = inPtr.bindMemory(to: Bytef.self).baseAddress else {
+                return Z_ERRNO
+            }
+            stream.next_in = UnsafeMutablePointer<Bytef>(mutating: inBaseAddress)
             stream.avail_in = uInt(data.count)
             stream.next_out = buffer
             stream.avail_out = uInt(bufferSize)
@@ -96,12 +103,24 @@ public class ExpoGzipModule: Module {
         var buffer = Data(count: chunkSize)
 
         try data.withUnsafeBytes { inPtr in
-            stream.next_in = UnsafeMutablePointer<Bytef>(mutating: inPtr.bindMemory(to: Bytef.self).baseAddress!)
+            // U6 hygiene: replace force-unwrap with throw. Outer closure can throw,
+            // so a nil baseAddress on the input buffer surfaces as a normal
+            // decompression error instead of an NSException.
+            guard let inBaseAddress = inPtr.bindMemory(to: Bytef.self).baseAddress else {
+                throw GzipError.decompressionFailed(Z_ERRNO)
+            }
+            stream.next_in = UnsafeMutablePointer<Bytef>(mutating: inBaseAddress)
             stream.avail_in = uInt(data.count)
 
             repeat {
                 let result: Int32 = buffer.withUnsafeMutableBytes { outPtr in
-                    stream.next_out = outPtr.bindMemory(to: Bytef.self).baseAddress!
+                    // U6 hygiene: same treatment for the output buffer. Inner
+                    // closure must return Int32, so signal failure with Z_ERRNO
+                    // and let the outer guard pick it up below.
+                    guard let outBaseAddress = outPtr.bindMemory(to: Bytef.self).baseAddress else {
+                        return Z_ERRNO
+                    }
+                    stream.next_out = outBaseAddress
                     stream.avail_out = uInt(chunkSize)
                     return inflate(&stream, Z_NO_FLUSH)
                 }
