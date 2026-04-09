@@ -650,8 +650,8 @@ async function downloadTrack(
     const effectiveFmt = resolveEffectiveFormat({
       sourceSuffix: track.suffix,
       sourceBitRate: track.bitRate,
-      sourceBitDepth: (track as any).bitDepth,
-      sourceSamplingRate: (track as any).samplingRate,
+      sourceBitDepth: track.bitDepth,
+      sourceSamplingRate: track.samplingRate,
       formatSetting: downloadFormat,
       bitRateSetting: downloadMaxBitRate,
     });

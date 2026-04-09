@@ -108,8 +108,8 @@ export function getEffectiveFormat(track: Child): EffectiveFormat | null {
     return {
       suffix: track.suffix?.toLowerCase() ?? 'unknown',
       bitRate: track.bitRate ?? undefined,
-      bitDepth: (track as any).bitDepth ?? undefined,
-      samplingRate: (track as any).samplingRate ?? undefined,
+      bitDepth: track.bitDepth ?? undefined,
+      samplingRate: track.samplingRate ?? undefined,
       capturedAt: 0, // sentinel: not a captured stamp, just source data
     };
   }

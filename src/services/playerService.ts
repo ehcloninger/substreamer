@@ -102,8 +102,8 @@ function stampQueueFormat(child: Child): EffectiveFormat {
   return resolveEffectiveFormat({
     sourceSuffix: child.suffix,
     sourceBitRate: child.bitRate,
-    sourceBitDepth: (child as any).bitDepth,
-    sourceSamplingRate: (child as any).samplingRate,
+    sourceBitDepth: child.bitDepth,
+    sourceSamplingRate: child.samplingRate,
     formatSetting: streamFormat,
     bitRateSetting: maxBitRate,
   });

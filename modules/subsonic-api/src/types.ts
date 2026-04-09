@@ -156,6 +156,9 @@ export interface Child {
 	artistId?: string;
 	averageRating?: number;
 	bitRate?: number;
+	bitDepth?: number;
+	samplingRate?: number;
+	channelCount?: number;
 	bookmarkPosition?: number;
 	contentType?: string;
 	coverArt?: string;
