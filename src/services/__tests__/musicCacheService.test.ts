@@ -2414,3 +2414,104 @@ describe('recoverStalledDownloadsAsync guards', () => {
     expect(queue[0].status).toBe('error');
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  downloadedFormats stamping                                         */
+/* ------------------------------------------------------------------ */
+
+describe('downloadedFormats stamping', () => {
+  it('stamps downloadedFormats on successful download with raw format', async () => {
+    mockFileExists = true;
+    mockFileSize = 5000;
+    mockDownloadFileAsyncWithProgress.mockResolvedValue(undefined);
+    playbackSettingsStore.setState({ downloadFormat: 'raw', downloadMaxBitRate: null } as any);
+
+    musicCacheStore.getState().enqueue({
+      itemId: 'album-fmt-raw',
+      type: 'album',
+      name: 'Test',
+      totalTracks: 1,
+      tracks: [makeChild('fmt-raw-t1', { suffix: 'flac', bitRate: 900 })],
+    });
+
+    resumeIfSpaceAvailable();
+    await waitForQueueIdle();
+
+    const fmt = musicCacheStore.getState().downloadedFormats['fmt-raw-t1'];
+    expect(fmt).toBeDefined();
+    expect(fmt.suffix).toBe('flac');
+    expect(fmt.bitRate).toBe(900);
+    expect(fmt.capturedAt).toBeGreaterThan(0);
+  });
+
+  it('stamps downloadedFormats with transcoded format', async () => {
+    mockFileExists = true;
+    mockFileSize = 5000;
+    mockDownloadFileAsyncWithProgress.mockResolvedValue(undefined);
+    playbackSettingsStore.setState({ downloadFormat: 'mp3', downloadMaxBitRate: 192 } as any);
+
+    musicCacheStore.getState().enqueue({
+      itemId: 'album-fmt-mp3',
+      type: 'album',
+      name: 'Test',
+      totalTracks: 1,
+      tracks: [makeChild('fmt-mp3-t1', { suffix: 'flac', bitRate: 900 })],
+    });
+
+    resumeIfSpaceAvailable();
+    await waitForQueueIdle();
+
+    const fmt = musicCacheStore.getState().downloadedFormats['fmt-mp3-t1'];
+    expect(fmt).toBeDefined();
+    expect(fmt.suffix).toBe('mp3');
+    expect(fmt.bitRate).toBe(192);
+  });
+
+  it('clears downloadedFormats entry on deleteCachedItem', async () => {
+    musicCacheStore.setState({
+      cachedItems: {
+        'album-del': {
+          itemId: 'album-del',
+          type: 'album',
+          name: 'Test',
+          tracks: [makeCachedTrack('del-t1'), makeCachedTrack('del-t2')],
+          totalBytes: 2000,
+          downloadedAt: Date.now(),
+        },
+      },
+      downloadedFormats: {
+        'del-t1': { suffix: 'mp3', bitRate: 192, capturedAt: 1000 },
+        'del-t2': { suffix: 'mp3', bitRate: 192, capturedAt: 1000 },
+        'other-t1': { suffix: 'flac', bitRate: 900, capturedAt: 1000 },
+      },
+      totalBytes: 2000,
+      totalFiles: 2,
+    } as any);
+
+    deleteCachedItem('album-del');
+
+    const formats = musicCacheStore.getState().downloadedFormats;
+    expect(formats['del-t1']).toBeUndefined();
+    expect(formats['del-t2']).toBeUndefined();
+    // Unrelated entries should be preserved
+    expect(formats['other-t1']).toBeDefined();
+  });
+
+  it('does not stamp on download failure', async () => {
+    mockDownloadFileAsyncWithProgress.mockRejectedValue(new Error('fail'));
+    playbackSettingsStore.setState({ downloadFormat: 'raw', downloadMaxBitRate: null } as any);
+
+    musicCacheStore.getState().enqueue({
+      itemId: 'album-fail-fmt',
+      type: 'album',
+      name: 'Test',
+      totalTracks: 1,
+      tracks: [makeChild('fail-fmt-t1')],
+    });
+
+    resumeIfSpaceAvailable();
+    await waitForQueueIdle();
+
+    expect(musicCacheStore.getState().downloadedFormats['fail-fmt-t1']).toBeUndefined();
+  });
+});

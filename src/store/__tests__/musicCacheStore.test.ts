@@ -322,6 +322,40 @@ describe('setMaxConcurrentDownloads', () => {
   });
 });
 
+describe('downloadedFormats', () => {
+  const fmt = { suffix: 'mp3', bitRate: 192, capturedAt: 1000 };
+
+  it('setDownloadedFormat adds an entry', () => {
+    musicCacheStore.getState().setDownloadedFormat('s1', fmt);
+    expect(musicCacheStore.getState().downloadedFormats['s1']).toEqual(fmt);
+  });
+
+  it('setDownloadedFormat overwrites an existing entry', () => {
+    musicCacheStore.getState().setDownloadedFormat('s1', fmt);
+    const updated = { suffix: 'flac', bitRate: 950, capturedAt: 2000 };
+    musicCacheStore.getState().setDownloadedFormat('s1', updated);
+    expect(musicCacheStore.getState().downloadedFormats['s1']).toEqual(updated);
+  });
+
+  it('clearDownloadedFormat removes an entry', () => {
+    musicCacheStore.getState().setDownloadedFormat('s1', fmt);
+    musicCacheStore.getState().clearDownloadedFormat('s1');
+    expect(musicCacheStore.getState().downloadedFormats['s1']).toBeUndefined();
+  });
+
+  it('clearDownloadedFormat is a no-op for missing entry', () => {
+    const before = musicCacheStore.getState();
+    musicCacheStore.getState().clearDownloadedFormat('nonexistent');
+    expect(musicCacheStore.getState()).toBe(before);
+  });
+
+  it('reset clears downloadedFormats', () => {
+    musicCacheStore.getState().setDownloadedFormat('s1', fmt);
+    musicCacheStore.getState().reset();
+    expect(musicCacheStore.getState().downloadedFormats).toEqual({});
+  });
+});
+
 describe('recalculate', () => {
   it('replaces totals with provided stats', () => {
     musicCacheStore.setState({ totalBytes: 999, totalFiles: 99 });

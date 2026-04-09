@@ -3,16 +3,9 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { sqliteStorage } from './sqliteStorage';
+import { type StreamFormat, type MaxBitRate } from '../types/audio';
 
-/**
- * Stream format identifier sent as the Subsonic `format=` query parameter.
- * `'raw'` is the canonical "no transcoding" sentinel — for any other value
- * the URL builder sends `format=<value>` verbatim. Server semantics vary:
- * Navidrome treats it as a codec name, gonic as a profile name (e.g.
- * `opus_128_car`), so we accept arbitrary strings.
- */
-export type StreamFormat = string;
-export type MaxBitRate = 64 | 128 | 192 | 256 | 320 | null;
+export type { StreamFormat, MaxBitRate } from '../types/audio';
 
 /**
  * Codec group identifier — presets sharing the same group are visually

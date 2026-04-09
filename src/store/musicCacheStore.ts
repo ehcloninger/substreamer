@@ -14,6 +14,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { sqliteStorage } from './sqliteStorage';
 
+import { type EffectiveFormat } from '../types/audio';
 import { type Child } from '../services/subsonicService';
 
 /* ------------------------------------------------------------------ */
@@ -74,6 +75,8 @@ export interface MusicCacheState {
   totalBytes: number;
   totalFiles: number;
   maxConcurrentDownloads: MaxConcurrentDownloads;
+  /** Effective post-transcode format for each downloaded track, keyed by song ID. */
+  downloadedFormats: Record<string, EffectiveFormat>;
 
   enqueue: (item: Omit<DownloadQueueItem, 'queueId' | 'status' | 'completedTracks' | 'addedAt'>) => void;
   removeFromQueue: (queueId: string) => void;
@@ -88,6 +91,10 @@ export interface MusicCacheState {
   /** Remove a track from a cached item by index and adjust totals. */
   removeCachedTrack: (itemId: string, trackIndex: number) => void;
   setMaxConcurrentDownloads: (max: MaxConcurrentDownloads) => void;
+  /** Record the effective format for a downloaded track. */
+  setDownloadedFormat: (songId: string, fmt: EffectiveFormat) => void;
+  /** Remove the effective format entry when a downloaded track is deleted. */
+  clearDownloadedFormat: (songId: string) => void;
   /** Increment totalBytes by a delta (called per-track during download). */
   addBytes: (bytes: number) => void;
   /** Increment totalFiles by a count (called per-track during download). */
@@ -110,6 +117,7 @@ export const musicCacheStore = create<MusicCacheState>()(
       totalBytes: 0,
       totalFiles: 0,
       maxConcurrentDownloads: 3,
+      downloadedFormats: {},
 
       enqueue: (item) =>
         set((state) => {
@@ -230,6 +238,18 @@ export const musicCacheStore = create<MusicCacheState>()(
 
       setMaxConcurrentDownloads: (max) => set({ maxConcurrentDownloads: max }),
 
+      setDownloadedFormat: (songId, fmt) =>
+        set((state) => ({
+          downloadedFormats: { ...state.downloadedFormats, [songId]: fmt },
+        })),
+
+      clearDownloadedFormat: (songId) =>
+        set((state) => {
+          if (!(songId in state.downloadedFormats)) return state;
+          const { [songId]: _, ...rest } = state.downloadedFormats;
+          return { downloadedFormats: rest };
+        }),
+
       addBytes: (bytes) =>
         set((state) => ({ totalBytes: state.totalBytes + bytes })),
 
@@ -237,7 +257,7 @@ export const musicCacheStore = create<MusicCacheState>()(
         set((state) => ({ totalFiles: state.totalFiles + count })),
 
       reset: () =>
-        set({ cachedItems: {}, downloadQueue: [], totalBytes: 0, totalFiles: 0 }),
+        set({ cachedItems: {}, downloadQueue: [], totalBytes: 0, totalFiles: 0, downloadedFormats: {} }),
 
       recalculate: (stats) =>
         set({ totalBytes: stats.totalBytes, totalFiles: stats.totalFiles }),
@@ -251,6 +271,7 @@ export const musicCacheStore = create<MusicCacheState>()(
         totalBytes: state.totalBytes,
         totalFiles: state.totalFiles,
         maxConcurrentDownloads: state.maxConcurrentDownloads,
+        downloadedFormats: state.downloadedFormats,
       }),
     }
   )

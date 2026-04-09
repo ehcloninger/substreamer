@@ -15,8 +15,10 @@ import { Platform } from 'react-native';
 import { migrateV3BackupMetas } from './backupService';
 import { completedScrobbleStore } from '../store/completedScrobbleStore';
 import { mbidOverrideStore, type MbidOverride } from '../store/mbidOverrideStore';
+import { musicCacheStore } from '../store/musicCacheStore';
 import { playbackSettingsStore } from '../store/playbackSettingsStore';
 import { sqliteStorage } from '../store/sqliteStorage';
+import { type EffectiveFormat } from '../types/audio';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -406,6 +408,61 @@ const MIGRATION_TASKS: MigrationTask[] = [
       // files, so this is safe for users who ran Migration 7 correctly and
       // for fresh installs.
       await stampV3BackupsFromStoredAuth(log);
+    },
+  },
+
+  {
+    id: 10,
+    name: 'Backfill downloaded track formats',
+    run: async (log) => {
+      // Read the raw persisted music cache from SQLite to avoid a race
+      // with Zustand rehydration (same pattern as other migrations).
+      const raw = await sqliteStorage.getItem('substreamer-music-cache');
+      if (!raw) {
+        log('No persisted music cache — skipping.');
+        return;
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        log('Failed to parse music cache — skipping.');
+        return;
+      }
+
+      const cachedItems: Record<string, any> = parsed?.state?.cachedItems ?? {};
+      const existingFormats: Record<string, EffectiveFormat> =
+        parsed?.state?.downloadedFormats ?? {};
+      const formats: Record<string, EffectiveFormat> = { ...existingFormats };
+      let count = 0;
+
+      for (const item of Object.values(cachedItems)) {
+        const tracks: any[] = item?.tracks ?? [];
+        for (const track of tracks) {
+          if (!track?.id || !track?.fileName) continue;
+          // Skip if already stamped (e.g. by a recent download).
+          if (formats[track.id]) continue;
+
+          const ext = track.fileName.split('.').pop()?.toLowerCase() ?? 'unknown';
+          formats[track.id] = {
+            suffix: ext,
+            capturedAt: 0, // sentinel: backfilled, not captured at download time
+          };
+          count++;
+        }
+      }
+
+      if (count === 0) {
+        log('No unstamped tracks found — nothing to backfill.');
+        return;
+      }
+
+      // Merge into the persisted blob and update the live store.
+      parsed.state.downloadedFormats = formats;
+      await sqliteStorage.setItem('substreamer-music-cache', JSON.stringify(parsed));
+      musicCacheStore.setState({ downloadedFormats: formats });
+      log(`Backfilled format for ${count} cached track(s).`);
     },
   },
 

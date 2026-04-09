@@ -64,6 +64,9 @@ const mockSetProgress = jest.fn();
 const mockSetError = jest.fn();
 const mockSetRetrying = jest.fn();
 const mockSetQueueLoading = jest.fn();
+const mockSetQueueFormats = jest.fn();
+const mockAddQueueFormat = jest.fn();
+const mockClearQueueFormats = jest.fn();
 
 jest.mock('../../store/playerStore', () => ({
   playerStore: {
@@ -81,6 +84,9 @@ jest.mock('../../store/playerStore', () => ({
       setError: mockSetError,
       setRetrying: mockSetRetrying,
       setQueueLoading: mockSetQueueLoading,
+      setQueueFormats: mockSetQueueFormats,
+      addQueueFormat: mockAddQueueFormat,
+      clearQueueFormats: mockClearQueueFormats,
     })),
   },
 }));
@@ -116,6 +122,14 @@ jest.mock('../imageCacheService', () => ({
 
 jest.mock('../musicCacheService', () => ({
   getLocalTrackUri: jest.fn().mockReturnValue(null),
+}));
+
+jest.mock('../../store/musicCacheStore', () => ({
+  musicCacheStore: {
+    getState: jest.fn(() => ({
+      downloadedFormats: {},
+    })),
+  },
 }));
 
 jest.mock('../subsonicService');
@@ -183,6 +197,9 @@ const defaultPlayerState = () => ({
   setError: mockSetError,
   setRetrying: mockSetRetrying,
   setQueueLoading: mockSetQueueLoading,
+  setQueueFormats: mockSetQueueFormats,
+  addQueueFormat: mockAddQueueFormat,
+  clearQueueFormats: mockClearQueueFormats,
 });
 
 beforeAll(async () => {
@@ -582,6 +599,9 @@ describe('PlaybackState event handler', () => {
       setError: mockSetError,
       setRetrying: mockSetRetrying,
       setQueueLoading: mockSetQueueLoading,
+      setQueueFormats: mockSetQueueFormats,
+      addQueueFormat: mockAddQueueFormat,
+      clearQueueFormats: mockClearQueueFormats,
     };
     const { playerStore } = require('../../store/playerStore');
     (playerStore.getState as jest.Mock).mockReturnValue(mockState);
@@ -648,6 +668,9 @@ describe('PlaybackError event handler', () => {
       setError: mockSetError,
       setRetrying: mockSetRetrying,
       setQueueLoading: mockSetQueueLoading,
+      setQueueFormats: mockSetQueueFormats,
+      addQueueFormat: mockAddQueueFormat,
+      clearQueueFormats: mockClearQueueFormats,
     };
     const { playerStore } = require('../../store/playerStore');
     (playerStore.getState as jest.Mock).mockReturnValue(mockState);
@@ -1099,6 +1122,9 @@ describe('removeFromQueue index shift', () => {
       setError: mockSetError,
       setRetrying: mockSetRetrying,
       setQueueLoading: mockSetQueueLoading,
+      setQueueFormats: mockSetQueueFormats,
+      addQueueFormat: mockAddQueueFormat,
+      clearQueueFormats: mockClearQueueFormats,
     });
 
     jest.clearAllMocks();
@@ -1132,6 +1158,9 @@ describe('removeFromQueue index shift', () => {
       setError: mockSetError,
       setRetrying: mockSetRetrying,
       setQueueLoading: mockSetQueueLoading,
+      setQueueFormats: mockSetQueueFormats,
+      addQueueFormat: mockAddQueueFormat,
+      clearQueueFormats: mockClearQueueFormats,
     });
 
     jest.clearAllMocks();
@@ -1197,6 +1226,9 @@ describe('PlaybackProgressUpdated event handler', () => {
       setError: mockSetError,
       setRetrying: mockSetRetrying,
       setQueueLoading: mockSetQueueLoading,
+      setQueueFormats: mockSetQueueFormats,
+      addQueueFormat: mockAddQueueFormat,
+      clearQueueFormats: mockClearQueueFormats,
     };
     const { playerStore } = require('../../store/playerStore');
     (playerStore.getState as jest.Mock).mockReturnValue(mockState);
@@ -1448,6 +1480,9 @@ describe('syncStoreFromNative', () => {
       setError: mockSetError,
       setRetrying: mockSetRetrying,
       setQueueLoading: mockSetQueueLoading,
+      setQueueFormats: mockSetQueueFormats,
+      addQueueFormat: mockAddQueueFormat,
+      clearQueueFormats: mockClearQueueFormats,
     };
     const { playerStore } = require('../../store/playerStore');
     (playerStore.getState as jest.Mock).mockReturnValue(mockState);
@@ -1943,5 +1978,88 @@ describe('sleep timer events', () => {
 
     jest.advanceTimersByTime(5000);
     expect(sleepTimerStore.getState().remaining).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Queue format stamping                                              */
+/* ------------------------------------------------------------------ */
+
+describe('queue format stamping', () => {
+  it('playTrack stamps queueFormats for all tracks', async () => {
+    playbackSettingsStore.setState({ streamFormat: 'raw', maxBitRate: null } as any);
+
+    const queue = [
+      makeChild('t1', { suffix: 'flac', bitRate: 1411 }),
+      makeChild('t2', { suffix: 'mp3', bitRate: 320 }),
+    ];
+
+    await playTrack(queue[0], queue);
+
+    expect(mockSetQueueFormats).toHaveBeenCalledTimes(1);
+    const fmts = mockSetQueueFormats.mock.calls[0][0];
+    expect(fmts.t1.suffix).toBe('flac');
+    expect(fmts.t2.suffix).toBe('mp3');
+  });
+
+  it('playTrack uses downloaded format when available', async () => {
+    const { musicCacheStore } = require('../../store/musicCacheStore');
+    const downloadedFmt = { suffix: 'opus', bitRate: 128, capturedAt: 999 };
+    (musicCacheStore.getState as jest.Mock).mockReturnValue({
+      downloadedFormats: { t1: downloadedFmt },
+    });
+
+    playbackSettingsStore.setState({ streamFormat: 'mp3', maxBitRate: 320 } as any);
+
+    const queue = [makeChild('t1', { suffix: 'flac', bitRate: 1411 })];
+    await playTrack(queue[0], queue);
+
+    const fmts = mockSetQueueFormats.mock.calls[0][0];
+    expect(fmts.t1).toBe(downloadedFmt);
+
+    // Restore default
+    (musicCacheStore.getState as jest.Mock).mockReturnValue({ downloadedFormats: {} });
+  });
+
+  it('addToQueue stamps format for appended tracks', async () => {
+    playbackSettingsStore.setState({ streamFormat: 'raw', maxBitRate: null } as any);
+
+    const queue = [makeChild('t1', { suffix: 'flac' })];
+    await playTrack(queue[0], queue);
+    jest.clearAllMocks();
+
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue(defaultPlayerState());
+
+    const extras = [makeChild('t2', { suffix: 'mp3', bitRate: 256 })];
+    await addToQueue(extras);
+
+    expect(mockAddQueueFormat).toHaveBeenCalledTimes(1);
+    expect(mockAddQueueFormat.mock.calls[0][0]).toBe('t2');
+    expect(mockAddQueueFormat.mock.calls[0][1].suffix).toBe('mp3');
+  });
+
+  it('clearQueue clears queueFormats', async () => {
+    const queue = [makeChild('t1')];
+    await playTrack(queue[0], queue);
+    jest.clearAllMocks();
+
+    const { playerStore } = require('../../store/playerStore');
+    (playerStore.getState as jest.Mock).mockReturnValue(defaultPlayerState());
+
+    await clearQueue();
+
+    expect(mockClearQueueFormats).toHaveBeenCalled();
+  });
+
+  it('playTrack resolves transcoded format from stream settings', async () => {
+    playbackSettingsStore.setState({ streamFormat: 'mp3', maxBitRate: 192 } as any);
+
+    const queue = [makeChild('t1', { suffix: 'flac', bitRate: 1411 })];
+    await playTrack(queue[0], queue);
+
+    const fmts = mockSetQueueFormats.mock.calls[0][0];
+    expect(fmts.t1.suffix).toBe('mp3');
+    expect(fmts.t1.bitRate).toBe(192);
   });
 });

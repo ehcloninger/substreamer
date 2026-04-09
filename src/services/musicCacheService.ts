@@ -31,6 +31,7 @@ import {
   type CachedTrack,
 } from '../store/musicCacheStore';
 import { playbackSettingsStore } from '../store/playbackSettingsStore';
+import { resolveEffectiveFormat } from '../utils/effectiveFormat';
 import { playlistDetailStore } from '../store/playlistDetailStore';
 import {
   ensureCoverArtAuth,
@@ -623,6 +624,9 @@ async function downloadTrack(
   const url = getDownloadStreamUrl(track.id);
   if (!url) return null;
 
+  // Capture download settings BEFORE the transfer starts.
+  const { downloadFormat, downloadMaxBitRate } = playbackSettingsStore.getState();
+
   const ext = getTrackFileExtension(track);
   const fileName = `${track.id}.${ext}`;
   const tmpName = `${fileName}.tmp`;
@@ -641,6 +645,17 @@ async function downloadTrack(
     const bytes = dest.exists ? dest.size ?? 0 : 0;
 
     clearDownload(track.id);
+
+    // Record the effective format for this download.
+    const effectiveFmt = resolveEffectiveFormat({
+      sourceSuffix: track.suffix,
+      sourceBitRate: track.bitRate,
+      sourceBitDepth: (track as any).bitDepth,
+      sourceSamplingRate: (track as any).samplingRate,
+      formatSetting: downloadFormat,
+      bitRateSetting: downloadMaxBitRate,
+    });
+    musicCacheStore.getState().setDownloadedFormat(track.id, effectiveFmt);
 
     return {
       id: track.id,
@@ -740,7 +755,7 @@ export async function redownloadTrack(
   const url = getDownloadStreamUrl(trackId);
   if (!url) return false;
 
-  const { downloadFormat } = playbackSettingsStore.getState();
+  const { downloadFormat, downloadMaxBitRate } = playbackSettingsStore.getState();
   const ext = downloadFormat !== 'raw'
     ? downloadFormat
     : oldTrack.fileName.replace(/^.*\./, '') || 'dat';
@@ -761,6 +776,17 @@ export async function redownloadTrack(
     musicCacheStore.getState().updateCachedTrack(
       itemId, trackIndex, updatedTrack, oldTrack.bytes,
     );
+
+    // Stamp the effective format for this re-download.
+    // Source Child data isn't available here — use what we can derive.
+    const effectiveFmt = resolveEffectiveFormat({
+      sourceSuffix: oldTrack.fileName.replace(/^.*\./, '') || undefined,
+      sourceBitRate: null,
+      formatSetting: downloadFormat,
+      bitRateSetting: downloadMaxBitRate,
+    });
+    musicCacheStore.getState().setDownloadedFormat(trackId, effectiveFmt);
+
     return true;
   } catch {
     return false;
@@ -780,6 +806,7 @@ export function deleteCachedItem(itemId: string): void {
     for (const track of cached.tracks) {
       trackUriMap.delete(track.id);
       trackToItems.get(track.id)?.delete(itemId);
+      musicCacheStore.getState().clearDownloadedFormat(track.id);
     }
   }
 
@@ -809,6 +836,7 @@ export function removeCachedPlaylistTrack(itemId: string, trackIndex: number): v
 
   if (isOrphan) {
     trackUriMap.delete(track.id);
+    musicCacheStore.getState().clearDownloadedFormat(track.id);
     const itemDir = new Directory(ensureCacheDir(), itemId);
     if (itemDir.exists) {
       const file = new File(itemDir, track.fileName);

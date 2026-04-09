@@ -15,12 +15,14 @@ import TrackPlayer, {
   type Track,
 } from 'react-native-track-player';
 
+import { type EffectiveFormat } from '../types/audio';
 import {
   PLAYBACK_RATES,
   playbackSettingsStore,
   type PlaybackRate,
   type RepeatModeSetting,
 } from '../store/playbackSettingsStore';
+import { musicCacheStore } from '../store/musicCacheStore';
 import { playbackToastStore } from '../store/playbackToastStore';
 import { playerStore, type PlaybackStatus } from '../store/playerStore';
 import { sleepTimerStore } from '../store/sleepTimerStore';
@@ -29,6 +31,7 @@ import { shuffleArray } from '../utils/arrayHelpers';
 import { addCompletedScrobble, sendNowPlaying } from './scrobbleService';
 import { getCachedImageUri } from './imageCacheService';
 import { getLocalTrackUri } from './musicCacheService';
+import { resolveEffectiveFormat } from '../utils/effectiveFormat';
 import {
   ensureCoverArtAuth,
   getCoverArtUrl,
@@ -84,6 +87,26 @@ const EXT_TO_MIME: Record<string, string> = {
 function mimeFromUri(uri: string): string | undefined {
   const ext = uri.split('.').pop()?.toLowerCase();
   return ext ? EXT_TO_MIME[ext] : undefined;
+}
+
+/**
+ * Build an EffectiveFormat stamp for a track being added to the queue.
+ * If the track has a downloaded copy with a persisted format, use that;
+ * otherwise resolve from the current streaming settings.
+ */
+function stampQueueFormat(child: Child): EffectiveFormat {
+  const downloaded = musicCacheStore.getState().downloadedFormats[child.id];
+  if (downloaded) return downloaded;
+
+  const { streamFormat, maxBitRate } = playbackSettingsStore.getState();
+  return resolveEffectiveFormat({
+    sourceSuffix: child.suffix,
+    sourceBitRate: child.bitRate,
+    sourceBitDepth: (child as any).bitDepth,
+    sourceSamplingRate: (child as any).samplingRate,
+    formatSetting: streamFormat,
+    bitRateSetting: maxBitRate,
+  });
 }
 
 /** Convert a Child (Subsonic song) to an RNTP Track object. */
@@ -597,6 +620,11 @@ export async function playTrack(
     }
     playerStore.getState().setQueue(queue);
 
+    // Stamp effective format for each track in the queue.
+    const formats: Record<string, EffectiveFormat> = {};
+    for (const child of queue) formats[child.id] = stampQueueFormat(child);
+    playerStore.getState().setQueueFormats(formats);
+
     const rnTracks = queue.map(childToTrack);
     const startIndex = queue.findIndex((c) => c.id === track.id);
 
@@ -790,6 +818,7 @@ export async function clearQueue(): Promise<void> {
   store.setProgress(0, 0, 0);
   store.setError(null);
   store.setRetrying(false);
+  store.clearQueueFormats();
 }
 
 /**
@@ -818,6 +847,11 @@ export async function addToQueue(
 
   if (sourcePlaylistId) {
     for (const child of tracks) trackPlaylistMap.set(child.id, sourcePlaylistId);
+  }
+
+  // Stamp format for each appended track using current settings.
+  for (const child of tracks) {
+    playerStore.getState().addQueueFormat(child.id, stampQueueFormat(child));
   }
 
   currentChildQueue = [...currentChildQueue, ...tracks];

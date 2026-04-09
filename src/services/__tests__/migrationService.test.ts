@@ -55,6 +55,7 @@ import { Platform } from 'react-native';
 import { getPendingTasks, runMigrations } from '../migrationService';
 import { completedScrobbleStore } from '../../store/completedScrobbleStore';
 import { mbidOverrideStore } from '../../store/mbidOverrideStore';
+import { musicCacheStore } from '../../store/musicCacheStore';
 import { playbackSettingsStore } from '../../store/playbackSettingsStore';
 import { sqliteStorage } from '../../store/sqliteStorage';
 
@@ -81,7 +82,9 @@ beforeEach(() => {
   sqliteStorage.removeItem('substreamer-mbid-overrides');
   sqliteStorage.removeItem('substreamer-playback-settings');
   sqliteStorage.removeItem('substreamer-shares');
+  sqliteStorage.removeItem('substreamer-music-cache');
   mbidOverrideStore.setState({ overrides: {} } as any);
+  musicCacheStore.setState({ downloadedFormats: {} } as any);
   seedAuthInSqlite('https://music.example.com', 'testuser');
 });
 
@@ -566,6 +569,88 @@ describe('runMigrations', () => {
     await runMigrations(8);
     const logContent = mockFileWrite.mock.calls[0][0] as string;
     expect(logContent).toContain('No persisted auth');
+  });
+});
+
+describe('Task 10 – Backfill downloaded track formats', () => {
+  function seedMusicCache(cachedItems: Record<string, any>, downloadedFormats?: Record<string, any>) {
+    sqliteStorage.setItem('substreamer-music-cache', JSON.stringify({
+      state: { cachedItems, downloadedFormats: downloadedFormats ?? {} },
+    }));
+  }
+
+  it('backfills format from fileName extension for cached tracks', async () => {
+    seedMusicCache({
+      album1: {
+        tracks: [
+          { id: 't1', fileName: 'song.flac' },
+          { id: 't2', fileName: 'track.mp3' },
+        ],
+      },
+    });
+
+    await runMigrations(9);
+
+    const logContent = mockFileWrite.mock.calls[0][0] as string;
+    expect(logContent).toContain('Backfilled format for 2 cached track(s)');
+
+    // Verify the store was updated.
+    const { downloadedFormats } = musicCacheStore.getState();
+    expect(downloadedFormats.t1.suffix).toBe('flac');
+    expect(downloadedFormats.t1.capturedAt).toBe(0);
+    expect(downloadedFormats.t2.suffix).toBe('mp3');
+  });
+
+  it('skips tracks that already have a format stamp', async () => {
+    const existing = { suffix: 'opus', bitRate: 128, capturedAt: 999 };
+    seedMusicCache(
+      { album1: { tracks: [{ id: 't1', fileName: 'song.flac' }] } },
+      { t1: existing },
+    );
+
+    await runMigrations(9);
+
+    const logContent = mockFileWrite.mock.calls[0][0] as string;
+    expect(logContent).toContain('No unstamped tracks found');
+
+    // Existing format preserved in SQLite blob (migration didn't overwrite).
+    const raw = sqliteStorage.getItem('substreamer-music-cache') as string;
+    const parsed = JSON.parse(raw);
+    expect(parsed.state.downloadedFormats.t1).toEqual(existing);
+  });
+
+  it('skips when no music cache exists', async () => {
+    // Ensure no music cache is stored (the persist middleware may write defaults).
+    sqliteStorage.removeItem('substreamer-music-cache');
+    await runMigrations(9);
+
+    const logContent = mockFileWrite.mock.calls[0][0] as string;
+    expect(logContent).toContain('No persisted music cache');
+  });
+
+  it('skips when music cache is unparseable', async () => {
+    sqliteStorage.setItem('substreamer-music-cache', '{bad json');
+    await runMigrations(9);
+
+    const logContent = mockFileWrite.mock.calls[0][0] as string;
+    expect(logContent).toContain('Failed to parse music cache');
+  });
+
+  it('handles tracks without fileName gracefully', async () => {
+    seedMusicCache({
+      album1: {
+        tracks: [
+          { id: 't1' },  // no fileName
+          { id: 't2', fileName: 'track.ogg' },
+        ],
+      },
+    });
+
+    await runMigrations(9);
+
+    const { downloadedFormats } = musicCacheStore.getState();
+    expect(downloadedFormats.t1).toBeUndefined();
+    expect(downloadedFormats.t2.suffix).toBe('ogg');
   });
 });
 

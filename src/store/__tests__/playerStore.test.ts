@@ -16,6 +16,7 @@ beforeEach(() => {
     error: null,
     retrying: false,
     queueLoading: false,
+    queueFormats: {},
   });
 });
 
@@ -90,5 +91,39 @@ describe('playerStore', () => {
   it('setQueueLoading updates queueLoading', () => {
     playerStore.getState().setQueueLoading(true);
     expect(playerStore.getState().queueLoading).toBe(true);
+  });
+
+  describe('queueFormats', () => {
+    const fmt = { suffix: 'flac', bitRate: 1411, capturedAt: 1000 };
+    const fmt2 = { suffix: 'mp3', bitRate: 320, capturedAt: 2000 };
+
+    it('setQueueFormats replaces entire map', () => {
+      playerStore.getState().setQueueFormats({ s1: fmt, s2: fmt2 });
+      expect(playerStore.getState().queueFormats).toEqual({ s1: fmt, s2: fmt2 });
+    });
+
+    it('setQueueFormats overwrites previous map', () => {
+      playerStore.getState().setQueueFormats({ s1: fmt });
+      playerStore.getState().setQueueFormats({ s3: fmt2 });
+      expect(playerStore.getState().queueFormats).toEqual({ s3: fmt2 });
+    });
+
+    it('addQueueFormat adds a single entry', () => {
+      playerStore.getState().setQueueFormats({ s1: fmt });
+      playerStore.getState().addQueueFormat('s2', fmt2);
+      expect(playerStore.getState().queueFormats).toEqual({ s1: fmt, s2: fmt2 });
+    });
+
+    it('addQueueFormat overwrites existing entry', () => {
+      playerStore.getState().setQueueFormats({ s1: fmt });
+      playerStore.getState().addQueueFormat('s1', fmt2);
+      expect(playerStore.getState().queueFormats).toEqual({ s1: fmt2 });
+    });
+
+    it('clearQueueFormats empties the map', () => {
+      playerStore.getState().setQueueFormats({ s1: fmt, s2: fmt2 });
+      playerStore.getState().clearQueueFormats();
+      expect(playerStore.getState().queueFormats).toEqual({});
+    });
   });
 });

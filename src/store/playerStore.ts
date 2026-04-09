@@ -8,6 +8,7 @@
 
 import { create } from 'zustand';
 
+import { type EffectiveFormat } from '../types/audio';
 import type { Child } from '../services/subsonicService';
 
 export type PlaybackStatus =
@@ -39,6 +40,8 @@ export interface PlayerState {
   retrying: boolean;
   /** True while `playTrack()` is loading the queue and skipping to the start index. */
   queueLoading: boolean;
+  /** Effective post-transcode format for each track in the current queue, keyed by song ID. */
+  queueFormats: Record<string, EffectiveFormat>;
 
   /* ---- Setters (called by playerService) ---- */
   setCurrentTrack: (track: Child | null, index?: number | null) => void;
@@ -48,6 +51,9 @@ export interface PlayerState {
   setError: (error: string | null) => void;
   setRetrying: (retrying: boolean) => void;
   setQueueLoading: (loading: boolean) => void;
+  setQueueFormats: (formats: Record<string, EffectiveFormat>) => void;
+  addQueueFormat: (songId: string, fmt: EffectiveFormat) => void;
+  clearQueueFormats: () => void;
 }
 
 export const playerStore = create<PlayerState>()((set) => ({
@@ -61,6 +67,7 @@ export const playerStore = create<PlayerState>()((set) => ({
   error: null,
   retrying: false,
   queueLoading: false,
+  queueFormats: {},
 
   setCurrentTrack: (track, index) => set({ currentTrack: track, currentTrackIndex: index ?? null }),
   setPlaybackState: (playbackState) => set({ playbackState }),
@@ -74,4 +81,8 @@ export const playerStore = create<PlayerState>()((set) => ({
   setError: (error) => set({ error }),
   setRetrying: (retrying) => set({ retrying }),
   setQueueLoading: (loading) => set({ queueLoading: loading }),
+  setQueueFormats: (queueFormats) => set({ queueFormats }),
+  addQueueFormat: (songId, fmt) =>
+    set((state) => ({ queueFormats: { ...state.queueFormats, [songId]: fmt } })),
+  clearQueueFormats: () => set({ queueFormats: {} }),
 }));
