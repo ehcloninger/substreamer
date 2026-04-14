@@ -4,18 +4,38 @@ import { useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { settingsStyles } from '../styles/settingsStyles';
 import { GradientBackground } from '../components/GradientBackground';
+import { StreamFormatSheet } from '../components/StreamFormatSheet';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedAlert } from '../hooks/useThemedAlert';
 import { ThemedAlert } from '../components/ThemedAlert';
 import { updateRemoteCapabilities } from '../services/playerService';
 import {
+  FORMAT_PRESETS,
   playbackSettingsStore,
   SKIP_INTERVALS,
   type ArtistPlayMode,
+  type MaxBitRate,
   type RemoteControlMode,
   type SkipInterval,
+  type StreamFormat,
 } from '../store/playbackSettingsStore';
+import { streamFormatSheetStore } from '../store/streamFormatSheetStore';
+
+const BITRATE_OPTIONS: { value: MaxBitRate; labelKey: string }[] = [
+  { value: 64, labelKey: 'bitrate64' },
+  { value: 128, labelKey: 'bitrate128' },
+  { value: 192, labelKey: 'bitrate192' },
+  { value: 256, labelKey: 'bitrate256' },
+  { value: 320, labelKey: 'bitrate320' },
+  { value: null, labelKey: 'bitrateNoLimit' },
+];
+
+function formatLabelFor(value: StreamFormat, t: (key: string) => string): string {
+  const preset = FORMAT_PRESETS.find((p) => p.value === value);
+  return preset ? t(preset.labelKey) : value;
+}
 
 const INTERVAL_OPTIONS: { value: SkipInterval }[] =
   SKIP_INTERVALS.map((v) => ({ value: v }));
@@ -36,9 +56,21 @@ export function SettingsPlaybackScreen() {
   const { alert, alertProps } = useThemedAlert();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
 
+  const [bitrateOpen, setBitrateOpen] = useState(false);
+  const [dlBitrateOpen, setDlBitrateOpen] = useState(false);
   const [backwardOpen, setBackwardOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
 
+  const maxBitRate = playbackSettingsStore((s) => s.maxBitRate);
+  const streamFormat = playbackSettingsStore((s) => s.streamFormat);
+  const estimateContentLength = playbackSettingsStore((s) => s.estimateContentLength);
+  const downloadMaxBitRate = playbackSettingsStore((s) => s.downloadMaxBitRate);
+  const downloadFormat = playbackSettingsStore((s) => s.downloadFormat);
+  const setMaxBitRate = playbackSettingsStore((s) => s.setMaxBitRate);
+  const setStreamFormat = playbackSettingsStore((s) => s.setStreamFormat);
+  const setEstimateContentLength = playbackSettingsStore((s) => s.setEstimateContentLength);
+  const setDownloadMaxBitRate = playbackSettingsStore((s) => s.setDownloadMaxBitRate);
+  const setDownloadFormat = playbackSettingsStore((s) => s.setDownloadFormat);
   const showSkipIntervalButtons = playbackSettingsStore((s) => s.showSkipIntervalButtons);
   const showSleepTimerButton = playbackSettingsStore((s) => s.showSleepTimerButton);
   const skipBackwardInterval = playbackSettingsStore((s) => s.skipBackwardInterval);
@@ -53,6 +85,11 @@ export function SettingsPlaybackScreen() {
   const setArtistPlayMode = playbackSettingsStore((s) => s.setArtistPlayMode);
 
   const isDefault =
+    maxBitRate === null &&
+    streamFormat === 'raw' &&
+    !estimateContentLength &&
+    downloadMaxBitRate === 320 &&
+    downloadFormat === 'mp3' &&
     !showSkipIntervalButtons &&
     !showSleepTimerButton &&
     skipBackwardInterval === 15 &&
@@ -71,13 +108,18 @@ export function SettingsPlaybackScreen() {
   const handleResetDefaults = useCallback(() => {
     alert(
       t('resetToDefaults'),
-      t('resetPlaybackSettingsMessage'),
+      t('resetSoundPlaybackMessage'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
           text: t('reset'),
           style: 'destructive',
           onPress: () => {
+            setMaxBitRate(null);
+            setStreamFormat('raw');
+            setEstimateContentLength(false);
+            setDownloadMaxBitRate(320);
+            setDownloadFormat('mp3');
             setShowSkipIntervalButtons(false);
             setShowSleepTimerButton(false);
             setSkipBackwardInterval(15);
@@ -85,13 +127,15 @@ export function SettingsPlaybackScreen() {
             setRemoteControlMode('skip-track');
             setArtistPlayMode('topSongs');
             updateRemoteCapabilities();
+            setBitrateOpen(false);
+            setDlBitrateOpen(false);
             setBackwardOpen(false);
             setForwardOpen(false);
           },
         },
       ],
     );
-  }, [setShowSkipIntervalButtons, setShowSleepTimerButton, setSkipBackwardInterval, setSkipForwardInterval, setRemoteControlMode, setArtistPlayMode]);
+  }, [setMaxBitRate, setStreamFormat, setEstimateContentLength, setDownloadMaxBitRate, setDownloadFormat, setShowSkipIntervalButtons, setShowSleepTimerButton, setSkipBackwardInterval, setSkipForwardInterval, setRemoteControlMode, setArtistPlayMode]);
 
   const dynamicStyles = useMemo(
     () =>
@@ -105,14 +149,160 @@ export function SettingsPlaybackScreen() {
     <>
       <GradientBackground scrollable>
         <ScrollView
-          style={styles.container}
-          contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
+          style={settingsStyles.container}
+          contentContainerStyle={[settingsStyles.content, { paddingTop: headerHeight + 16 }]}
           showsVerticalScrollIndicator={false}
         >
+          {/* Streaming */}
+          <View style={settingsStyles.section}>
+            <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('streaming')}</Text>
+            <View style={[settingsStyles.card, { backgroundColor: colors.card }]}>
+              <Pressable
+                onPress={() => setBitrateOpen((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.dropdownHeader,
+                  { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                  pressed && settingsStyles.pressed,
+                ]}
+              >
+                <Text style={[styles.label, { color: colors.textPrimary }]}>{t('maxBitrate')}</Text>
+                <View style={styles.dropdownRight}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>
+                    {t(BITRATE_OPTIONS.find((o) => o.value === maxBitRate)?.labelKey ?? 'bitrateNoLimit')}
+                  </Text>
+                  <Ionicons
+                    name={bitrateOpen ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </View>
+              </Pressable>
+              {bitrateOpen && (
+                <View style={[styles.optionList, { borderTopColor: colors.border }]}>
+                  {BITRATE_OPTIONS.map((opt) => {
+                    const isActive = maxBitRate === opt.value;
+                    return (
+                      <Pressable
+                        key={String(opt.value)}
+                        onPress={() => {
+                          setMaxBitRate(opt.value);
+                          setBitrateOpen(false);
+                        }}
+                        style={({ pressed }) => [
+                          styles.option,
+                          { borderBottomColor: colors.border },
+                          pressed && settingsStyles.pressed,
+                        ]}
+                      >
+                        <Text style={[styles.label, { color: colors.textPrimary }]}>
+                          {t(opt.labelKey)}
+                        </Text>
+                        {isActive && (
+                          <Ionicons name="checkmark" size={20} color={colors.primary} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+              <Pressable
+                onPress={() => streamFormatSheetStore.getState().show('stream')}
+                style={({ pressed }) => [
+                  styles.dropdownHeader,
+                  pressed && settingsStyles.pressed,
+                ]}
+              >
+                <Text style={[styles.label, { color: colors.textPrimary }]}>{t('format')}</Text>
+                <View style={styles.dropdownRight}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {formatLabelFor(streamFormat, t)}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                </View>
+              </Pressable>
+            </View>
+            <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+              {t('formatCompatibilityWarning')}
+            </Text>
+          </View>
+
+          {/* Downloading */}
+          <View style={settingsStyles.section}>
+            <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('downloading')}</Text>
+            <View style={[settingsStyles.card, { backgroundColor: colors.card }]}>
+              <Pressable
+                onPress={() => setDlBitrateOpen((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.dropdownHeader,
+                  { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                  pressed && settingsStyles.pressed,
+                ]}
+              >
+                <Text style={[styles.label, { color: colors.textPrimary }]}>{t('maxBitrate')}</Text>
+                <View style={styles.dropdownRight}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>
+                    {t(BITRATE_OPTIONS.find((o) => o.value === downloadMaxBitRate)?.labelKey ?? 'bitrateNoLimit')}
+                  </Text>
+                  <Ionicons
+                    name={dlBitrateOpen ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </View>
+              </Pressable>
+              {dlBitrateOpen && (
+                <View style={[styles.optionList, { borderTopColor: colors.border }]}>
+                  {BITRATE_OPTIONS.map((opt) => {
+                    const isActive = downloadMaxBitRate === opt.value;
+                    return (
+                      <Pressable
+                        key={String(opt.value)}
+                        onPress={() => {
+                          setDownloadMaxBitRate(opt.value);
+                          setDlBitrateOpen(false);
+                        }}
+                        style={({ pressed }) => [
+                          styles.option,
+                          { borderBottomColor: colors.border },
+                          pressed && settingsStyles.pressed,
+                        ]}
+                      >
+                        <Text style={[styles.label, { color: colors.textPrimary }]}>
+                          {t(opt.labelKey)}
+                        </Text>
+                        {isActive && (
+                          <Ionicons name="checkmark" size={20} color={colors.primary} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+              <Pressable
+                onPress={() => streamFormatSheetStore.getState().show('download')}
+                style={({ pressed }) => [
+                  styles.dropdownHeader,
+                  pressed && settingsStyles.pressed,
+                ]}
+              >
+                <Text style={[styles.label, { color: colors.textPrimary }]}>{t('format')}</Text>
+                <View style={styles.dropdownRight}>
+                  <Text style={[styles.label, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {formatLabelFor(downloadFormat, t)}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                </View>
+              </Pressable>
+            </View>
+            <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+              {t('formatCompatibilityWarning')}
+            </Text>
+          </View>
+
           {/* Player Controls */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('playerControls')}</Text>
-            <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <View style={settingsStyles.section}>
+            <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('playerControls')}</Text>
+            <View style={[settingsStyles.card, { backgroundColor: colors.card }]}>
               <View style={[styles.toggleRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
                 <View style={styles.toggleTextWrap}>
                   <Text style={[styles.label, { color: colors.textPrimary }]}>
@@ -147,16 +337,16 @@ export function SettingsPlaybackScreen() {
           </View>
 
           {/* Skip Intervals */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('skipIntervals')}</Text>
-            <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <View style={settingsStyles.section}>
+            <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('skipIntervals')}</Text>
+            <View style={[settingsStyles.card, { backgroundColor: colors.card }]}>
               {/* Skip backward dropdown */}
               <Pressable
                 onPress={() => setBackwardOpen((prev) => !prev)}
                 style={({ pressed }) => [
                   styles.dropdownHeader,
                   { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-                  pressed && styles.pressed,
+                  pressed && settingsStyles.pressed,
                 ]}
               >
                 <Text style={[styles.label, { color: colors.textPrimary }]}>{t('skipBackward')}</Text>
@@ -186,7 +376,7 @@ export function SettingsPlaybackScreen() {
                         style={({ pressed }) => [
                           styles.option,
                           { borderBottomColor: colors.border },
-                          pressed && styles.pressed,
+                          pressed && settingsStyles.pressed,
                         ]}
                       >
                         <Text style={[styles.label, { color: colors.textPrimary }]}>
@@ -206,7 +396,7 @@ export function SettingsPlaybackScreen() {
                 onPress={() => setForwardOpen((prev) => !prev)}
                 style={({ pressed }) => [
                   styles.dropdownHeader,
-                  pressed && styles.pressed,
+                  pressed && settingsStyles.pressed,
                 ]}
               >
                 <Text style={[styles.label, { color: colors.textPrimary }]}>{t('skipForward')}</Text>
@@ -236,7 +426,7 @@ export function SettingsPlaybackScreen() {
                         style={({ pressed }) => [
                           styles.option,
                           { borderBottomColor: colors.border },
-                          pressed && styles.pressed,
+                          pressed && settingsStyles.pressed,
                         ]}
                       >
                         <Text style={[styles.label, { color: colors.textPrimary }]}>
@@ -254,12 +444,12 @@ export function SettingsPlaybackScreen() {
           </View>
 
           {/* Remote Controls */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('remoteControls')}</Text>
+          <View style={settingsStyles.section}>
+            <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('remoteControls')}</Text>
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
               {t('remoteControlsHint')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={[settingsStyles.card, { backgroundColor: colors.card }]}>
               {REMOTE_OPTIONS.map((opt, index) => {
                 const isActive = remoteControlMode === opt.value;
                 const isLast = index === REMOTE_OPTIONS.length - 1;
@@ -270,7 +460,7 @@ export function SettingsPlaybackScreen() {
                     style={({ pressed }) => [
                       styles.radioRow,
                       !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-                      pressed && styles.pressed,
+                      pressed && settingsStyles.pressed,
                     ]}
                   >
                     <View style={styles.radioTextWrap}>
@@ -291,12 +481,12 @@ export function SettingsPlaybackScreen() {
           </View>
 
           {/* Artist Play Mode */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('artistPlayMode')}</Text>
+          <View style={settingsStyles.section}>
+            <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('artistPlayMode')}</Text>
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
               {t('artistPlayModeDescription')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={[settingsStyles.card, { backgroundColor: colors.card }]}>
               {ARTIST_PLAY_MODE_OPTIONS.map((opt, index) => {
                 const isActive = artistPlayMode === opt.value;
                 const isLast = index === ARTIST_PLAY_MODE_OPTIONS.length - 1;
@@ -307,7 +497,7 @@ export function SettingsPlaybackScreen() {
                     style={({ pressed }) => [
                       styles.radioRow,
                       !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-                      pressed && styles.pressed,
+                      pressed && settingsStyles.pressed,
                     ]}
                   >
                     <Text style={[styles.label, { color: colors.textPrimary }]}>
@@ -328,7 +518,7 @@ export function SettingsPlaybackScreen() {
               style={({ pressed }) => [
                 styles.resetButton,
                 { borderColor: colors.border },
-                pressed && styles.pressed,
+                pressed && settingsStyles.pressed,
               ]}
             >
               <Ionicons name="refresh-outline" size={16} color={colors.textPrimary} />
@@ -340,38 +530,17 @@ export function SettingsPlaybackScreen() {
         </ScrollView>
       </GradientBackground>
       <ThemedAlert {...alertProps} />
+      <StreamFormatSheet />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
   sectionHint: {
-    fontSize: 13,
+    fontSize: 12,
     marginBottom: 10,
     marginLeft: 4,
     lineHeight: 18,
-  },
-  card: {
-    borderRadius: 12,
-    overflow: 'hidden',
   },
   dropdownHeader: {
     flexDirection: 'row',
@@ -397,7 +566,7 @@ const styles = StyleSheet.create({
   dropdownRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -431,9 +600,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     lineHeight: 16,
   },
-  pressed: {
-    opacity: 0.8,
-  },
   resetButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -445,7 +611,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   resetButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
+  },
+  warningText: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 10,
+    marginHorizontal: 4,
   },
 });

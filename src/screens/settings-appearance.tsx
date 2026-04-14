@@ -5,6 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
+import { settingsStyles } from '../styles/settingsStyles';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTheme } from '../hooks/useTheme';
 import type { ThemePreference } from '../store/themeStore';
@@ -184,12 +185,12 @@ export function SettingsAppearanceScreen() {
   return (
     <GradientBackground scrollable>
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
+      style={settingsStyles.container}
+      contentContainerStyle={[settingsStyles.content, { paddingTop: headerHeight + 16 }]}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('appearance')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('appearance')}</Text>
         <View style={styles.themeCard}>
           {THEME_OPTIONS.map((opt) => {
             const isSelected = preference === opt.value;
@@ -199,7 +200,7 @@ export function SettingsAppearanceScreen() {
                 style={({ pressed }) => [
                   styles.themeRow,
                   dynamicStyles.themeRow,
-                  pressed && styles.pressed,
+                  pressed && settingsStyles.pressed,
                 ]}
                 onPress={() => setThemePreference(opt.value)}
               >
@@ -222,14 +223,14 @@ export function SettingsAppearanceScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('accentColor')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('accentColor')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setAccentOpen((prev) => !prev)}
             style={({ pressed }) => [
               styles.accentHeader,
-              pressed && styles.pressed,
+              pressed && settingsStyles.pressed,
             ]}
           >
             <View style={styles.accentChip}>
@@ -255,7 +256,7 @@ export function SettingsAppearanceScreen() {
                     style={({ pressed }) => [
                       styles.accentOption,
                       { borderBottomColor: colors.border },
-                      pressed && styles.pressed,
+                      pressed && settingsStyles.pressed,
                     ]}
                   >
                     <View style={styles.accentChip}>
@@ -278,7 +279,7 @@ export function SettingsAppearanceScreen() {
                   }}
                   style={({ pressed }) => [
                     styles.resetButton,
-                    pressed && styles.pressed,
+                    pressed && settingsStyles.pressed,
                   ]}
                 >
                   <Text style={[styles.resetButtonText, { color: colors.textSecondary }]}>
@@ -291,19 +292,19 @@ export function SettingsAppearanceScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('language')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('language')}</Text>
         <LanguageSelector />
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('albumSortOrder')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('albumSortOrder')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setSortOrderOpen((prev) => !prev)}
             style={({ pressed }) => [
               styles.accentHeader,
-              pressed && styles.pressed,
+              pressed && settingsStyles.pressed,
             ]}
           >
             <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
@@ -329,7 +330,7 @@ export function SettingsAppearanceScreen() {
                     style={({ pressed }) => [
                       styles.accentOption,
                       { borderBottomColor: colors.border },
-                      pressed && styles.pressed,
+                      pressed && settingsStyles.pressed,
                     ]}
                   >
                     <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
@@ -346,14 +347,14 @@ export function SettingsAppearanceScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('artistAlbumSortOrder')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('artistAlbumSortOrder')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setArtistAlbumSortOpen((prev) => !prev)}
             style={({ pressed }) => [
               styles.accentHeader,
-              pressed && styles.pressed,
+              pressed && settingsStyles.pressed,
             ]}
           >
             <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
@@ -379,7 +380,7 @@ export function SettingsAppearanceScreen() {
                     style={({ pressed }) => [
                       styles.accentOption,
                       { borderBottomColor: colors.border },
-                      pressed && styles.pressed,
+                      pressed && settingsStyles.pressed,
                     ]}
                   >
                     <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
@@ -396,14 +397,14 @@ export function SettingsAppearanceScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('dateFormat')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('dateFormat')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setDateFormatOpen((prev) => !prev)}
             style={({ pressed }) => [
               styles.accentHeader,
-              pressed && styles.pressed,
+              pressed && settingsStyles.pressed,
             ]}
           >
             <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
@@ -432,7 +433,7 @@ export function SettingsAppearanceScreen() {
                     style={({ pressed }) => [
                       styles.accentOption,
                       { borderBottomColor: colors.border },
-                      pressed && styles.pressed,
+                      pressed && settingsStyles.pressed,
                     ]}
                   >
                     <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
@@ -450,15 +451,15 @@ export function SettingsAppearanceScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('listLength')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('listLength')}</Text>
         <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>{t('listLengthHint')}</Text>
         <View style={[styles.accentDropdown, { backgroundColor: colors.card }]}>
           <Pressable
             onPress={() => setListLengthOpen((prev) => !prev)}
             style={({ pressed }) => [
               styles.accentHeader,
-              pressed && styles.pressed,
+              pressed && settingsStyles.pressed,
             ]}
           >
             <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
@@ -481,7 +482,7 @@ export function SettingsAppearanceScreen() {
                     style={({ pressed }) => [
                       styles.accentOption,
                       { borderBottomColor: colors.border },
-                      pressed && styles.pressed,
+                      pressed && settingsStyles.pressed,
                     ]}
                   >
                     <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>
@@ -498,8 +499,8 @@ export function SettingsAppearanceScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('libraryLayout')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('libraryLayout')}</Text>
         <View style={styles.themeCard}>
           {LAYOUT_ROWS.map((row) => {
             const currentValue = layoutValues[row.key];
@@ -514,8 +515,8 @@ export function SettingsAppearanceScreen() {
                 <View style={styles.layoutIcons}>
                   <Pressable
                     onPress={() => layoutSetters[row.key]('list')}
-                    hitSlop={6}
-                    style={({ pressed }) => pressed && styles.pressed}
+                    hitSlop={8}
+                    style={({ pressed }) => pressed && settingsStyles.pressed}
                   >
                     <MaterialCommunityIcons
                       name="view-list-outline"
@@ -525,8 +526,8 @@ export function SettingsAppearanceScreen() {
                   </Pressable>
                   <Pressable
                     onPress={() => layoutSetters[row.key]('grid')}
-                    hitSlop={6}
-                    style={({ pressed }) => pressed && styles.pressed}
+                    hitSlop={8}
+                    style={({ pressed }) => pressed && settingsStyles.pressed}
                   >
                     <MaterialCommunityIcons
                       name="view-grid-outline"
@@ -541,8 +542,8 @@ export function SettingsAppearanceScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('favoritesLayout')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('favoritesLayout')}</Text>
         <View style={styles.themeCard}>
           {FAV_LAYOUT_ROWS.map((row) => {
             const currentValue = favLayoutValues[row.key];
@@ -557,8 +558,8 @@ export function SettingsAppearanceScreen() {
                 <View style={styles.layoutIcons}>
                   <Pressable
                     onPress={() => favLayoutSetters[row.key]('list')}
-                    hitSlop={6}
-                    style={({ pressed }) => pressed && styles.pressed}
+                    hitSlop={8}
+                    style={({ pressed }) => pressed && settingsStyles.pressed}
                   >
                     <MaterialCommunityIcons
                       name="view-list-outline"
@@ -568,8 +569,8 @@ export function SettingsAppearanceScreen() {
                   </Pressable>
                   <Pressable
                     onPress={() => favLayoutSetters[row.key]('grid')}
-                    hitSlop={6}
-                    style={({ pressed }) => pressed && styles.pressed}
+                    hitSlop={8}
+                    style={({ pressed }) => pressed && settingsStyles.pressed}
                   >
                     <MaterialCommunityIcons
                       name="view-grid-outline"
@@ -591,26 +592,8 @@ export function SettingsAppearanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
   sectionHint: {
-    fontSize: 13,
+    fontSize: 12,
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -633,9 +616,6 @@ const styles = StyleSheet.create({
   },
   themeRowLabel: {
     fontSize: 16,
-  },
-  pressed: {
-    opacity: 0.8,
   },
   accentDropdown: {
     borderRadius: 12,
@@ -662,7 +642,7 @@ const styles = StyleSheet.create({
   accentChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   chipDot: {
     width: 22,
@@ -678,7 +658,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   resetButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
   },
   layoutRow: {

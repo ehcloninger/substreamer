@@ -2,25 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { HeaderHeightContext } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useCallback, useContext, useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
+import { settingsStyles } from '../styles/settingsStyles';
 import { StorageUsageBar } from '../components/StorageUsageBar';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedAlert } from '../hooks/useThemedAlert';
 import { ThemedAlert } from '../components/ThemedAlert';
-import {
-  createBackup,
-  listBackups,
-  makeBackupIdentityKey,
-  pruneBackups,
-  restoreBackup,
-  type BackupEntry,
-} from '../services/backupService';
 import { clearImageCache } from '../services/imageCacheService';
 import { clearMusicCache } from '../services/musicCacheService';
 import { clearQueue } from '../services/playerService';
@@ -32,31 +25,16 @@ import {
 } from '../store/imageCacheStore';
 import { albumDetailStore } from '../store/albumDetailStore';
 import { artistDetailStore } from '../store/artistDetailStore';
-import { authStore } from '../store/authStore';
-import { backupStore } from '../store/backupStore';
 import {
   musicCacheStore,
   type MaxConcurrentDownloads,
 } from '../store/musicCacheStore';
 import { playlistDetailStore } from '../store/playlistDetailStore';
-import { completedScrobbleStore } from '../store/completedScrobbleStore';
-import { mbidOverrideStore } from '../store/mbidOverrideStore';
-import { scrobbleExclusionStore } from '../store/scrobbleExclusionStore';
-import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
 import { storageLimitStore, type StorageLimitMode } from '../store/storageLimitStore';
 import { formatBytes } from '../utils/formatters';
-import { minDelay } from '../utils/stringHelpers';
 
 const CONCURRENT_OPTIONS: MaxConcurrentDownloads[] = [1, 3, 5];
 const IMAGE_CONCURRENT_OPTIONS: MaxConcurrentImageDownloads[] = [1, 3, 5, 10];
-
-const SUCCESS_GREEN = '#34C759';
-const ERROR_RED = '#FF3B30';
-const MIN_SPINNER_MS = 600;
-const SUCCESS_DELAY_MS = 600;
-const ERROR_DELAY_MS = 2000;
-
-type RestoreState = 'idle' | 'restoring' | 'success' | 'error';
 
 export function SettingsStorageScreen() {
   const { t } = useTranslation();
@@ -68,30 +46,11 @@ export function SettingsStorageScreen() {
   const [concurrentSheetVisible, setConcurrentSheetVisible] = useState(false);
   const [imageConcurrentSheetVisible, setImageConcurrentSheetVisible] = useState(false);
   const [dangerousExpanded, setDangerousExpanded] = useState(false);
-  const [restoreSheetVisible, setRestoreSheetVisible] = useState(false);
-  const [restoreBackups, setRestoreBackups] = useState<BackupEntry[]>([]);
-  const [otherBackups, setOtherBackups] = useState<BackupEntry[]>([]);
-  const [otherExpanded, setOtherExpanded] = useState(false);
-  const [selectedBackup, setSelectedBackup] = useState<BackupEntry | null>(null);
-  const [restoreState, setRestoreState] = useState<RestoreState>('idle');
-  const [backingUp, setBackingUp] = useState(false);
-  const restoreTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => {
-    return () => {
-      if (restoreTimer.current) clearTimeout(restoreTimer.current);
-    };
-  }, []);
 
   const chevronRotation = useSharedValue(0);
-  const otherChevronRotation = useSharedValue(0);
 
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${chevronRotation.value}deg` }],
-  }));
-
-  const otherChevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${otherChevronRotation.value}deg` }],
   }));
 
   const handleToggleDangerous = useCallback(() => {
@@ -109,36 +68,12 @@ export function SettingsStorageScreen() {
   const cachedArtistCount = artistDetailStore((s) => Object.keys(s.artists).length);
   const cachedPlaylistCount = playlistDetailStore((s) => Object.keys(s.playlists).length);
   const totalMetadataCount = cachedAlbumCount + cachedArtistCount + cachedPlaylistCount;
-  const pendingScrobbleCount = pendingScrobbleStore((s) => s.pendingScrobbles.length);
-  const completedScrobbleCount = completedScrobbleStore((s) => s.completedScrobbles.length);
-  const mbidOverrideCount = mbidOverrideStore((s) => Object.keys(s.overrides).length);
-  const mbidArtistOverrideCount = mbidOverrideStore((s) =>
-    Object.values(s.overrides).filter((o) => o.type === 'artist').length,
-  );
-  const mbidAlbumOverrideCount = mbidOverrideStore((s) =>
-    Object.values(s.overrides).filter((o) => o.type === 'album').length,
-  );
-  const scrobbleExclusionCount = scrobbleExclusionStore((s) =>
-    Object.keys(s.excludedAlbums).length +
-    Object.keys(s.excludedArtists).length +
-    Object.keys(s.excludedPlaylists).length,
-  );
 
   const musicCacheBytes = musicCacheStore((s) => s.totalBytes);
   const musicCachedItemCount = musicCacheStore((s) => Object.keys(s.cachedItems).length);
   const musicFileCount = musicCacheStore((s) => s.totalFiles);
   const musicQueueCount = musicCacheStore((s) => s.downloadQueue.length);
   const maxConcurrentDownloads = musicCacheStore((s) => s.maxConcurrentDownloads);
-
-  const autoBackupEnabled = backupStore((s) => s.autoBackupEnabled);
-  const serverUrl = authStore((s) => s.serverUrl);
-  const authUsername = authStore((s) => s.username);
-  const backupIdentityKey = serverUrl && authUsername
-    ? makeBackupIdentityKey(serverUrl, authUsername)
-    : null;
-  const lastBackupTime = backupStore((s) =>
-    backupIdentityKey ? s.lastBackupTimes[backupIdentityKey] ?? null : null,
-  );
 
   const limitMode = storageLimitStore((s) => s.limitMode);
   const maxCacheSizeGB = storageLimitStore((s) => s.maxCacheSizeGB);
@@ -253,113 +188,6 @@ export function SettingsStorageScreen() {
     );
   }, []);
 
-  const handleToggleAutoBackup = useCallback(() => {
-    backupStore.getState().setAutoBackupEnabled(!autoBackupEnabled);
-  }, [autoBackupEnabled]);
-
-  const handleBackUpNow = useCallback(async () => {
-    setBackingUp(true);
-    try {
-      await createBackup();
-      await pruneBackups();
-    } catch {
-      alert(t('backupFailed'), t('backupFailedMessage'));
-    } finally {
-      setBackingUp(false);
-    }
-  }, []);
-
-  const handleOpenRestoreSheet = useCallback(async () => {
-    const { serverUrl, username } = authStore.getState();
-    const result = serverUrl && username
-      ? await listBackups({ serverUrl, username })
-      : await listBackups();
-    setRestoreBackups(result.current);
-    setOtherBackups(result.other);
-    setSelectedBackup(null);
-    setRestoreState('idle');
-    setOtherExpanded(false);
-    otherChevronRotation.value = 0;
-    setRestoreSheetVisible(true);
-  }, [otherChevronRotation]);
-
-  const handleCloseRestoreSheet = useCallback(() => {
-    if (restoreState === 'restoring') return;
-    if (restoreTimer.current) clearTimeout(restoreTimer.current);
-    setRestoreSheetVisible(false);
-    setRestoreBackups([]);
-    setOtherBackups([]);
-    setSelectedBackup(null);
-    setRestoreState('idle');
-  }, [restoreState]);
-
-  const handleSelectBackup = useCallback((entry: BackupEntry) => {
-    if (restoreState !== 'idle') return;
-    setSelectedBackup((prev) => prev?.stem === entry.stem ? null : entry);
-  }, [restoreState]);
-
-  const handleRestore = useCallback(async () => {
-    if (!selectedBackup) return;
-
-    if (restoreState === 'error') {
-      setRestoreState('idle');
-      return;
-    }
-
-    if (restoreTimer.current) clearTimeout(restoreTimer.current);
-
-    const entry = selectedBackup;
-    const parts: string[] = [];
-    if (entry.scrobbleCount > 0) {
-      parts.push(t('backupScrobbleCount', { count: entry.scrobbleCount }));
-    }
-    if (entry.mbidOverrideCount > 0) {
-      parts.push(t('backupMbidOverrideCount', { count: entry.mbidOverrideCount }));
-    }
-    if (entry.scrobbleExclusionCount > 0) {
-      parts.push(t('backupExclusionCount', { count: entry.scrobbleExclusionCount }));
-    }
-    const dateStr = new Date(entry.createdAt).toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-
-    alert(
-      t('restoreBackupConfirm'),
-      t('restoreBackupConfirmMessage', { date: dateStr, details: parts.join(', ') }),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('restore'),
-          style: 'destructive',
-          onPress: async () => {
-            setRestoreState('restoring');
-            const [result] = await Promise.allSettled([
-              restoreBackup(entry),
-              minDelay(MIN_SPINNER_MS),
-            ]);
-
-            if (result.status === 'fulfilled') {
-              setRestoreState('success');
-              restoreTimer.current = setTimeout(() => {
-                setRestoreSheetVisible(false);
-                setRestoreBackups([]);
-                setOtherBackups([]);
-                setSelectedBackup(null);
-                setRestoreState('idle');
-              }, SUCCESS_DELAY_MS);
-            } else {
-              setRestoreState('error');
-              restoreTimer.current = setTimeout(() => {
-                setRestoreState('idle');
-              }, ERROR_DELAY_MS);
-            }
-          },
-        },
-      ],
-    );
-  }, [selectedBackup, restoreState]);
-
   const handleConcurrentPress = useCallback(() => {
     setConcurrentSheetVisible(true);
   }, []);
@@ -391,22 +219,22 @@ export function SettingsStorageScreen() {
     <>
     <GradientBackground scrollable>
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
+      style={settingsStyles.container}
+      contentContainerStyle={[settingsStyles.content, { paddingTop: headerHeight + 16 }]}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('storageUsage')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('storageUsage')}</Text>
+        <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
           <StorageUsageBar />
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('storageLimit')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('limit')}</Text>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('storageLimit')}</Text>
+        <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('limit')}</Text>
             <Switch
               value={limitMode === 'fixed'}
               onValueChange={handleToggleLimitMode}
@@ -449,275 +277,65 @@ export function SettingsStorageScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('backup')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('autoBackup')}</Text>
-            <Switch
-              value={autoBackupEnabled}
-              onValueChange={handleToggleAutoBackup}
-              trackColor={{ false: colors.border, true: colors.primary }}
-            />
-          </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('lastBackup')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {lastBackupTime
-                ? new Date(lastBackupTime).toLocaleString(undefined, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })
-                : t('never')}
-            </Text>
-          </View>
-          <View style={styles.backupButtonRow}>
-            <Pressable
-              onPress={handleBackUpNow}
-              disabled={backingUp}
-              style={({ pressed }) => [
-                styles.backupActionButton,
-                { backgroundColor: colors.primary },
-                pressed && !backingUp && styles.buttonPressed,
-              ]}
-            >
-              {backingUp ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
-                  <Text style={styles.backupActionButtonText}>{t('backUp')}</Text>
-                </>
-              )}
-            </Pressable>
-            <Pressable
-              onPress={handleOpenRestoreSheet}
-              style={({ pressed }) => [
-                styles.backupActionButton,
-                { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth },
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <Ionicons name="cloud-download-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.backupActionButtonText, { color: colors.textPrimary }]}>{t('restore')}</Text>
-            </Pressable>
-          </View>
-        </View>
-        <Text style={[styles.backupDescription, { color: colors.textSecondary }]}>
-          {Platform.OS === 'ios' ? t('backupDescriptionIos') : t('backupDescriptionAndroid')}
-        </Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('scrobbles')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('pendingScrobbles')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {pendingScrobbleCount}
-            </Text>
-          </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('completedScrobbles')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {completedScrobbleCount}
-            </Text>
-          </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('scrobbleExclusions')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {scrobbleExclusionCount}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => router.push('/scrobble-browser')}
-            style={({ pressed }) => [
-              styles.browseCacheButton,
-              { borderTopColor: colors.border },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.browseCacheLeft}>
-              <Ionicons name="list-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                {t('browseScrobbles')}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/my-listening')}
-            style={({ pressed }) => [
-              styles.browseCacheButton,
-              { borderTopColor: colors.border },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.browseCacheLeft}>
-              <Ionicons name="analytics-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                {t('myListening')}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/scrobble-exclusion-browser')}
-            style={({ pressed }) => [
-              styles.browseCacheButton,
-              { borderTopColor: colors.border },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.browseCacheLeft}>
-              <Ionicons name="eye-off-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                {t('manageExclusions')}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('mbidOverrides')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('artistOverrides')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {mbidArtistOverrideCount}
-            </Text>
-          </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('albumOverrides')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {mbidAlbumOverrideCount}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => router.push('/mbid-override-browser')}
-            style={({ pressed }) => [
-              styles.browseCacheButton,
-              { borderTopColor: colors.border },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.browseCacheLeft}>
-              <Ionicons name="finger-print-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
-                {t('browseMbidOverrides')}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('imageCache')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('cachedImages')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {t('imageCount', { count: imageCount })}
-            </Text>
-          </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('diskUsage')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {formatBytes(totalBytes)}
-            </Text>
-          </View>
-          <Pressable
-            onPress={handleImageConcurrentPress}
-            style={({ pressed }) => [
-              styles.infoRow,
-              { borderBottomColor: colors.border },
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('concurrentDownloads')}</Text>
-            <Text style={[styles.infoValue, { color: colors.primary }]}>
-              {maxConcurrentImageDownloads}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/image-cache-browser')}
-            style={({ pressed }) => [
-              styles.browseCacheButton,
-              { borderTopColor: colors.border },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.browseCacheLeft}>
-              <Ionicons name="images-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>{t('browseImageCache')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('downloadedMusic')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('downloadedItems')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('downloadedMusic')}</Text>
+        <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('downloadedItems')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
               {t('itemCount', { count: musicCachedItemCount })}
             </Text>
           </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('downloadedFiles')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('downloadedFiles')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
               {t('fileCount', { count: musicFileCount })}
             </Text>
           </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('diskUsage')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('diskUsage')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
               {formatBytes(musicCacheBytes)}
             </Text>
           </View>
           <Pressable
             onPress={handleConcurrentPress}
             style={({ pressed }) => [
-              styles.infoRow,
+              settingsStyles.infoRow,
               { borderBottomColor: colors.border },
-              pressed && styles.pressed,
+              pressed && settingsStyles.pressed,
             ]}
           >
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('concurrentDownloads')}</Text>
-            <Text style={[styles.infoValue, { color: colors.primary }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('concurrentDownloads')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.primary }]}>
               {maxConcurrentDownloads}
             </Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/music-cache-browser')}
             style={({ pressed }) => [
-              styles.browseCacheButton,
+              settingsStyles.navRow,
               { borderTopColor: colors.border },
-              pressed && styles.pressed,
+              pressed && settingsStyles.pressed,
             ]}
           >
-            <View style={styles.browseCacheLeft}>
+            <View style={settingsStyles.navRowLeft}>
               <Ionicons name="musical-notes-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>{t('browseDownloadedMusic')}</Text>
+              <Text style={[settingsStyles.navRowText, { color: colors.textPrimary }]}>{t('browseDownloadedMusic')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
           <Pressable
             onPress={() => router.push('/download-queue')}
             style={({ pressed }) => [
-              styles.browseCacheButton,
+              settingsStyles.navRow,
               { borderTopColor: colors.border },
-              pressed && styles.pressed,
+              pressed && settingsStyles.pressed,
             ]}
           >
-            <View style={styles.browseCacheLeft}>
+            <View style={settingsStyles.navRowLeft}>
               <Ionicons name="cloud-download-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>
+              <Text style={[settingsStyles.navRowText, { color: colors.textPrimary }]}>
                 {musicQueueCount > 0 ? t('downloadQueueWithCount', { count: musicQueueCount }) : t('downloadQueue')}
               </Text>
             </View>
@@ -726,50 +344,95 @@ export function SettingsStorageScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('metadataCache')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('cachedAlbums')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {cachedAlbumCount}
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('imageCache')}</Text>
+        <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('cachedImages')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {t('imageCount', { count: imageCount })}
             </Text>
           </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('cachedArtists')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {cachedArtistCount}
-            </Text>
-          </View>
-          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.infoLabel, { color: colors.textPrimary }]}>{t('cachedPlaylists')}</Text>
-            <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
-              {cachedPlaylistCount}
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('diskUsage')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {formatBytes(totalBytes)}
             </Text>
           </View>
           <Pressable
-            onPress={() => router.push('/metadata-cache-browser')}
+            onPress={handleImageConcurrentPress}
             style={({ pressed }) => [
-              styles.browseCacheButton,
-              { borderTopColor: colors.border },
-              pressed && styles.pressed,
+              settingsStyles.infoRow,
+              { borderBottomColor: colors.border },
+              pressed && settingsStyles.pressed,
             ]}
           >
-            <View style={styles.browseCacheLeft}>
-              <Ionicons name="library-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.browseCacheText, { color: colors.textPrimary }]}>{t('browseMetadataCache')}</Text>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('concurrentDownloads')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.primary }]}>
+              {maxConcurrentImageDownloads}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/image-cache-browser')}
+            style={({ pressed }) => [
+              settingsStyles.navRow,
+              { borderTopColor: colors.border },
+              pressed && settingsStyles.pressed,
+            ]}
+          >
+            <View style={settingsStyles.navRowLeft}>
+              <Ionicons name="images-outline" size={18} color={colors.textPrimary} />
+              <Text style={[settingsStyles.navRowText, { color: colors.textPrimary }]}>{t('browseImageCache')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.section}>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('metadataCache')}</Text>
+        <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('cachedAlbums')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {cachedAlbumCount}
+            </Text>
+          </View>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('cachedArtists')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {cachedArtistCount}
+            </Text>
+          </View>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('cachedPlaylists')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {cachedPlaylistCount}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/metadata-cache-browser')}
+            style={({ pressed }) => [
+              settingsStyles.navRow,
+              { borderTopColor: colors.border },
+              pressed && settingsStyles.pressed,
+            ]}
+          >
+            <View style={settingsStyles.navRowLeft}>
+              <Ionicons name="library-outline" size={18} color={colors.textPrimary} />
+              <Text style={[settingsStyles.navRowText, { color: colors.textPrimary }]}>{t('browseMetadataCache')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={settingsStyles.section}>
         <Pressable
           onPress={handleToggleDangerous}
-          style={({ pressed }) => [styles.dangerousHeader, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.dangerousHeader, pressed && settingsStyles.pressed]}
         >
-          <Text style={[styles.sectionTitle, styles.dangerousSectionTitle, { color: colors.red }]}>
+          <Text style={[settingsStyles.sectionTitle, styles.dangerousSectionTitle, { color: colors.red }]}>
             {t('dangerous')}
           </Text>
           <Animated.View style={chevronStyle}>
@@ -777,13 +440,13 @@ export function SettingsStorageScreen() {
           </Animated.View>
         </Pressable>
         {dangerousExpanded && (
-          <View style={[styles.card, dynamicStyles.card]}>
+          <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
             <Pressable
               onPress={handleClearCache}
               style={({ pressed }) => [
                 styles.clearCacheButton,
                 { borderColor: colors.red },
-                pressed && styles.pressed,
+                pressed && settingsStyles.pressed,
               ]}
             >
               <Ionicons name="warning" size={18} color={colors.red} />
@@ -794,7 +457,7 @@ export function SettingsStorageScreen() {
               style={({ pressed }) => [
                 styles.clearCacheButton,
                 { borderColor: colors.red },
-                pressed && styles.pressed,
+                pressed && settingsStyles.pressed,
               ]}
             >
               <Ionicons name="warning" size={18} color={colors.red} />
@@ -805,7 +468,7 @@ export function SettingsStorageScreen() {
               style={({ pressed }) => [
                 styles.clearCacheButton,
                 { borderColor: colors.red },
-                pressed && styles.pressed,
+                pressed && settingsStyles.pressed,
               ]}
             >
               <Ionicons name="warning" size={18} color={colors.red} />
@@ -816,7 +479,7 @@ export function SettingsStorageScreen() {
               style={({ pressed }) => [
                 styles.clearCacheButton,
                 { borderColor: colors.red },
-                pressed && styles.pressed,
+                pressed && settingsStyles.pressed,
               ]}
             >
               <Ionicons name="warning" size={18} color={colors.red} />
@@ -836,20 +499,20 @@ export function SettingsStorageScreen() {
       onRequestClose={() => setConcurrentSheetVisible(false)}
     >
       <Pressable
-        style={styles.sheetBackdrop}
+        style={settingsStyles.sheetBackdrop}
         onPress={() => setConcurrentSheetVisible(false)}
       />
       <View
         style={[
-          styles.sheet,
+          settingsStyles.sheet,
           { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) },
         ]}
       >
-        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
-        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+        <View style={[settingsStyles.sheetHandle, { backgroundColor: colors.border }]} />
+        <Text style={[settingsStyles.sheetTitle, { color: colors.textPrimary }]}>
           {t('concurrentDownloads')}
         </Text>
-        <Text style={[styles.sheetSubtitle, { color: colors.textSecondary }]}>
+        <Text style={[settingsStyles.sheetHint, { color: colors.textSecondary }]}>
           {t('concurrentDownloadsHint')}
         </Text>
         {CONCURRENT_OPTIONS.map((opt) => (
@@ -857,11 +520,11 @@ export function SettingsStorageScreen() {
             key={opt}
             onPress={() => handleConcurrentSelect(opt)}
             style={({ pressed }) => [
-              styles.sheetOption,
-              pressed && styles.pressed,
+              settingsStyles.sheetOption,
+              pressed && settingsStyles.pressed,
             ]}
           >
-            <Text style={[styles.sheetOptionLabel, { color: colors.textPrimary }]}>
+            <Text style={[settingsStyles.sheetOptionLabel, { color: colors.textPrimary }]}>
               {t('trackWithCount', { count: opt })}
             </Text>
             {maxConcurrentDownloads === opt && (
@@ -879,20 +542,20 @@ export function SettingsStorageScreen() {
       onRequestClose={() => setImageConcurrentSheetVisible(false)}
     >
       <Pressable
-        style={styles.sheetBackdrop}
+        style={settingsStyles.sheetBackdrop}
         onPress={() => setImageConcurrentSheetVisible(false)}
       />
       <View
         style={[
-          styles.sheet,
+          settingsStyles.sheet,
           { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) },
         ]}
       >
-        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
-        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+        <View style={[settingsStyles.sheetHandle, { backgroundColor: colors.border }]} />
+        <Text style={[settingsStyles.sheetTitle, { color: colors.textPrimary }]}>
           {t('concurrentImageDownloads')}
         </Text>
-        <Text style={[styles.sheetSubtitle, { color: colors.textSecondary }]}>
+        <Text style={[settingsStyles.sheetHint, { color: colors.textSecondary }]}>
           {t('concurrentImageDownloadsHint')}
         </Text>
         {IMAGE_CONCURRENT_OPTIONS.map((opt) => (
@@ -900,11 +563,11 @@ export function SettingsStorageScreen() {
             key={opt}
             onPress={() => handleImageConcurrentSelect(opt)}
             style={({ pressed }) => [
-              styles.sheetOption,
-              pressed && styles.pressed,
+              settingsStyles.sheetOption,
+              pressed && settingsStyles.pressed,
             ]}
           >
-            <Text style={[styles.sheetOptionLabel, { color: colors.textPrimary }]}>
+            <Text style={[settingsStyles.sheetOptionLabel, { color: colors.textPrimary }]}>
               {t('imageCount', { count: opt })}
             </Text>
             {maxConcurrentImageDownloads === opt && (
@@ -915,241 +578,12 @@ export function SettingsStorageScreen() {
       </View>
     </Modal>
 
-    <Modal
-      visible={restoreSheetVisible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleCloseRestoreSheet}
-    >
-      <Pressable
-        style={styles.sheetBackdrop}
-        onPress={handleCloseRestoreSheet}
-      />
-      <View
-        style={[
-          styles.sheet,
-          { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) },
-        ]}
-      >
-        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
-        <Text style={[styles.restoreTitle, { color: colors.textPrimary }]}>
-          {t('restoreBackup')}
-        </Text>
-        <Text style={[styles.restoreSubtitle, { color: colors.textSecondary }]}>
-          {t('restoreBackupHint')}
-        </Text>
-        {restoreBackups.length === 0 && otherBackups.length === 0 ? (
-          <View style={styles.emptyBackups}>
-            <Ionicons name="cloud-offline-outline" size={32} color={colors.primary} />
-            <Text style={[styles.emptyBackupsText, { color: colors.textSecondary }]}>
-              {t('noBackupsAvailable')}
-            </Text>
-          </View>
-        ) : (
-          <>
-            {restoreBackups.map((entry) => {
-              const isSelected = selectedBackup?.stem === entry.stem;
-              const dateStr = new Date(entry.createdAt).toLocaleString(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              });
-              const details: string[] = [];
-              if (entry.scrobbleCount > 0) {
-                details.push(t('backupScrobbleCount', { count: entry.scrobbleCount }));
-              }
-              if (entry.mbidOverrideCount > 0) {
-                details.push(t('backupMbidOverrideCount', { count: entry.mbidOverrideCount }));
-              }
-              const totalBytes = entry.scrobbleSizeBytes + entry.mbidOverrideSizeBytes + entry.scrobbleExclusionSizeBytes;
-              return (
-                <Pressable
-                  key={entry.stem}
-                  onPress={() => handleSelectBackup(entry)}
-                  style={({ pressed }) => [
-                    styles.restoreRow,
-                    { borderBottomColor: colors.border },
-                    isSelected && { borderLeftColor: colors.primary, borderLeftWidth: 3 },
-                    pressed && styles.restoreRowPressed,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.restoreRowTitle,
-                      { color: colors.textPrimary },
-                      isSelected && { color: colors.primary },
-                    ]}
-                  >
-                    {dateStr}
-                  </Text>
-                  <Text style={[styles.restoreRowDetail, { color: colors.textSecondary }]}>
-                    {details.join(', ')} · {formatBytes(totalBytes)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-
-            {otherBackups.length > 0 && (
-              <>
-                <Pressable
-                  onPress={() => {
-                    setOtherExpanded((prev) => {
-                      otherChevronRotation.value = withTiming(prev ? 0 : 90, { duration: 200 });
-                      return !prev;
-                    });
-                  }}
-                  style={[styles.otherBackupsHeader, { borderBottomColor: colors.border }]}
-                >
-                  <Text style={[styles.otherBackupsTitle, { color: colors.textSecondary }]}>
-                    {t('otherBackups')}
-                  </Text>
-                  <Animated.View style={otherChevronStyle}>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
-                  </Animated.View>
-                </Pressable>
-                {otherExpanded && otherBackups.map((entry) => {
-                  const isSelected = selectedBackup?.stem === entry.stem;
-                  const dateStr = new Date(entry.createdAt).toLocaleString(undefined, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  });
-                  const details: string[] = [];
-                  if (entry.scrobbleCount > 0) {
-                    details.push(t('backupScrobbleCount', { count: entry.scrobbleCount }));
-                  }
-                  if (entry.mbidOverrideCount > 0) {
-                    details.push(t('backupMbidOverrideCount', { count: entry.mbidOverrideCount }));
-                  }
-                  const totalBytes = entry.scrobbleSizeBytes + entry.mbidOverrideSizeBytes + entry.scrobbleExclusionSizeBytes;
-                  return (
-                    <Pressable
-                      key={entry.stem}
-                      onPress={() => handleSelectBackup(entry)}
-                      style={({ pressed }) => [
-                        styles.restoreRow,
-                        { borderBottomColor: colors.border },
-                        isSelected && { borderLeftColor: colors.primary, borderLeftWidth: 3 },
-                        pressed && styles.restoreRowPressed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.restoreRowTitle,
-                          { color: colors.textPrimary },
-                          isSelected && { color: colors.primary },
-                        ]}
-                      >
-                        {dateStr}
-                      </Text>
-                      <Text style={[styles.restoreRowDetail, { color: colors.textSecondary }]}>
-                        {details.join(', ')} · {formatBytes(totalBytes)}
-                      </Text>
-                      {entry.serverUrl && (
-                        <Text style={[styles.restoreRowServer, { color: colors.label }]}>
-                          {entry.serverUrl}
-                        </Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </>
-            )}
-
-            <View style={styles.restoreActions}>
-              <Pressable
-                onPress={handleRestore}
-                disabled={!selectedBackup || restoreState === 'restoring' || restoreState === 'success'}
-                style={({ pressed }) => [
-                  styles.restoreButton,
-                  restoreState === 'success'
-                    ? styles.restoreButtonSuccess
-                    : restoreState === 'error'
-                      ? styles.restoreButtonError
-                      : { backgroundColor: colors.primary },
-                  pressed && restoreState === 'idle' && selectedBackup && styles.buttonPressed,
-                  (!selectedBackup && restoreState === 'idle') && styles.buttonDisabled,
-                ]}
-              >
-                {restoreState === 'restoring' ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : restoreState === 'success' ? (
-                  <Ionicons name="checkmark" size={20} color="#fff" />
-                ) : restoreState === 'error' ? (
-                  <View style={styles.restoreErrorContent}>
-                    <Ionicons name="alert-circle" size={20} color="#fff" />
-                    <Text style={styles.restoreButtonText}>
-                      {t('failedToRestoreTapToRetry')}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.restoreButtonText}>{t('restore')}</Text>
-                )}
-              </Pressable>
-            </View>
-          </>
-        )}
-      </View>
-    </Modal>
     <ThemedAlert {...alertProps} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  card: {
-    borderRadius: 12,
-    padding: 16,
-    overflow: 'hidden',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  infoLabel: {
-    fontSize: 15,
-    flex: 1,
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginLeft: 12,
-  },
-  browseCacheButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  browseCacheLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  browseCacheText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
   clearCacheButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1161,7 +595,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   clearCacheText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   dangerousHeader: {
@@ -1183,11 +617,11 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   sliderLabel: {
-    fontSize: 15,
+    fontSize: 16,
     flex: 1,
   },
   sliderValue: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     marginLeft: 12,
   },
@@ -1205,163 +639,8 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   warningText: {
-    fontSize: 13,
-    fontWeight: '500',
-    flex: 1,
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  sheetBackdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 2,
-    paddingHorizontal: 4,
-  },
-  sheetSubtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  sheetOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-  },
-  sheetOptionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  backupButtonRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 12,
-  },
-  backupActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    height: 44,
-    borderRadius: 10,
-  },
-  backupActionButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  backupDescription: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 8,
-    marginHorizontal: 4,
-  },
-  emptyBackups: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    gap: 8,
-  },
-  emptyBackupsText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  restoreTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 2,
-    paddingHorizontal: 4,
-  },
-  restoreSubtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  restoreRow: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 2,
-  },
-  restoreRowPressed: {
-    opacity: 0.6,
-  },
-  restoreRowTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  restoreRowDetail: {
-    fontSize: 13,
-  },
-  restoreRowServer: {
     fontSize: 12,
-    fontStyle: 'italic',
-  },
-  otherBackupsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    marginTop: 4,
-  },
-  otherBackupsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  restoreActions: {
-    paddingHorizontal: 4,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  restoreButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    height: 48,
-  },
-  restoreButtonSuccess: {
-    backgroundColor: SUCCESS_GREEN,
-  },
-  restoreButtonError: {
-    backgroundColor: ERROR_RED,
-  },
-  restoreErrorContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  restoreButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
+    fontWeight: '500',
+    flex: 1,
   },
 });

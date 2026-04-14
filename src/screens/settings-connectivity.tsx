@@ -27,6 +27,7 @@ import {
 import { batteryOptimizationStore } from '../store/batteryOptimizationStore';
 import { removeTrustForHost, trustCertificateForHost } from '../services/sslTrustService';
 import { sslCertStore, type TrustedCertEntry } from '../store/sslCertStore';
+import { settingsStyles } from '../styles/settingsStyles';
 import { getCertificateInfo, type CertificateInfo } from '../../modules/expo-ssl-trust/src';
 
 export function SettingsConnectivityScreen() {
@@ -378,13 +379,13 @@ export function SettingsConnectivityScreen() {
     <>
     <GradientBackground scrollable>
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingTop: headerHeight + 16 }]}
+      style={settingsStyles.container}
+      contentContainerStyle={[settingsStyles.content, { paddingTop: headerHeight + 16 }]}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('offline')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('offline')}</Text>
+        <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
           <View style={[styles.toggleRow, { borderBottomColor: colors.border }]}>
             <View style={styles.toggleTextWrap}>
               <Text style={[styles.label, { color: colors.textPrimary }]}>
@@ -438,7 +439,7 @@ export function SettingsConnectivityScreen() {
                 style={({ pressed }) => [
                   styles.toggleRow,
                   { borderBottomColor: colors.border },
-                  pressed && styles.pressed,
+                  pressed && settingsStyles.pressed,
                 ]}
               >
                 <View style={styles.toggleTextWrap}>
@@ -457,7 +458,7 @@ export function SettingsConnectivityScreen() {
                 style={({ pressed }) => [
                   styles.toggleRow,
                   autoMode !== 'home-wifi' || !locationGranted || ssidReadFailed ? styles.toggleRowLast : { borderBottomColor: colors.border },
-                  pressed && styles.pressed,
+                  pressed && settingsStyles.pressed,
                 ]}
               >
                 <View style={styles.toggleTextWrap}>
@@ -482,7 +483,7 @@ export function SettingsConnectivityScreen() {
                     </Text>
                     <Pressable
                       onPress={handleGrantPermission}
-                      style={({ pressed }) => [pressed && styles.pressed]}
+                      style={({ pressed }) => [pressed && settingsStyles.pressed]}
                     >
                       <Text style={[styles.permissionButton, { color: colors.primary }]}>
                         {t('grantPermission')}
@@ -509,7 +510,7 @@ export function SettingsConnectivityScreen() {
                     )}
                     <Pressable
                       onPress={homeSSIDs.length > 0 ? handleGrantPermission : handleRetrySSID}
-                      style={({ pressed }) => [pressed && styles.pressed]}
+                      style={({ pressed }) => [pressed && settingsStyles.pressed]}
                     >
                       <Text style={[styles.permissionButton, { color: colors.primary }]}>
                         {homeSSIDs.length > 0 ? t('grantPermission') : t('tryAgain')}
@@ -539,7 +540,7 @@ export function SettingsConnectivityScreen() {
                   <Pressable
                     onPress={handleAddCurrentSSID}
                     hitSlop={8}
-                    style={({ pressed }) => [pressed && styles.pressed]}
+                    style={({ pressed }) => [pressed && settingsStyles.pressed]}
                   >
                     <Text style={[styles.ssidActionText, { color: colors.primary }]}>{t('add')}</Text>
                   </Pressable>
@@ -565,14 +566,14 @@ export function SettingsConnectivityScreen() {
                     <Pressable
                       onPress={() => handleEditSSID(ssid)}
                       hitSlop={8}
-                      style={({ pressed }) => [pressed && styles.pressed]}
+                      style={({ pressed }) => [pressed && settingsStyles.pressed]}
                     >
                       <Ionicons name="pencil" size={18} color={colors.textSecondary} />
                     </Pressable>
                     <Pressable
                       onPress={() => handleRemoveSSID(ssid)}
                       hitSlop={8}
-                      style={({ pressed }) => [pressed && styles.pressed]}
+                      style={({ pressed }) => [pressed && settingsStyles.pressed]}
                     >
                       <Ionicons name="close-circle-outline" size={20} color={colors.red} />
                     </Pressable>
@@ -583,7 +584,7 @@ export function SettingsConnectivityScreen() {
               {autoMode === 'home-wifi' && locationGranted && !ssidReadFailed && (
                 <Pressable
                   onPress={handleAddSSIDManual}
-                  style={({ pressed }) => [styles.addSsidRow, pressed && styles.pressed]}
+                  style={({ pressed }) => [styles.addSsidRow, pressed && settingsStyles.pressed]}
                 >
                   <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
                   <Text style={[styles.addSsidText, { color: colors.primary }]}>{t('addNetwork')}</Text>
@@ -611,7 +612,7 @@ export function SettingsConnectivityScreen() {
                     <Pressable
                       onPress={handleSetupAdd}
                       hitSlop={8}
-                      style={({ pressed }) => [pressed && styles.pressed]}
+                      style={({ pressed }) => [pressed && settingsStyles.pressed]}
                     >
                       <Text style={[styles.ssidActionText, { color: colors.primary }]}>{t('add')}</Text>
                     </Pressable>
@@ -628,16 +629,16 @@ export function SettingsConnectivityScreen() {
       </View>
 
       {Platform.OS === 'android' && batteryOptRestricted !== null && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('backgroundPlayback')}</Text>
-          <View style={[styles.card, dynamicStyles.card]}>
+        <View style={settingsStyles.section}>
+          <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('backgroundPlayback')}</Text>
+          <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
             <Pressable
               onPress={batteryOptRestricted ? handleRequestBatteryExemption : undefined}
               disabled={!batteryOptRestricted}
               style={({ pressed }) => [
                 styles.toggleRow,
                 styles.toggleRowLast,
-                pressed && batteryOptRestricted && styles.pressed,
+                pressed && batteryOptRestricted && settingsStyles.pressed,
               ]}
             >
               <View style={styles.toggleTextWrap}>
@@ -684,13 +685,13 @@ export function SettingsConnectivityScreen() {
             <View style={styles.modalButtons}>
               <Pressable
                 onPress={() => setSsidPromptVisible(false)}
-                style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.modalButton, pressed && settingsStyles.pressed]}
               >
                 <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={handleSsidPromptSubmit}
-                style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.modalButton, pressed && settingsStyles.pressed]}
               >
                 <Text style={[styles.modalButtonText, { color: colors.primary }]}>
                   {ssidEditTarget ? t('save') : t('add')}
@@ -701,9 +702,9 @@ export function SettingsConnectivityScreen() {
         </Pressable>
       </Modal>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('trustedCertificates')}</Text>
-        <View style={[styles.card, dynamicStyles.card]}>
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('trustedCertificates')}</Text>
+        <View style={[settingsStyles.card, settingsStyles.cardPadded, dynamicStyles.card]}>
           {trustedCertEntries.length > 0 ? (
             trustedCertEntries.map(([hostname, entry], index) => {
               const isActive = hostname === activeHostname;
@@ -746,7 +747,7 @@ export function SettingsConnectivityScreen() {
                   <Pressable
                     onPress={() => handleRemoveTrustedCert(hostname)}
                     hitSlop={8}
-                    style={({ pressed }) => [pressed && styles.pressed]}
+                    style={({ pressed }) => [pressed && settingsStyles.pressed]}
                   >
                     <Ionicons name="close-circle-outline" size={22} color={colors.red} />
                   </Pressable>
@@ -766,7 +767,7 @@ export function SettingsConnectivityScreen() {
           ) : (
             <Pressable
               onPress={handleAddCertificate}
-              style={({ pressed }) => [styles.addCertRow, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.addCertRow, pressed && settingsStyles.pressed]}
             >
               <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
               <Text style={[styles.addCertText, { color: colors.primary }]}>{t('addCertificate')}</Text>
@@ -807,13 +808,13 @@ export function SettingsConnectivityScreen() {
           <View style={styles.modalButtons}>
             <Pressable
               onPress={() => setCertUrlPromptVisible(false)}
-              style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.modalButton, pressed && settingsStyles.pressed]}
             >
               <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>{t('cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={handleFetchCertificate}
-              style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.modalButton, pressed && settingsStyles.pressed]}
             >
               <Text style={[styles.modalButtonText, { color: colors.primary }]}>{t('fetch')}</Text>
             </Pressable>
@@ -837,29 +838,6 @@ export function SettingsConnectivityScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  card: {
-    borderRadius: 12,
-    padding: 16,
-    overflow: 'hidden',
-  },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -884,7 +862,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   placeholder: {
-    fontSize: 15,
+    fontSize: 16,
     fontStyle: 'italic',
     padding: 16,
   },
@@ -901,11 +879,11 @@ const styles = StyleSheet.create({
   trustedCertHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
+    gap: 8,
+    marginBottom: 4,
   },
   trustedCertHostname: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   trustedCertFingerprint: {
@@ -916,13 +894,10 @@ const styles = StyleSheet.create({
   trustedCertDate: {
     fontSize: 12,
   },
-  pressed: {
-    opacity: 0.8,
-  },
   permissionWarning: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 8,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
@@ -937,16 +912,16 @@ const styles = StyleSheet.create({
   ssidRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   ssidText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
   },
   ssidActionText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   ssidActions: {
@@ -967,7 +942,7 @@ const styles = StyleSheet.create({
   setupRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   setupInput: {
     flex: 1,
@@ -987,7 +962,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   addSsidText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
   },
   addCertRow: {
@@ -997,11 +972,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   addCertText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
   },
   certUrlHint: {
-    fontSize: 13,
+    fontSize: 12,
     marginBottom: 12,
   },
   activeDot: {
@@ -1010,7 +985,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   expiredBadge: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   modalBackdrop: {
@@ -1025,7 +1000,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 16,
   },
@@ -1047,6 +1022,6 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

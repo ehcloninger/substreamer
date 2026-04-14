@@ -566,7 +566,7 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="settings-server"
-          options={{ ...blurHeaderOptions, title: i18n.t('serverManagement'), headerBackTitle: i18n.t('settings') }}
+          options={{ ...blurHeaderOptions, title: i18n.t('serverAccount'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="settings-appearance"
@@ -578,15 +578,11 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="settings-storage"
-          options={{ ...blurHeaderOptions, title: i18n.t('storageData'), headerBackTitle: i18n.t('settings') }}
+          options={{ ...blurHeaderOptions, title: i18n.t('storage'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
-          name="settings-shares"
-          options={{ ...blurHeaderOptions, title: i18n.t('shares'), headerBackTitle: i18n.t('settings') }}
-        />
-        <Stack.Screen
-          name="settings-account"
-          options={{ ...blurHeaderOptions, title: i18n.t('account'), headerBackTitle: i18n.t('settings') }}
+          name="settings-library-data"
+          options={{ ...blurHeaderOptions, title: i18n.t('libraryData'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="player"
@@ -613,6 +609,10 @@ export default function RootLayout() {
           options={{ ...blurHeaderOptions, title: i18n.t('scrobbleExclusions'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
+          name="share-browser"
+          options={{ ...blurHeaderOptions, title: i18n.t('shares'), headerBackTitle: i18n.t('back') }}
+        />
+        <Stack.Screen
           name="my-listening"
           options={{ ...blurHeaderOptions, title: i18n.t('myListening'), headerBackTitle: i18n.t('back') }}
         />
@@ -621,12 +621,8 @@ export default function RootLayout() {
           options={{ ...blurHeaderOptions, title: i18n.t('tunedIn'), headerBackTitle: i18n.t('back') }}
         />
         <Stack.Screen
-          name="settings-audio-quality"
-          options={{ ...blurHeaderOptions, title: i18n.t('audioQuality'), headerBackTitle: i18n.t('settings') }}
-        />
-        <Stack.Screen
           name="settings-playback"
-          options={{ ...blurHeaderOptions, title: i18n.t('playback'), headerBackTitle: i18n.t('settings') }}
+          options={{ ...blurHeaderOptions, title: i18n.t('soundPlayback'), headerBackTitle: i18n.t('settings') }}
         />
         <Stack.Screen
           name="file-explorer"
@@ -638,7 +634,7 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="migration-log"
-          options={{ ...blurHeaderOptions, title: i18n.t('migrationLog'), headerBackTitle: i18n.t('back') }}
+          options={{ ...blurHeaderOptions, title: i18n.t('logging'), headerBackTitle: i18n.t('back') }}
         />
             </Stack>
           </View>
