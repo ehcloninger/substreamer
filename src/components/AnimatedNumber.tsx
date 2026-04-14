@@ -26,10 +26,12 @@ export const AnimatedNumber = memo(function AnimatedNumber({
   value,
   style,
   format = 'number',
+  suffix,
 }: {
   value: number;
   style?: StyleProp<TextStyle>;
   format?: 'number' | 'duration';
+  suffix?: string;
 }) {
   const formatter = format === 'duration' ? formatDuration : formatNumber;
   const [displayText, setDisplayText] = useState(() => formatter(value));
@@ -71,7 +73,7 @@ export const AnimatedNumber = memo(function AnimatedNumber({
 
   return (
     <Animated.View style={animatedStyle}>
-      <Text style={style}>{displayText}</Text>
+      <Text style={style}>{displayText}{suffix}</Text>
     </Animated.View>
   );
 });
