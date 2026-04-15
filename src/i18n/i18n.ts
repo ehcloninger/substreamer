@@ -21,6 +21,8 @@ import '@formatjs/intl-pluralrules/locale-data/fr.js';
 import '@formatjs/intl-pluralrules/locale-data/de.js';
 import '@formatjs/intl-pluralrules/locale-data/es.js';
 import '@formatjs/intl-pluralrules/locale-data/it.js';
+import '@formatjs/intl-pluralrules/locale-data/ru.js';
+import '@formatjs/intl-pluralrules/locale-data/zh.js';
 
 import '@formatjs/intl-numberformat/polyfill-force.js';
 import '@formatjs/intl-numberformat/locale-data/en.js';
@@ -28,6 +30,8 @@ import '@formatjs/intl-numberformat/locale-data/fr.js';
 import '@formatjs/intl-numberformat/locale-data/de.js';
 import '@formatjs/intl-numberformat/locale-data/es.js';
 import '@formatjs/intl-numberformat/locale-data/it.js';
+import '@formatjs/intl-numberformat/locale-data/ru.js';
+import '@formatjs/intl-numberformat/locale-data/zh.js';
 
 import '@formatjs/intl-datetimeformat/polyfill-force.js';
 import '@formatjs/intl-datetimeformat/add-all-tz.js';
@@ -36,6 +40,8 @@ import '@formatjs/intl-datetimeformat/locale-data/fr.js';
 import '@formatjs/intl-datetimeformat/locale-data/de.js';
 import '@formatjs/intl-datetimeformat/locale-data/es.js';
 import '@formatjs/intl-datetimeformat/locale-data/it.js';
+import '@formatjs/intl-datetimeformat/locale-data/ru.js';
+import '@formatjs/intl-datetimeformat/locale-data/zh.js';
 
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
@@ -47,6 +53,8 @@ import fr from './locales/fr.json';
 import de from './locales/de.json';
 import es from './locales/es.json';
 import it from './locales/it.json';
+import ru from './locales/ru.json';
+import zh from './locales/zh.json';
 
 import { SUPPORTED_LOCALE_CODES } from './languages';
 import { localeStore } from '../store/localeStore';
@@ -58,6 +66,8 @@ const localeResources: Record<string, { translation: Record<string, string> }> =
   de: { translation: de },
   es: { translation: es },
   it: { translation: it },
+  ru: { translation: ru },
+  zh: { translation: zh },
   // Add new entries here when enabling a language
 };
 

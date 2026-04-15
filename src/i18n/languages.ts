@@ -10,13 +10,13 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   { code: 'de', name: 'German', nativeName: 'Deutsch' },
   { code: 'es', name: 'Spanish', nativeName: 'Español' },
   { code: 'it', name: 'Italian', nativeName: 'Italiano' },
+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+  { code: 'zh', name: 'Chinese', nativeName: '中文' },
   // Future: add languages as Crowdin translations are ready
   // { code: 'ja', name: 'Japanese', nativeName: '日本語' },
-  // { code: 'zh', name: 'Chinese', nativeName: '中文' },
   // { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
   // { code: 'ko', name: 'Korean', nativeName: '한국어' },
   // { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
-  // { code: 'ru', name: 'Russian', nativeName: 'Русский' },
 ];
 
 export const SUPPORTED_LOCALE_CODES = SUPPORTED_LANGUAGES.map((l) => l.code);
