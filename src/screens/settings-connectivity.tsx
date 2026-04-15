@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { CertificatePromptModal } from '../components/CertificatePromptModal';
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedAlert } from '../hooks/useThemedAlert';
 import { ThemedAlert } from '../components/ThemedAlert';
@@ -776,6 +777,7 @@ export function SettingsConnectivityScreen() {
         </View>
       </View>
     </ScrollView>
+    <MiniPlayerFooter />
     </GradientBackground>
 
     {/* Certificate URL input modal */}

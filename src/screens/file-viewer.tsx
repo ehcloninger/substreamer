@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { useTheme } from '../hooks/useTheme';
 
 const VIEWABLE_EXTENSIONS = new Set([
@@ -122,6 +123,7 @@ export function FileViewerScreen({ uri, name }: { uri: string; name: string }) {
             </Text>
           </ScrollView>
         )}
+        <MiniPlayerFooter />
       </GradientBackground>
     </>
   );

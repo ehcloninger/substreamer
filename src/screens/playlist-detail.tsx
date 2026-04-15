@@ -26,6 +26,7 @@ import { CachedImage } from '../components/CachedImage';
 import { EmptyState } from '../components/EmptyState';
 import { DownloadButton } from '../components/DownloadButton';
 import { MarqueeText } from '../components/MarqueeText';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { MoreOptionsButton } from '../components/MoreOptionsButton';
 import { closeOpenRow, SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { TrackRow } from '../components/TrackRow';
@@ -607,6 +608,7 @@ export function PlaylistDetailScreen() {
           }
         />
       )}
+        <MiniPlayerFooter />
       </View>
     </>
   );

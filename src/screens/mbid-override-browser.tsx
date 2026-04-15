@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '../components/EmptyState';
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { useTheme } from '../hooks/useTheme';
 import { albumInfoStore } from '../store/albumInfoStore';
@@ -205,6 +206,7 @@ export function MbidOverrideBrowserScreen() {
         }
         contentContainerStyle={{ paddingTop: headerHeight, paddingBottom: 32 }}
       />
+      <MiniPlayerFooter />
     </GradientBackground>
   );
 }

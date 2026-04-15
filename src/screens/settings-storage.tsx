@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { settingsStyles } from '../styles/settingsStyles';
 import { StorageUsageBar } from '../components/StorageUsageBar';
 import { useTheme } from '../hooks/useTheme';
@@ -490,6 +491,7 @@ export function SettingsStorageScreen() {
       </View>
 
     </ScrollView>
+    <MiniPlayerFooter />
     </GradientBackground>
 
     <Modal

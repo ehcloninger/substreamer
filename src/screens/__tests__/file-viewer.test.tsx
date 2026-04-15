@@ -45,6 +45,10 @@ jest.mock('expo-clipboard', () => ({
   setStringAsync: jest.fn(),
 }));
 
+jest.mock('../../components/MiniPlayerFooter', () => ({
+  MiniPlayerFooter: () => null,
+}));
+
 import React from 'react';
 import { render, act, fireEvent } from '@testing-library/react-native';
 import * as Clipboard from 'expo-clipboard';

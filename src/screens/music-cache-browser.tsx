@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { CachedImage } from '../components/CachedImage';
 import { EmptyState } from '../components/EmptyState';
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { settingsStyles } from '../styles/settingsStyles';
 import { useTransitionComplete } from '../hooks/useTransitionComplete';
 import {
@@ -394,6 +395,7 @@ export function MusicCacheBrowserScreen() {
         }}
         onScrollBeginDrag={closeOpenRow}
       />
+      <MiniPlayerFooter />
     </GradientBackground>
     <ThemedAlert {...alertProps} />
     </>

@@ -26,6 +26,7 @@ import Animated, {
 import { BottomSheet } from '../components/BottomSheet';
 import { CachedImage } from '../components/CachedImage';
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { SectionTitle } from '../components/SectionTitle';
 import {
   DECADES,
@@ -865,6 +866,7 @@ export function TunedInScreen() {
     return (
       <GradientBackground style={styles.loadingContainer}>
         <ActivityIndicator color={colors.primary} size="large" />
+        <MiniPlayerFooter />
       </GradientBackground>
     );
   }
@@ -942,6 +944,7 @@ export function TunedInScreen() {
         <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>{t('buildAMix')}</Text>
         <BuildMixSheetContent colors={colors} availableGenres={builderGenres} />
       </BottomSheet>
+      <MiniPlayerFooter />
     </GradientBackground>
   );
 }

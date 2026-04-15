@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { settingsStyles } from '../styles/settingsStyles';
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { StreamFormatSheet } from '../components/StreamFormatSheet';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedAlert } from '../hooks/useThemedAlert';
@@ -528,6 +529,7 @@ export function SettingsPlaybackScreen() {
             </Pressable>
           )}
         </ScrollView>
+        <MiniPlayerFooter />
       </GradientBackground>
       <ThemedAlert {...alertProps} />
       <StreamFormatSheet />

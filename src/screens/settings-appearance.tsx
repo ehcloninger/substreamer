@@ -5,6 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { settingsStyles } from '../styles/settingsStyles';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTheme } from '../hooks/useTheme';
@@ -587,6 +588,7 @@ export function SettingsAppearanceScreen() {
 
 
     </ScrollView>
+    <MiniPlayerFooter />
     </GradientBackground>
   );
 }

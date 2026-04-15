@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '../components/EmptyState';
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { settingsStyles } from '../styles/settingsStyles';
 import { SwipeableRow, type SwipeAction } from '../components/SwipeableRow';
 import { useRefreshControlKey } from '../hooks/useRefreshControlKey';
@@ -345,6 +346,7 @@ export function ImageCacheBrowserScreen() {
         ListHeaderComponent={listHeader}
         ListEmptyComponent={listEmpty}
       />
+      <MiniPlayerFooter />
     </GradientBackground>
     <ThemedAlert {...alertProps} />
     </>

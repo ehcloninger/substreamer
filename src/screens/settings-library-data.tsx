@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { GradientBackground } from '../components/GradientBackground';
+import { MiniPlayerFooter } from '../components/MiniPlayerFooter';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedAlert } from '../hooks/useThemedAlert';
 import { ThemedAlert } from '../components/ThemedAlert';
@@ -517,6 +518,7 @@ export function SettingsLibraryDataScreen() {
         </View>
       )}
     </ScrollView>
+    <MiniPlayerFooter />
     </GradientBackground>
 
     {/* Restore Backup Modal */}
