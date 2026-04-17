@@ -29,14 +29,26 @@ jest.mock('../../i18n', () => ({
   },
 }));
 
+let sheetOnClose: (() => void) | null = null;
+
+jest.mock('../BottomSheet', () => {
+  const { View } = require('react-native');
+  return {
+    BottomSheet: ({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: React.ReactNode }) => {
+      sheetOnClose = onClose;
+      return visible ? <View testID="language-sheet">{children}</View> : null;
+    },
+  };
+});
+
 import { localeStore } from '../../store/localeStore';
 
-// Must import after mocks
 const { LanguageSelector } = require('../LanguageSelector');
 
 beforeEach(() => {
   localeStore.setState({ locale: null });
   mockChangeLanguage.mockClear();
+  sheetOnClose = null;
 });
 
 describe('LanguageSelector', () => {
@@ -61,36 +73,33 @@ describe('LanguageSelector', () => {
     expect(getByText('English')).toBeTruthy();
   });
 
-  it('shows chevron-down when dropdown is closed', () => {
+  it('shows chevron-down icon', () => {
     const { getByText } = render(<LanguageSelector />);
     expect(getByText('chevron-down')).toBeTruthy();
   });
 
-  it('opens dropdown on press and shows chevron-up', () => {
-    const { getByText } = render(<LanguageSelector />);
+  it('opens bottom sheet on press', () => {
+    const { getByText, getByTestId } = render(<LanguageSelector />);
     fireEvent.press(getByText('Language'));
-    expect(getByText('chevron-up')).toBeTruthy();
+    expect(getByTestId('language-sheet')).toBeTruthy();
   });
 
-  it('shows "Device default" option in dropdown', () => {
+  it('shows "Device default" option in sheet', () => {
     const { getByText, getAllByText } = render(<LanguageSelector />);
     fireEvent.press(getByText('Language'));
-    // "Device default" appears both in the header value and as a dropdown option
     const matches = getAllByText('Device default');
     expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('shows language options in dropdown', () => {
+  it('shows language options in sheet', () => {
     const { getByText } = render(<LanguageSelector />);
     fireEvent.press(getByText('Language'));
-    // English should appear as an option in the dropdown
     expect(getByText('English')).toBeTruthy();
   });
 
   it('shows checkmark next to "Device default" when locale is null', () => {
     const { getByText, getAllByText } = render(<LanguageSelector />);
     fireEvent.press(getByText('Language'));
-    // The checkmark icon should appear
     const checkmarks = getAllByText('checkmark');
     expect(checkmarks.length).toBeGreaterThanOrEqual(1);
   });
@@ -98,7 +107,6 @@ describe('LanguageSelector', () => {
   it('selecting a language calls setLocale and changeLanguage', () => {
     const { getByText } = render(<LanguageSelector />);
     fireEvent.press(getByText('Language'));
-    // Tap on "English" option in the dropdown
     fireEvent.press(getByText('English'));
     expect(localeStore.getState().locale).toBe('en');
     expect(mockChangeLanguage).toHaveBeenCalledWith('en');
@@ -108,32 +116,18 @@ describe('LanguageSelector', () => {
     localeStore.setState({ locale: 'en' });
     const { getByText, getAllByText } = render(<LanguageSelector />);
     fireEvent.press(getByText('Language'));
-    // The "Device default" option in the list
     const defaults = getAllByText('Device default');
-    // Tap the option (last one should be the dropdown item)
     fireEvent.press(defaults[defaults.length - 1]);
     expect(localeStore.getState().locale).toBeNull();
     expect(mockChangeLanguage).toHaveBeenCalledWith('en');
   });
 
-  it('closes dropdown after selecting a language', () => {
-    const { getByText, queryByText } = render(<LanguageSelector />);
+  it('closes sheet after selecting a language', () => {
+    const { getByText, queryByTestId } = render(<LanguageSelector />);
     fireEvent.press(getByText('Language'));
-    expect(getByText('chevron-up')).toBeTruthy();
+    expect(queryByTestId('language-sheet')).toBeTruthy();
     fireEvent.press(getByText('English'));
-    // Dropdown should be closed now
-    expect(queryByText('chevron-up')).toBeNull();
-    expect(getByText('chevron-down')).toBeTruthy();
-  });
-
-  it('toggles dropdown open and closed', () => {
-    const { getByText } = render(<LanguageSelector />);
-    // Open
-    fireEvent.press(getByText('Language'));
-    expect(getByText('chevron-up')).toBeTruthy();
-    // Close
-    fireEvent.press(getByText('Language'));
-    expect(getByText('chevron-down')).toBeTruthy();
+    expect(queryByTestId('language-sheet')).toBeNull();
   });
 
   it('renders with login variant palette', () => {

@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { BottomSheet } from './BottomSheet';
 import { useTheme } from '../hooks/useTheme';
 import { i18n } from '../i18n';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
@@ -16,7 +17,7 @@ interface LanguageSelectorProps {
 export function LanguageSelector({ variant = 'settings' }: LanguageSelectorProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const [open, setOpen] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
   const locale = localeStore((s) => s.locale);
   const setLocale = localeStore((s) => s.setLocale);
 
@@ -32,7 +33,7 @@ export function LanguageSelector({ variant = 'settings' }: LanguageSelectorProps
       setLocale(code);
       const resolvedCode = code ?? 'en';
       i18n.changeLanguage(resolvedCode);
-      setOpen(false);
+      setSheetVisible(false);
     },
     [setLocale],
   );
@@ -58,48 +59,56 @@ export function LanguageSelector({ variant = 'settings' }: LanguageSelectorProps
   );
 
   return (
-    <View style={[styles.dropdown, { backgroundColor: palette.bg }]}>
-      <Pressable
-        onPress={() => setOpen((prev) => !prev)}
-        style={({ pressed }) => [styles.header, pressed && styles.pressed]}
+    <>
+      <View style={[styles.trigger, { backgroundColor: palette.bg }]}>
+        <Pressable
+          onPress={() => setSheetVisible(true)}
+          style={({ pressed }) => [styles.header, pressed && styles.pressed]}
+        >
+          <View style={styles.labelRow}>
+            <Ionicons
+              name="globe-outline"
+              size={20}
+              color={palette.secondary}
+            />
+            <Text style={[styles.label, { color: palette.text }]}>
+              {t('language')}
+            </Text>
+          </View>
+          <View style={styles.right}>
+            <Text style={[styles.value, { color: palette.secondary }]}>
+              {displayName}
+            </Text>
+            <Ionicons
+              name="chevron-down"
+              size={20}
+              color={palette.secondary}
+            />
+          </View>
+        </Pressable>
+      </View>
+
+      <BottomSheet
+        visible={sheetVisible}
+        onClose={() => setSheetVisible(false)}
       >
-        <View style={styles.labelRow}>
-          <Ionicons
-            name="globe-outline"
-            size={20}
-            color={palette.secondary}
-          />
-          <Text style={[styles.label, { color: palette.text }]}>
-            {t('language')}
-          </Text>
-        </View>
-        <View style={styles.right}>
-          <Text style={[styles.value, { color: palette.secondary }]}>
-            {displayName}
-          </Text>
-          <Ionicons
-            name={open ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={palette.secondary}
-          />
-        </View>
-      </Pressable>
-      {open && (
-        <View style={[styles.list, { borderTopColor: palette.border }]}>
-          {/* Device default option */}
+        <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+          {t('language')}
+        </Text>
+        <ScrollView bounces={false}>
           <Pressable
             onPress={() => handleSelect(null)}
             style={({ pressed }) => [
               styles.option,
-              { borderBottomColor: palette.border },
+              { borderBottomColor: colors.border },
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.optionText, { color: palette.text }]}>
+            <Text style={[styles.optionText, { color: colors.textPrimary }]}>
               {t('deviceDefault')}
             </Text>
             {locale === null && (
-              <Ionicons name="checkmark" size={20} color={palette.check} />
+              <Ionicons name="checkmark" size={20} color={colors.primary} />
             )}
           </Pressable>
           {SUPPORTED_LANGUAGES.map((lang) => {
@@ -110,13 +119,13 @@ export function LanguageSelector({ variant = 'settings' }: LanguageSelectorProps
                 onPress={() => handleSelect(lang.code)}
                 style={({ pressed }) => [
                   styles.option,
-                  { borderBottomColor: palette.border },
+                  { borderBottomColor: colors.border },
                   pressed && styles.pressed,
                 ]}
               >
                 <View>
                   <Text
-                    style={[styles.optionText, { color: palette.text }]}
+                    style={[styles.optionText, { color: colors.textPrimary }]}
                   >
                     {lang.nativeName}
                   </Text>
@@ -124,7 +133,7 @@ export function LanguageSelector({ variant = 'settings' }: LanguageSelectorProps
                     <Text
                       style={[
                         styles.optionSubtext,
-                        { color: palette.secondary },
+                        { color: colors.textSecondary },
                       ]}
                     >
                       {lang.name}
@@ -135,20 +144,20 @@ export function LanguageSelector({ variant = 'settings' }: LanguageSelectorProps
                   <Ionicons
                     name="checkmark"
                     size={20}
-                    color={palette.check}
+                    color={colors.primary}
                   />
                 )}
               </Pressable>
             );
           })}
-        </View>
-      )}
-    </View>
+        </ScrollView>
+      </BottomSheet>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  dropdown: {
+  trigger: {
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -175,8 +184,11 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 16,
   },
-  list: {
-    borderTopWidth: StyleSheet.hairlineWidth,
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    paddingHorizontal: 4,
   },
   option: {
     flexDirection: 'row',
