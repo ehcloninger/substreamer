@@ -1,0 +1,55 @@
+/**
+ * Priority-aware container for the top-of-screen pill banners. At most ONE
+ * banner is shown at a time; the highest-priority banner with an active state
+ * wins and suppresses the others.
+ *
+ * Ladder (highest priority first — matches the plan document):
+ *   1. SSL-error / network-unreachable / reconnected (ConnectivityBanner)
+ *   2. Storage full (StorageFullBanner)
+ *   3. Library-sync error variants: paused-auth-error, paused-metered, error
+ *      (LibrarySyncBanner — actionable failures rank above a plain offline
+ *      state so users see "reauthenticate" before "offline")
+ *   4. (reserved — no connectivity "offline" variant exists today;
+ *      ConnectivityBanner hides itself when the user enables offline mode)
+ *   5. Library-sync progress / paused-offline variants (LibrarySyncBanner)
+ */
+
+import { memo } from 'react';
+
+import { ConnectivityBanner } from './ConnectivityBanner';
+import { LibrarySyncBanner } from './LibrarySyncBanner';
+import { StorageFullBanner } from './StorageFullBanner';
+import { connectivityStore } from '../store/connectivityStore';
+import { offlineModeStore } from '../store/offlineModeStore';
+import { storageLimitStore } from '../store/storageLimitStore';
+import { syncStatusStore } from '../store/syncStatusStore';
+
+export const BannerStack = memo(function BannerStack() {
+  const bannerState = connectivityStore((s) => s.bannerState);
+  const offlineMode = offlineModeStore((s) => s.offlineMode);
+  const isStorageFull = storageLimitStore((s) => s.isStorageFull);
+  const syncPhase = syncStatusStore((s) => s.detailSyncPhase);
+
+  // ConnectivityBanner internally hides itself when offlineMode is true (see
+  // ConnectivityBanner.tsx:62). Mirror that logic here so the priority
+  // ladder doesn't needlessly block lower-priority banners.
+  const connectivityShowing = bannerState !== 'hidden' && !offlineMode;
+
+  if (connectivityShowing) return <ConnectivityBanner />;
+  if (isStorageFull) return <StorageFullBanner />;
+
+  // Library-sync: error/paused-auth/paused-metered rank above plain offline.
+  // Currently functionally equivalent to the progress variant (they all
+  // render <LibrarySyncBanner />) but structured explicitly so that a
+  // future connectivity "offline" variant can be inserted between them.
+  const isSyncError =
+    syncPhase === 'error'
+    || syncPhase === 'paused-auth-error'
+    || syncPhase === 'paused-metered';
+  if (isSyncError) return <LibrarySyncBanner />;
+
+  if (syncPhase === 'syncing' || syncPhase === 'paused-offline') {
+    return <LibrarySyncBanner />;
+  }
+  return null;
+});

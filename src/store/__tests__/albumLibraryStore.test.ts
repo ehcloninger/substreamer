@@ -147,74 +147,38 @@ describe('albumLibraryStore', () => {
     });
   });
 
-  describe('recentlyAdded subscription', () => {
-    it('refreshes the library when recentlyAdded surfaces an unknown album', async () => {
-      albumLibraryStore.setState({
-        albums: [makeAlbum('a1', 'Alpha', 'Artist A')],
-      });
-      mockSearchAllAlbums.mockResolvedValue([
-        makeAlbum('a1', 'Alpha', 'Artist A'),
-        makeAlbum('a2', 'Beta', 'Artist B'),
-      ]);
+  // NOTE: the `recentlyAdded` → `fetchAllAlbums` side-effect was retired
+  // from `albumLibraryStore` in Phase 5. The equivalent behavior now lives
+  // in `dataSyncService.onAlbumReferenced`, which is exercised by
+  // `dataSyncService.test.ts`.
 
-      albumListsStore.setState({
-        recentlyAdded: [makeAlbum('a2', 'Beta', 'Artist B')],
-      } as any);
-
-      // Allow the async fetchAllAlbums to complete
-      await new Promise((r) => setImmediate(r));
-      await new Promise((r) => setImmediate(r));
-
-      expect(mockSearchAllAlbums).toHaveBeenCalled();
-      expect(albumLibraryStore.getState().albums).toHaveLength(2);
-    });
-
-    it('does nothing when every recentlyAdded album is already cached', async () => {
+  describe('empty-response safety (transient-failure guard)', () => {
+    it('does not wipe a populated cache when both strategies return empty', async () => {
       albumLibraryStore.setState({
         albums: [
-          makeAlbum('a1', 'Alpha', 'Artist A'),
-          makeAlbum('a2', 'Beta', 'Artist B'),
+          makeAlbum('a1', 'A', 'A Artist'),
+          makeAlbum('a2', 'B', 'B Artist'),
         ],
       });
+      mockSearchAllAlbums.mockResolvedValue([]);
+      mockGetAllAlbumsAlphabetical.mockResolvedValue([]);
 
-      albumListsStore.setState({
-        recentlyAdded: [
-          makeAlbum('a1', 'Alpha', 'Artist A'),
-          makeAlbum('a2', 'Beta', 'Artist B'),
-        ],
-      } as any);
+      await albumLibraryStore.getState().fetchAllAlbums();
 
-      await new Promise((r) => setImmediate(r));
-
-      expect(mockSearchAllAlbums).not.toHaveBeenCalled();
+      expect(albumLibraryStore.getState().albums).toHaveLength(2);
+      expect(albumLibraryStore.getState().error).toBeTruthy();
+      expect(albumLibraryStore.getState().loading).toBe(false);
     });
 
-    it('does nothing when the cached library is empty (deferred to launch path)', async () => {
+    it('DOES replace when the old list was empty and new list is empty (initial state)', async () => {
       albumLibraryStore.setState({ albums: [] });
+      mockSearchAllAlbums.mockResolvedValue([]);
+      mockGetAllAlbumsAlphabetical.mockResolvedValue([]);
 
-      albumListsStore.setState({
-        recentlyAdded: [makeAlbum('a1', 'Alpha', 'Artist A')],
-      } as any);
-
-      await new Promise((r) => setImmediate(r));
-
-      expect(mockSearchAllAlbums).not.toHaveBeenCalled();
-    });
-
-    it('does nothing when recentlyAdded reference is unchanged', async () => {
-      const sameRef: any[] = [makeAlbum('a1', 'Alpha', 'Artist A')];
-      albumLibraryStore.setState({
-        albums: [makeAlbum('a99', 'Z', 'Z Artist')],
-      });
-      albumListsStore.setState({ recentlyAdded: sameRef } as any);
-      await new Promise((r) => setImmediate(r));
-      mockSearchAllAlbums.mockClear();
-
-      // Identical reference — subscription guard should bail
-      albumListsStore.setState({ recentlyAdded: sameRef } as any);
-      await new Promise((r) => setImmediate(r));
-
-      expect(mockSearchAllAlbums).not.toHaveBeenCalled();
+      await albumLibraryStore.getState().fetchAllAlbums();
+      // Empty → empty transition on cold cache: not an error, just a quiet no-op.
+      expect(albumLibraryStore.getState().albums).toEqual([]);
+      expect(albumLibraryStore.getState().error).toBeNull();
     });
   });
 

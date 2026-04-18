@@ -1,6 +1,20 @@
 import React from 'react';
 import { render, act } from '@testing-library/react-native';
 
+// Stubs for the new per-row SQLite path + the imageCacheService that
+// albumDetailStore now transitively imports for cover-art prefetching. These
+// don't touch the splash's own logic — the splash just needs the hydration
+// calls to be no-ops during the test.
+jest.mock('expo-sqlite', () => ({
+  openDatabaseSync: () => {
+    throw new Error('mocked — detailTables fallback path used in tests');
+  },
+}));
+jest.mock('../../services/imageCacheService', () => ({
+  cacheAllSizes: jest.fn(),
+  cacheEntityCoverArt: jest.fn(),
+}));
+
 /* ------------------------------------------------------------------ */
 /*  Capture the animate() callback from BootSplash.useHideAnimation    */
 /* ------------------------------------------------------------------ */

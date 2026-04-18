@@ -4,6 +4,14 @@ jest.mock('../../services/imageCacheService', () => ({
   cacheAllSizes: jest.fn().mockResolvedValue(undefined),
   cacheEntityCoverArt: jest.fn(),
 }));
+// Skip real expo-sqlite for detailTables — the store's own behavior around
+// in-memory state is what matters for these tests. Individual persistence
+// operations are covered by detailTables.test.ts.
+jest.mock('expo-sqlite', () => ({
+  openDatabaseSync: () => {
+    throw new Error('detailTables tests inject a DB; store tests run with persistence disabled');
+  },
+}));
 
 import { ensureCoverArtAuth, getAlbum } from '../../services/subsonicService';
 import { albumDetailStore } from '../albumDetailStore';
@@ -127,6 +135,74 @@ describe('albumDetailStore', () => {
       } finally {
         jest.useRealTimers();
       }
+    });
+  });
+
+  describe('hasEntry', () => {
+    it('returns false for an unknown id', () => {
+      expect(albumDetailStore.getState().hasEntry('nope')).toBe(false);
+    });
+
+    it('returns true after a successful fetch', async () => {
+      mockGetAlbum.mockResolvedValue({ id: 'a1', name: 'A', song: [] } as any);
+      await albumDetailStore.getState().fetchAlbum('a1');
+      expect(albumDetailStore.getState().hasEntry('a1')).toBe(true);
+    });
+  });
+
+  describe('removeEntry', () => {
+    it('removes a single entry', async () => {
+      mockGetAlbum.mockResolvedValue({ id: 'a1', name: 'A', song: [] } as any);
+      await albumDetailStore.getState().fetchAlbum('a1');
+      albumDetailStore.getState().removeEntry('a1');
+      expect(albumDetailStore.getState().albums['a1']).toBeUndefined();
+    });
+
+    it('is a no-op for an unknown id', () => {
+      albumDetailStore.getState().removeEntry('nope');
+      expect(albumDetailStore.getState().albums).toEqual({});
+    });
+  });
+
+  describe('removeEntries', () => {
+    it('removes a batch and preserves others', async () => {
+      mockGetAlbum
+        .mockResolvedValueOnce({ id: 'a1', name: 'A', song: [] } as any)
+        .mockResolvedValueOnce({ id: 'a2', name: 'B', song: [] } as any)
+        .mockResolvedValueOnce({ id: 'a3', name: 'C', song: [] } as any);
+      await albumDetailStore.getState().fetchAlbum('a1');
+      await albumDetailStore.getState().fetchAlbum('a2');
+      await albumDetailStore.getState().fetchAlbum('a3');
+
+      albumDetailStore.getState().removeEntries(['a1', 'a3']);
+      expect(albumDetailStore.getState().albums['a1']).toBeUndefined();
+      expect(albumDetailStore.getState().albums['a2']).toBeDefined();
+      expect(albumDetailStore.getState().albums['a3']).toBeUndefined();
+    });
+
+    it('is a no-op for an empty list', async () => {
+      mockGetAlbum.mockResolvedValue({ id: 'a1', name: 'A', song: [] } as any);
+      await albumDetailStore.getState().fetchAlbum('a1');
+      albumDetailStore.getState().removeEntries([]);
+      expect(albumDetailStore.getState().albums['a1']).toBeDefined();
+    });
+
+    it('is a no-op when no supplied ids match', async () => {
+      mockGetAlbum.mockResolvedValue({ id: 'a1', name: 'A', song: [] } as any);
+      await albumDetailStore.getState().fetchAlbum('a1');
+      albumDetailStore.getState().removeEntries(['x1', 'x2']);
+      expect(albumDetailStore.getState().albums['a1']).toBeDefined();
+    });
+  });
+
+  describe('hydrateFromDb', () => {
+    it('marks hasHydrated true and is idempotent', () => {
+      expect(albumDetailStore.getState().hasHydrated).toBe(false);
+      albumDetailStore.getState().hydrateFromDb();
+      expect(albumDetailStore.getState().hasHydrated).toBe(true);
+      // Second call should not throw or duplicate work.
+      albumDetailStore.getState().hydrateFromDb();
+      expect(albumDetailStore.getState().hasHydrated).toBe(true);
     });
   });
 });

@@ -11,9 +11,22 @@ import {
   searchAllAlbums,
   type AlbumID3,
 } from '../services/subsonicService';
-import { albumListsStore } from './albumListsStore';
 import { layoutPreferencesStore } from './layoutPreferencesStore';
 import { ratingStore } from './ratingStore';
+
+/**
+ * Hook invoked after `fetchAllAlbums` has successfully replaced the library.
+ * Registered by `dataSyncService` at module load so we avoid a circular
+ * import (dataSyncService → albumLibraryStore → dataSyncService).
+ * Receives the OLD and NEW id lists so consumers can reap orphans from
+ * downstream caches (albumDetailStore, songIndexStore) and pre-fetch new IDs.
+ */
+let reconcileHook: ((oldIds: readonly string[], newIds: readonly string[]) => void) | null = null;
+export function registerAlbumLibraryReconcileHook(
+  hook: ((oldIds: readonly string[], newIds: readonly string[]) => void) | null,
+): void {
+  reconcileHook = hook;
+}
 
 export interface AlbumLibraryState {
   /** All albums in the user's library */
@@ -33,6 +46,13 @@ export interface AlbumLibraryState {
   fetchAllAlbums: () => Promise<void>;
   /** Re-sort the in-memory album list using the current sort preference. */
   resortAlbums: () => void;
+  /**
+   * Merge a batch of albums into the in-memory list by id, replacing existing
+   * entries and appending new ones. Triggers a re-sort. Used by the incremental
+   * change-detection path to add newly discovered albums without a full
+   * refetch.
+   */
+  upsertAlbums: (albums: AlbumID3[]) => void;
   /** Clear all album data */
   clearAlbums: () => void;
 }
@@ -51,6 +71,10 @@ export const albumLibraryStore = create<AlbumLibraryState>()(
         // Prevent duplicate fetches
         if (get().loading) return;
 
+        // Capture old IDs BEFORE the fetch starts so the reconcile hook can
+        // diff the full-refetch result against what we had.
+        const oldIds = get().albums.map((a) => a.id);
+
         set({ loading: true, error: null });
         try {
           await ensureCoverArtAuth();
@@ -61,6 +85,20 @@ export const albumLibraryStore = create<AlbumLibraryState>()(
           // Strategy 2: if search3 returned nothing, paginate via getAlbumList2
           if (albums.length === 0) {
             albums = await getAllAlbumsAlphabetical();
+          }
+
+          // Guard against a transient empty response wiping a populated cache.
+          // Both strategies swallow network errors and return []. If we had a
+          // non-empty library before and the new response is empty, treat as
+          // an error so we DON'T replace the cache (and don't cascade a
+          // mass-wipe through the reconcile hook to albumDetailStore /
+          // songIndexStore).
+          if (albums.length === 0 && oldIds.length > 0) {
+            set({
+              loading: false,
+              error: i18n.t('failedToLoadAlbums'),
+            });
+            return;
           }
 
           // Sort albums according to the user's preferred sort order
@@ -80,6 +118,17 @@ export const albumLibraryStore = create<AlbumLibraryState>()(
             loading: false,
             lastFetchedAt: Date.now(),
           });
+
+          // Notify the reconcile hook (dataSyncService) so it can reap orphans
+          // from albumDetailStore / songIndexStore and pre-fetch new IDs. Runs
+          // asynchronously from the caller's perspective.
+          if (reconcileHook) {
+            try {
+              reconcileHook(oldIds, albums.map((a) => a.id));
+            } catch {
+              /* non-critical — reconcile is best-effort */
+            }
+          }
         } catch (e) {
           set({
             loading: false,
@@ -99,6 +148,25 @@ export const albumLibraryStore = create<AlbumLibraryState>()(
           })
         );
         set({ albums: sorted });
+      },
+
+      upsertAlbums: (albums: AlbumID3[]) => {
+        if (albums.length === 0) return;
+        const current = get().albums;
+        const merged: Record<string, AlbumID3> = {};
+        for (const a of current) merged[a.id] = a;
+        for (const a of albums) merged[a.id] = a;
+        const sortOrder = layoutPreferencesStore.getState().albumSortOrder;
+        const sortKey = sortOrder === 'title' ? 'name' : 'artist';
+        const next = Object.values(merged).sort((a, b) =>
+          (a[sortKey] ?? '').localeCompare(b[sortKey] ?? '', undefined, {
+            sensitivity: 'base',
+          })
+        );
+        ratingStore.getState().reconcileRatings(
+          albums.map((a) => ({ id: a.id, serverRating: a.userRating ?? 0 })),
+        );
+        set({ albums: next });
       },
 
       clearAlbums: () =>
@@ -127,23 +195,8 @@ layoutPreferencesStore.subscribe((state, prevState) => {
   }
 });
 
-// Refresh the full album library when the home screen's "Recently Added"
-// list surfaces an album we don't have cached. This keeps the offline album
-// list (which filters this store) in sync with newly added server content,
-// without requiring the user to manually refresh while online.
-//
-// Skipped when the cached library is empty — the launch path in
-// _layout.tsx already handles first-fetch via its `length === 0` guard.
-// fetchAllAlbums has its own loading guard, so concurrent triggers
-// (e.g. from musicCacheService.enqueueAlbumDownload) collapse to one
-// fetch.
-albumListsStore.subscribe((state, prevState) => {
-  if (state.recentlyAdded === prevState.recentlyAdded) return;
-  const cachedAlbums = albumLibraryStore.getState().albums;
-  if (cachedAlbums.length === 0) return;
-  const cachedIds = new Set(cachedAlbums.map((a) => a.id));
-  const hasNewAlbum = state.recentlyAdded.some((a) => !cachedIds.has(a.id));
-  if (hasNewAlbum) {
-    albumLibraryStore.getState().fetchAllAlbums();
-  }
-});
+// NOTE: the `albumListsStore → albumLibraryStore` subscribe used to live
+// here. It was retired in Phase 5 of the data-sync refactor. The equivalent
+// behavior (refresh library when recentlyAdded surfaces an unknown id) is
+// now owned by `dataSyncService.ts` via `onAlbumReferenced`, which also
+// handles download-triggered references from `musicCacheService`.

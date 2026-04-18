@@ -6,10 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { Keyboard, View } from 'react-native';
 
 import WaveformLogo from '../../components/WaveformLogo';
-import { ConnectivityBanner } from '../../components/ConnectivityBanner';
+import { BannerStack } from '../../components/BannerStack';
 import { DownloadBanner } from '../../components/DownloadBanner';
 import { GradientBackground } from '../../components/GradientBackground';
-import { StorageFullBanner } from '../../components/StorageFullBanner';
 import { MiniPlayer } from '../../components/MiniPlayer';
 import { SearchableHeader } from '../../components/SearchableHeader';
 import { SearchResultsOverlay } from '../../components/SearchResultsOverlay';
@@ -45,8 +44,7 @@ export default function TabLayout() {
           header: (props) => (
             <View onLayout={(e) => searchStore.getState().setHeaderHeight(e.nativeEvent.layout.height)}>
               <SearchableHeader {...props} />
-              <ConnectivityBanner />
-              <StorageFullBanner />
+              <BannerStack />
             </View>
           ),
           tabBarStyle: {

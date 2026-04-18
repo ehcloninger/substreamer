@@ -173,6 +173,7 @@ import {
   retryDownload,
   redownloadItem,
   redownloadTrack,
+  registerMusicCacheOnAlbumReferencedHook,
 } from '../musicCacheService';
 
 import type { Child } from '../subsonicService';
@@ -792,8 +793,9 @@ describe('enqueueAlbumDownload', () => {
     expect(queue[0].artist).toBe('Various Artists');
   });
 
-  it('refreshes the album library when downloading an album not in the cached list', async () => {
-    mockAlbumLibraryAlbums.value = [{ id: 'album-other' }];
+  it('notifies the onAlbumReferenced hook when enqueuing an album', async () => {
+    const hook = jest.fn();
+    registerMusicCacheOnAlbumReferencedHook(hook);
     mockFetchAlbum.mockResolvedValue({
       id: 'album-1',
       name: 'Test',
@@ -802,24 +804,29 @@ describe('enqueueAlbumDownload', () => {
 
     await enqueueAlbumDownload('album-1');
 
-    expect(mockFetchAllAlbums).toHaveBeenCalled();
+    expect(hook).toHaveBeenCalledWith('album-1');
+    registerMusicCacheOnAlbumReferencedHook(null);
   });
 
-  it('does not refresh the library when the album is already in the cached list', async () => {
-    mockAlbumLibraryAlbums.value = [{ id: 'album-1' }, { id: 'album-2' }];
+  it('does not notify the hook when the album is already in the download queue', async () => {
+    const hook = jest.fn();
+    registerMusicCacheOnAlbumReferencedHook(hook);
+    // First enqueue to populate the queue.
     mockFetchAlbum.mockResolvedValue({
       id: 'album-1',
       name: 'Test',
       song: [makeChild('t1')],
     });
-
     await enqueueAlbumDownload('album-1');
-
-    expect(mockFetchAllAlbums).not.toHaveBeenCalled();
+    hook.mockClear();
+    // Second enqueue should bail on the duplicate-queue check.
+    await enqueueAlbumDownload('album-1');
+    expect(hook).not.toHaveBeenCalled();
+    registerMusicCacheOnAlbumReferencedHook(null);
   });
 
-  it('does not refresh the library when the cached library is empty', async () => {
-    mockAlbumLibraryAlbums.value = [];
+  it('still enqueues the download even when no hook is registered', async () => {
+    registerMusicCacheOnAlbumReferencedHook(null);
     mockFetchAlbum.mockResolvedValue({
       id: 'album-1',
       name: 'Test',
@@ -827,22 +834,6 @@ describe('enqueueAlbumDownload', () => {
     });
 
     await enqueueAlbumDownload('album-1');
-
-    expect(mockFetchAllAlbums).not.toHaveBeenCalled();
-  });
-
-  it('still enqueues the download when the background library refresh rejects', async () => {
-    mockAlbumLibraryAlbums.value = [{ id: 'album-other' }];
-    mockFetchAllAlbums.mockRejectedValueOnce(new Error('Network'));
-    mockFetchAlbum.mockResolvedValue({
-      id: 'album-1',
-      name: 'Test',
-      song: [makeChild('t1')],
-    });
-
-    await enqueueAlbumDownload('album-1');
-
-    expect(mockFetchAllAlbums).toHaveBeenCalled();
     expect(musicCacheStore.getState().downloadQueue).toHaveLength(1);
   });
 });

@@ -40,6 +40,54 @@ export const settingsStyles = StyleSheet.create({
   navRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   navRowText: { fontSize: 16, fontWeight: '600' },
 
+  // Action buttons — full-width outlined pressables used for destructive or
+  // standalone actions at the bottom of a settings card (log out, clear cache,
+  // force resync, etc.). Border color is supplied at the call site: use
+  // `colors.red` for destructive actions, `colors.border` for neutral ones.
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Action-button row — pair of side-by-side pressables (primary + secondary).
+  // Used by Back Up / Restore and Library resync / Cancel-or-Resume. Call
+  // sites supply background/border/text color via inline styles.
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  actionRowButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 44,
+    borderRadius: 10,
+  },
+  actionRowButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  /** Small explanatory text that follows an action button. */
+  sectionHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 8,
+    marginHorizontal: 4,
+  },
+
   // Interaction states
   pressed: { opacity: 0.8 },
   disabled: { opacity: 0.4 },

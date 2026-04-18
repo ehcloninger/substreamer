@@ -18,6 +18,10 @@ import { mbidOverrideStore, type MbidOverride } from '../store/mbidOverrideStore
 import { musicCacheStore } from '../store/musicCacheStore';
 import { playbackSettingsStore } from '../store/playbackSettingsStore';
 import { localeStore } from '../store/localeStore';
+import {
+  upsertAlbumDetail,
+  upsertSongsForAlbum,
+} from '../store/persistence/detailTables';
 import { sqliteStorage } from '../store/sqliteStorage';
 import { type EffectiveFormat } from '../types/audio';
 
@@ -500,6 +504,56 @@ const MIGRATION_TASKS: MigrationTask[] = [
       await sqliteStorage.setItem('substreamer-locale', JSON.stringify(parsed));
       localeStore.setState({ locale: 'zh-Hans' });
       log('Remapped legacy "zh" locale preference to "zh-Hans".');
+    },
+  },
+
+  {
+    id: 12,
+    name: 'Move album details to per-row SQLite tables',
+    run: async (log) => {
+      // albumDetailStore moved off the generic `persist(createJSONStorage)`
+      // blob model to per-row tables (`album_details`, `song_index`) owned
+      // by `src/store/persistence/detailTables.ts`. This task reads the old
+      // blob once, upserts each album into the new tables, and deletes the
+      // old blob key. Idempotent: if the blob is missing or already been
+      // migrated, it's a no-op.
+      const raw = await sqliteStorage.getItem('substreamer-album-details');
+      if (!raw) {
+        log('No persisted album-details blob — nothing to migrate.');
+        return;
+      }
+      let parsed: any;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        // Corrupt blob — drop it so the new tables start clean.
+        await sqliteStorage.removeItem('substreamer-album-details');
+        log('Failed to parse album-details blob — removed.');
+        return;
+      }
+      const albums: Record<string, { album: any; retrievedAt?: number }> =
+        parsed?.state?.albums ?? {};
+      const ids = Object.keys(albums);
+      if (ids.length === 0) {
+        await sqliteStorage.removeItem('substreamer-album-details');
+        log('Album-details blob was empty — removed.');
+        return;
+      }
+      let albumCount = 0;
+      let songCount = 0;
+      for (const id of ids) {
+        const entry = albums[id];
+        const album = entry?.album;
+        if (!album || typeof album !== 'object' || !album.id) continue;
+        const retrievedAt = typeof entry.retrievedAt === 'number' ? entry.retrievedAt : Date.now();
+        upsertAlbumDetail(id, album, retrievedAt);
+        const songs = Array.isArray(album.song) ? album.song : [];
+        upsertSongsForAlbum(id, songs);
+        albumCount++;
+        songCount += songs.length;
+      }
+      await sqliteStorage.removeItem('substreamer-album-details');
+      log(`Migrated ${albumCount} album detail(s) and ${songCount} song(s) to per-row tables.`);
     },
   },
 

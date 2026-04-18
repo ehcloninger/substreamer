@@ -3,10 +3,10 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { PlaylistListView, type PlaylistLayout } from '../components/PlaylistListView';
+import { onPullToRefresh } from '../services/dataSyncService';
 import { musicCacheStore } from '../store/musicCacheStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { playlistLibraryStore } from '../store/playlistLibraryStore';
-import { minDelay } from '../utils/stringHelpers';
 
 export function PlaylistListScreen({
   layout = 'list',
@@ -40,13 +40,13 @@ export function PlaylistListScreen({
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
-    if (offlineMode) return;
     setRefreshing(true);
-    const delay = minDelay();
-    await fetchAllPlaylists();
-    await delay;
-    setRefreshing(false);
-  }, [offlineMode, fetchAllPlaylists]);
+    try {
+      await onPullToRefresh('playlists');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const emptyProps = offlineMode
     ? {

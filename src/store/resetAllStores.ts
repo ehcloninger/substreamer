@@ -6,6 +6,7 @@
  */
 
 import { clearAllStorage } from './sqliteStorage';
+import { clearDetailTables } from './persistence/detailTables';
 
 // Persisted stores
 import { albumDetailStore } from './albumDetailStore';
@@ -36,9 +37,11 @@ import { scrobbleExclusionStore } from './scrobbleExclusionStore';
 import { serverInfoStore } from './serverInfoStore';
 import { shareSettingsStore } from './shareSettingsStore';
 import { sharesStore } from './sharesStore';
+import { songIndexStore } from './songIndexStore';
 import { sslCertStore } from './sslCertStore';
 import { localeStore } from './localeStore';
 import { storageLimitStore } from './storageLimitStore';
+import { syncStatusStore } from './syncStatusStore';
 
 // Non-persisted stores
 import { addToPlaylistStore } from './addToPlaylistStore';
@@ -88,8 +91,10 @@ const allStores = [
   serverInfoStore,
   shareSettingsStore,
   sharesStore,
+  songIndexStore,
   sslCertStore,
   storageLimitStore,
+  syncStatusStore,
   migrationStore,
   // Non-persisted
   addToPlaylistStore,
@@ -110,6 +115,11 @@ const allStores = [
 
 export function resetAllStores(): void {
   clearAllStorage();
+  // Clear the per-row SQLite tables used by albumDetailStore + songIndexStore.
+  // These live in a separate connection (`detailTables.ts`) from the generic
+  // `storage` key-value table that `clearAllStorage()` wipes, so they would
+  // otherwise persist stale rows across logout.
+  clearDetailTables();
   for (const store of allStores) {
     (store.setState as (state: unknown, replace: boolean) => void)(
       store.getInitialState(),

@@ -4,7 +4,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Appearance, BackHandler, Dimensions, LogBox, Platform, StyleSheet, View } from 'react-native';
+import { Appearance, AppState, BackHandler, Dimensions, LogBox, Platform, StyleSheet, View } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { I18nextProvider } from 'react-i18next';
@@ -49,11 +49,18 @@ import { useDownloadBackgroundNotification } from '../hooks/useDownloadBackgroun
 import { useDownloadKeepAwake } from '../hooks/useDownloadKeepAwake';
 import { useLayoutMode } from '../hooks/useLayoutMode';
 import { useTheme } from '../hooks/useTheme';
+import {
+  deferredDataSyncInit,
+  onOnlineResume,
+  onStartup,
+  recoverStalledSync,
+} from '../services/dataSyncService';
+import { useLibrarySyncBackgroundNotification } from '../hooks/useLibrarySyncBackgroundNotification';
+import { useLibrarySyncKeepAwake } from '../hooks/useLibrarySyncKeepAwake';
 import { deferredImageCacheInit, getImageCacheStats, initImageCache } from '../services/imageCacheService';
 import { deferredMusicCacheInit, getMusicCacheStats, initMusicCache } from '../services/musicCacheService';
 import { checkStorageLimit } from '../services/storageService';
 import { initPlayer, removeNonDownloadedTracks } from '../services/playerService';
-import { fetchScanStatus } from '../services/scanService';
 import NetInfo from '@react-native-community/netinfo';
 import { startMonitoring, stopMonitoring } from '../services/connectivityService';
 import { initScrobbleService } from '../services/scrobbleService';
@@ -62,21 +69,13 @@ import { runAutoBackupIfNeeded } from '../services/backupService';
 import { startAutoOffline, stopAutoOffline } from '../services/autoOfflineService';
 import { excludeFromBackup } from 'expo-backup-exclusions';
 import { moveToBack } from 'expo-move-to-back';
-import { albumLibraryStore } from '../store/albumLibraryStore';
-import { albumListsStore } from '../store/albumListsStore';
-import { artistLibraryStore } from '../store/artistLibraryStore';
 import { imageCacheStore } from '../store/imageCacheStore';
 import { musicCacheStore } from '../store/musicCacheStore';
 import { authStore } from '../store/authStore';
-import { favoritesStore } from '../store/favoritesStore';
 import { autoOfflineStore } from '../store/autoOfflineStore';
 import { certPromptStore } from '../store/certPromptStore';
-import { genreStore } from '../store/genreStore';
 import { offlineModeStore } from '../store/offlineModeStore';
-import { playlistLibraryStore } from '../store/playlistLibraryStore';
-import { fetchServerInfo } from '../services/subsonicService';
 import { playerStore } from '../store/playerStore';
-import { serverInfoStore } from '../store/serverInfoStore';
 import { sqliteStorage } from '../store/sqliteStorage';
 import { tabletLayoutStore } from '../store/tabletLayoutStore';
 import i18n from '../i18n/i18n';
@@ -246,6 +245,8 @@ export default function RootLayout() {
 
   useDownloadKeepAwake();
   useDownloadBackgroundNotification();
+  useLibrarySyncKeepAwake();
+  useLibrarySyncBackgroundNotification();
 
   // --- Global SSL cert prompt driven by certPromptStore ---
   const certPromptVisible = certPromptStore((s) => s.visible);
@@ -286,8 +287,23 @@ export default function RootLayout() {
       musicCacheStore.getState().recalculate(await getMusicCacheStats());
       checkStorageLimit();
       await runAutoBackupIfNeeded();
+      // Resume any stalled album-detail walk from a previous session. Runs
+      // after the image/music cache init so the walk doesn't race with
+      // their synchronous SQLite setup.
+      if (!cancelled) await deferredDataSyncInit();
     })();
     return () => { cancelled = true; };
+  }, [isLoggedIn]);
+
+  // --- Resume the album-detail walk on AppState active transitions ---
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') {
+        void recoverStalledSync();
+      }
+    });
+    return () => sub.remove();
   }, [isLoggedIn]);
 
   // --- Rehydrate auth from SQLite ---
@@ -318,40 +334,9 @@ export default function RootLayout() {
 
     if (!offline) {
       startMonitoring();
-      fetchServerInfo().then((info) => {
-        if (info) serverInfoStore.getState().setServerInfo(info);
-      });
-      fetchScanStatus();
-      albumListsStore.getState().refreshAll();
-      favoritesStore.getState().fetchStarred();
-
-      // Defer the four library prefetches (albums/artists/playlists/genres)
-      // until after the home screen has finished its first paint AND a brief
-      // settling delay. Without this all four fire in parallel with the home
-      // screen's own refreshAll() at app launch — that's eight large list
-      // requests racing on the JS thread plus the network, which can spike
-      // CPU and overload slow servers (a "thundering herd"). On low-end
-      // Android devices the bridge backs up far enough to ANR.
-      //
-      // requestIdleCallback waits for the JS thread to be idle (i.e. the
-      // navigation animation and initial render have settled); the inner
-      // setTimeout(1500) gives the home content fetches another beat to
-      // actually return data over the wire before piling on the heavier
-      // library scans.
-      requestIdleCallback(() => {
-        setTimeout(() => {
-          if (albumLibraryStore.getState().albums.length === 0) {
-            albumLibraryStore.getState().fetchAllAlbums();
-          }
-          if (artistLibraryStore.getState().artists.length === 0) {
-            artistLibraryStore.getState().fetchAllArtists();
-          }
-          if (playlistLibraryStore.getState().playlists.length === 0) {
-            playlistLibraryStore.getState().fetchAllPlaylists();
-          }
-          genreStore.getState().fetchGenres();
-        }, 1500);
-      });
+      // dataSyncService owns the prefetch fan-out (immediate chain +
+      // requestIdleCallback + setTimeout(1500) deferred library prefetches).
+      onStartup();
     }
 
     const unsubAutoOffline = autoOfflineStore.subscribe((state, prev) => {
@@ -367,31 +352,8 @@ export default function RootLayout() {
       }
       if (prev.offlineMode && !state.offlineMode) {
         startMonitoring();
-        fetchServerInfo().then((info) => {
-          if (info) serverInfoStore.getState().setServerInfo(info);
-        });
-        fetchScanStatus();
-        albumListsStore.getState().refreshAll();
-        favoritesStore.getState().fetchStarred();
-
-        // Same deferral pattern as the launch path above — sequence the
-        // library prefetches behind the home content so they don't race
-        // with the home screen refresh on the JS thread or hammer the
-        // server with a parallel burst when leaving offline mode.
-        requestIdleCallback(() => {
-          setTimeout(() => {
-            if (albumLibraryStore.getState().albums.length === 0) {
-              albumLibraryStore.getState().fetchAllAlbums();
-            }
-            if (artistLibraryStore.getState().artists.length === 0) {
-              artistLibraryStore.getState().fetchAllArtists();
-            }
-            if (playlistLibraryStore.getState().playlists.length === 0) {
-              playlistLibraryStore.getState().fetchAllPlaylists();
-            }
-            genreStore.getState().fetchGenres();
-          }, 1500);
-        });
+        // dataSyncService owns the prefetch fan-out, matching the startup path.
+        onOnlineResume();
       } else if (!prev.offlineMode && state.offlineMode) {
         stopMonitoring();
       }

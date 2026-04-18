@@ -9,12 +9,22 @@
 
 import { AppState } from 'react-native';
 
-import { albumListsStore } from '../store/albumListsStore';
 import { completedScrobbleStore } from '../store/completedScrobbleStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
 import { scrobbleExclusionStore } from '../store/scrobbleExclusionStore';
 import { getApi, type Child } from './subsonicService';
+
+/**
+ * Hook invoked at the end of a scrobble batch when at least one submission
+ * succeeded. Registered by `dataSyncService` at module load so the scrobble
+ * path doesn't import the full orchestration graph (which would pull every
+ * store into any test that mocks scrobbleService).
+ */
+let onBatchCompleted: (() => void) | null = null;
+export function registerScrobbleBatchCompletedHook(hook: (() => void) | null): void {
+  onBatchCompleted = hook;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Module state                                                       */
@@ -169,9 +179,10 @@ async function processScrobbles(): Promise<void> {
     }
 
     // Refresh the home screen's recently played list if any scrobbles
-    // were submitted so it reflects the latest play history.
+    // were submitted so it reflects the latest play history. Routed through
+    // dataSyncService so future change-detection hooks can observe it.
     if (anySucceeded) {
-      albumListsStore.getState().refreshRecentlyPlayed();
+      onBatchCompleted?.();
     }
   } finally {
     isProcessing = false;

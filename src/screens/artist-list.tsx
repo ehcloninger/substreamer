@@ -2,12 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ArtistListView, type ArtistLayout } from '../components/ArtistListView';
+import { onPullToRefresh } from '../services/dataSyncService';
 import { albumLibraryStore } from '../store/albumLibraryStore';
-import { offlineModeStore } from '../store/offlineModeStore';
 import { artistLibraryStore } from '../store/artistLibraryStore';
 import { favoritesStore } from '../store/favoritesStore';
 import { musicCacheStore } from '../store/musicCacheStore';
-import { minDelay } from '../utils/stringHelpers';
 
 export function ArtistListScreen({
   layout = 'list',
@@ -20,7 +19,6 @@ export function ArtistListScreen({
   favoritesOnly?: boolean;
   contentInsetTop?: number;
 }) {
-  const offlineMode = offlineModeStore((s) => s.offlineMode);
   const artists = artistLibraryStore((s) => s.artists);
   const loading = artistLibraryStore((s) => s.loading);
   const error = artistLibraryStore((s) => s.error);
@@ -63,13 +61,13 @@ export function ArtistListScreen({
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
-    if (offlineMode) return;
     setRefreshing(true);
-    const delay = minDelay();
-    await fetchAllArtists();
-    await delay;
-    setRefreshing(false);
-  }, [offlineMode, fetchAllArtists]);
+    try {
+      await onPullToRefresh('artists');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   return (
     <View style={styles.container}>

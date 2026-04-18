@@ -36,10 +36,15 @@ import {
   restoreBackup,
   type BackupEntry,
 } from '../services/backupService';
+import { cancelAllSyncs, forceFullResync, runFullAlbumDetailSync } from '../services/dataSyncService';
 import { canUserShare } from '../services/serverCapabilityService';
+import { albumDetailStore } from '../store/albumDetailStore';
+import { albumLibraryStore } from '../store/albumLibraryStore';
 import { authStore } from '../store/authStore';
 import { backupStore } from '../store/backupStore';
 import { completedScrobbleStore } from '../store/completedScrobbleStore';
+import { songIndexStore } from '../store/songIndexStore';
+import { syncStatusStore } from '../store/syncStatusStore';
 import { mbidOverrideStore } from '../store/mbidOverrideStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import { pendingScrobbleStore } from '../store/pendingScrobbleStore';
@@ -87,6 +92,14 @@ export function SettingsLibraryDataScreen() {
   const { alert, alertProps } = useThemedAlert();
   const insets = useSafeAreaInsets();
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
+  // --- Library sync state ---
+  const offlineMode = offlineModeStore((s) => s.offlineMode);
+  const librarySize = albumLibraryStore((s) => s.albums.length);
+  const libraryLastFetchedAt = albumLibraryStore((s) => s.lastFetchedAt);
+  const detailCacheSize = albumDetailStore((s) => Object.keys(s.albums).length);
+  const songIndexSize = songIndexStore((s) => s.totalCount);
+  const syncPhase = syncStatusStore((s) => s.detailSyncPhase);
+
   // --- Listening History state ---
   const pendingScrobbleCount = pendingScrobbleStore((s) => s.pendingScrobbles.length);
   const completedScrobbleCount = completedScrobbleStore((s) => s.completedScrobbles.length);
@@ -134,6 +147,32 @@ export function SettingsLibraryDataScreen() {
       if (restoreTimer.current) clearTimeout(restoreTimer.current);
     };
   }, []);
+
+  const handleForceResync = useCallback(() => {
+    if (offlineMode) return;
+    alert(
+      t('syncLibrary'),
+      t('syncLibraryDescription'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('syncNow'),
+          onPress: () => {
+            void forceFullResync();
+          },
+        },
+      ],
+    );
+  }, [alert, offlineMode, t]);
+
+  const handleCancelRunningSync = useCallback(() => {
+    cancelAllSyncs('user-cancel');
+  }, []);
+
+  const handleResumeSync = useCallback(() => {
+    if (offlineMode) return;
+    void runFullAlbumDetailSync();
+  }, [offlineMode]);
 
   const handleToggleAutoBackup = useCallback(() => {
     backupStore.getState().setAutoBackupEnabled(!autoBackupEnabled);
@@ -243,7 +282,6 @@ export function SettingsLibraryDataScreen() {
   }, [selectedBackup, restoreState]);
 
   // --- Shares state ---
-  const offlineMode = offlineModeStore((s) => s.offlineMode);
   const showShares = !offlineMode && canUserShare();
   const shares = sharesStore((s) => s.shares ?? []);
   const shareCount = shares.length;
@@ -298,6 +336,89 @@ export function SettingsLibraryDataScreen() {
       contentContainerStyle={[settingsStyles.content, { paddingTop: headerHeight + 16 }]}
       showsVerticalScrollIndicator={false}
     >
+      {/* Library Sync */}
+      <View style={settingsStyles.section}>
+        <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('librarySync')}</Text>
+        <View style={[settingsStyles.card, dynamicStyles.card, settingsStyles.cardPadded]}>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('syncedAlbums')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {detailCacheSize} / {librarySize}
+            </Text>
+          </View>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('syncedSongs')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {songIndexSize}
+            </Text>
+          </View>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('pendingSync')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {Math.max(0, librarySize - detailCacheSize)}
+            </Text>
+          </View>
+          <View style={[settingsStyles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[settingsStyles.infoLabel, { color: colors.textPrimary }]}>{t('lastFetched')}</Text>
+            <Text style={[settingsStyles.infoValue, { color: colors.textSecondary }]}>
+              {formatDateTime(libraryLastFetchedAt ? new Date(libraryLastFetchedAt) : null)}
+            </Text>
+          </View>
+          <View style={settingsStyles.actionRow}>
+            <Pressable
+              onPress={handleForceResync}
+              disabled={offlineMode}
+              style={({ pressed }) => [
+                settingsStyles.actionRowButton,
+                { backgroundColor: colors.primary },
+                pressed && !offlineMode && settingsStyles.pressed,
+                offlineMode && settingsStyles.disabled,
+              ]}
+            >
+              <Ionicons name="refresh-circle-outline" size={18} color="#fff" />
+              <Text style={[settingsStyles.actionRowButtonText, { color: '#fff' }]}>
+                {t('syncLibrary')}
+              </Text>
+            </Pressable>
+            {syncPhase === 'syncing' && (
+              <Pressable
+                onPress={handleCancelRunningSync}
+                style={({ pressed }) => [
+                  settingsStyles.actionRowButton,
+                  { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth },
+                  pressed && settingsStyles.pressed,
+                ]}
+              >
+                <Ionicons name="stop-circle-outline" size={18} color={colors.textPrimary} />
+                <Text style={[settingsStyles.actionRowButtonText, { color: colors.textPrimary }]}>
+                  {t('pauseSync')}
+                </Text>
+              </Pressable>
+            )}
+            {syncPhase === 'idle' && librarySize > 0 && detailCacheSize < librarySize && (
+              <Pressable
+                onPress={handleResumeSync}
+                disabled={offlineMode}
+                style={({ pressed }) => [
+                  settingsStyles.actionRowButton,
+                  { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth },
+                  pressed && !offlineMode && settingsStyles.pressed,
+                  offlineMode && settingsStyles.disabled,
+                ]}
+              >
+                <Ionicons name="play-circle-outline" size={18} color={colors.textPrimary} />
+                <Text style={[settingsStyles.actionRowButtonText, { color: colors.textPrimary }]}>
+                  {t('resumeSync')}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+          <Text style={[settingsStyles.sectionHint, { color: colors.textSecondary }]}>
+            {t('syncLibraryDescription')}
+          </Text>
+        </View>
+      </View>
+
       {/* Listening History (was Scrobbles) */}
       <View style={settingsStyles.section}>
         <Text style={[settingsStyles.sectionTitle, dynamicStyles.sectionTitle]}>{t('listeningHistory')}</Text>

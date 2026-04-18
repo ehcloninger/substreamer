@@ -9,6 +9,16 @@ const POLL_INTERVAL_MS = 2000;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
+ * Hook invoked when a scan transitions from scanning:true to scanning:false.
+ * Registered by `dataSyncService` at module load to avoid making scanService
+ * import the full orchestration dependency graph.
+ */
+let onScanCompletedHook: (() => void) | null = null;
+export function registerScanCompletedHook(hook: (() => void) | null): void {
+  onScanCompletedHook = hook;
+}
+
+/**
  * Start polling the server for scan status updates.
  * No-ops if already polling.
  */
@@ -19,6 +29,9 @@ export function startPolling(): void {
     if (result) {
       scanStatusStore.getState().setScanStatus(result);
       if (!result.scanning) {
+        // Scan transition — notify the data sync service so Phase-4+ can
+        // hook incremental change detection here.
+        onScanCompletedHook?.();
         stopPolling();
       }
     }

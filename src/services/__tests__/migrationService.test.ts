@@ -6,6 +6,14 @@ const mockFileDelete = jest.fn();
 
 jest.mock('../../store/sqliteStorage', () => require('../../store/__mocks__/sqliteStorage'));
 
+// detailTables imports expo-sqlite directly; stub it so the migration test
+// doesn't drag the real native handle through expo-asset + expo-constants.
+jest.mock('expo-sqlite', () => ({
+  openDatabaseSync: () => {
+    throw new Error('mocked — detailTables fallback path used in tests');
+  },
+}));
+
 jest.mock('expo-file-system', () => {
   class MockFile {
     uri: string;

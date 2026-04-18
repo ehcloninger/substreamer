@@ -23,7 +23,9 @@ import { useTranslation } from 'react-i18next';
 
 import AnimatedWaveformLogo from './AnimatedWaveformLogo';
 import { getPendingTasks, runMigrations } from '../services/migrationService';
+import { albumDetailStore } from '../store/albumDetailStore';
 import { migrationStore } from '../store/migrationStore';
+import { songIndexStore } from '../store/songIndexStore';
 import { sqliteStorage } from '../store/sqliteStorage';
 
 /**
@@ -132,6 +134,14 @@ export default function AnimatedSplashScreen({ onFinish }: Props) {
       runMigrations(completedVersion)
         .then((finalVersion) => {
           migrationStore.getState().setCompletedVersion(finalVersion);
+          // Hydrate stores that load from per-row SQLite tables now that
+          // migrations have had a chance to populate those tables.
+          try {
+            albumDetailStore.getState().hydrateFromDb();
+            songIndexStore.getState().hydrateFromDb();
+          } catch (e) {
+            console.warn('[splash] per-row hydration failed', e);
+          }
           setMigrationPhase('done');
         })
         .catch((e) => {

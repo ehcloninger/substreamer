@@ -14,13 +14,13 @@ import { useTheme } from '../hooks/useTheme';
 import { shuffleArray } from '../utils/arrayHelpers';
 import { formatCompactDuration } from '../utils/formatters';
 import { playTrack } from '../services/playerService';
+import { onPullToRefresh } from '../services/dataSyncService';
 import {
   STARRED_SONGS_ITEM_ID,
   enqueueStarredSongsDownload,
   deleteStarredSongsDownload,
   getLocalTrackUri,
 } from '../services/musicCacheService';
-import { minDelay } from '../utils/stringHelpers';
 import { filterBarStore } from '../store/filterBarStore';
 import { offlineModeStore } from '../store/offlineModeStore';
 import {
@@ -160,13 +160,13 @@ export function FavoritesScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
-    if (offlineMode) return;
     setRefreshing(true);
-    const delay = minDelay();
-    await fetchStarred();
-    await delay;
-    setRefreshing(false);
-  }, [offlineMode, fetchStarred]);
+    try {
+      await onPullToRefresh('favorites');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const segmentHeight = 52;
   const contentInsetTop = headerHeight + segmentHeight;

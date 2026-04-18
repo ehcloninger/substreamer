@@ -11,6 +11,19 @@ import {
   type Playlist,
 } from '../services/subsonicService';
 
+/**
+ * Hook invoked after `fetchAllPlaylists` has successfully replaced the list.
+ * Registered by `dataSyncService` at module load; same pattern as the album
+ * library reconcile hook. Receives the OLD and NEW id lists so consumers can
+ * reap orphans from `playlistDetailStore` and pre-fetch new playlists.
+ */
+let reconcileHook: ((oldIds: readonly string[], newIds: readonly string[]) => void) | null = null;
+export function registerPlaylistLibraryReconcileHook(
+  hook: ((oldIds: readonly string[], newIds: readonly string[]) => void) | null,
+): void {
+  reconcileHook = hook;
+}
+
 export interface PlaylistLibraryState {
   /** All playlists in the user's library */
   playlists: Playlist[];
@@ -43,6 +56,7 @@ export const playlistLibraryStore = create<PlaylistLibraryState>()(
         // Prevent duplicate fetches
         if (get().loading) return;
 
+        const oldIds = get().playlists.map((p) => p.id);
         set({ loading: true, error: null });
         try {
           await ensureCoverArtAuth();
@@ -53,6 +67,14 @@ export const playlistLibraryStore = create<PlaylistLibraryState>()(
             loading: false,
             lastFetchedAt: Date.now(),
           });
+
+          if (reconcileHook) {
+            try {
+              reconcileHook(oldIds, playlists.map((p) => p.id));
+            } catch {
+              /* non-critical — reconcile is best-effort */
+            }
+          }
         } catch (e) {
           set({
             loading: false,
