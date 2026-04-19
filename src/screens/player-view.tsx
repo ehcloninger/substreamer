@@ -162,6 +162,27 @@ export function PlayerView() {
     }
   }, [activeTab, opacityMap]);
 
+  // Track which tabs should be visible in the compositor. The active tab
+  // is always visible; other tabs remain visible during their fade-out and
+  // are hidden with `display: 'none'` once the fade completes. Without
+  // this, the last-declared panel (Lyrics) keeps bleeding through whatever
+  // tab is active — opacity alone doesn't remove a view from compositing.
+  const [visibleTabs, setVisibleTabs] = useState<Set<PlayerTab>>(
+    () => new Set([activeTab]),
+  );
+  useEffect(() => {
+    setVisibleTabs((prev) => {
+      if (prev.has(activeTab) && prev.size === 1) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+    const timer = setTimeout(() => {
+      setVisibleTabs(new Set([activeTab]));
+    }, TAB_FADE_DURATION + 50);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
+
   const playerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: playerOpacity.value,
     transform: [{ translateY: interpolate(playerOpacity.value, [0, 1], [TAB_SLIDE_DISTANCE, 0]) }],
@@ -372,7 +393,12 @@ export function PlayerView() {
         <View style={styles.contentArea}>
           {/* Player tab — vertically centered across full area */}
           <Animated.View
-            style={[styles.tabPanel, Platform.OS === 'android' && { top: headerTopPadding }, playerAnimatedStyle]}
+            style={[
+              styles.tabPanel,
+              Platform.OS === 'android' && { top: headerTopPadding },
+              !visibleTabs.has('player') && styles.hiddenTab,
+              playerAnimatedStyle,
+            ]}
             pointerEvents={activeTab === 'player' ? 'auto' : 'none'}
           >
             <PlayerContent
@@ -385,7 +411,12 @@ export function PlayerView() {
 
           {/* Queue tab — below header */}
           <Animated.View
-            style={[styles.tabPanel, { top: headerTopPadding }, queueAnimatedStyle]}
+            style={[
+              styles.tabPanel,
+              { top: headerTopPadding },
+              !visibleTabs.has('queue') && styles.hiddenTab,
+              queueAnimatedStyle,
+            ]}
             pointerEvents={activeTab === 'queue' ? 'auto' : 'none'}
           >
             {mountedTabs.has('queue') && (
@@ -404,7 +435,12 @@ export function PlayerView() {
 
           {/* Album Info tab — below header */}
           <Animated.View
-            style={[styles.tabPanel, { top: headerTopPadding }, infoAnimatedStyle]}
+            style={[
+              styles.tabPanel,
+              { top: headerTopPadding },
+              !visibleTabs.has('info') && styles.hiddenTab,
+              infoAnimatedStyle,
+            ]}
             pointerEvents={activeTab === 'info' ? 'auto' : 'none'}
           >
             {mountedTabs.has('info') && (
@@ -414,7 +450,12 @@ export function PlayerView() {
 
           {/* Lyrics tab — below header */}
           <Animated.View
-            style={[styles.tabPanel, { top: headerTopPadding }, lyricsAnimatedStyle]}
+            style={[
+              styles.tabPanel,
+              { top: headerTopPadding },
+              !visibleTabs.has('lyrics') && styles.hiddenTab,
+              lyricsAnimatedStyle,
+            ]}
             pointerEvents={activeTab === 'lyrics' ? 'auto' : 'none'}
           >
             {mountedTabs.has('lyrics') && currentTrack && (
@@ -925,6 +966,9 @@ const styles = StyleSheet.create({
   },
   tabPanel: {
     ...StyleSheet.absoluteFillObject,
+  },
+  hiddenTab: {
+    display: 'none',
   },
   loadingContainer: {
     flex: 1,

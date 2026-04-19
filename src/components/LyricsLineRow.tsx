@@ -116,7 +116,7 @@ export const LyricsLineRow = memo(function LyricsLineRow({
 const styles = StyleSheet.create({
   row: {
     marginVertical: 14,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     transformOrigin: '0% 50%',
   },
   textStack: {

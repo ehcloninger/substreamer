@@ -530,6 +530,8 @@
   "lyricsTimedOut": "Couldn't load lyrics — the server took too long to respond.",
   "lyricsNotAvailable": "No lyrics available for this track.",
   "lyricsApproximateTiming": "Approximate timing",
+  "lyricsSynced": "Synced lyrics",
+  "lyricsResync": "Re-sync",
   "shuffling": "Shuffling…",
   "clearQueue": "Clear Queue",
   "clearQueueMessage": "This will stop playback and clear the queue.",
