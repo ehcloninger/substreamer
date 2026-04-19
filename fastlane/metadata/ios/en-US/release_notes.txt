@@ -1,18 +1,14 @@
-Trim release notes
-Validate store metadata after changelog generation
-
 Synced/unsynced lyrics
 Queue restored on restart
-MiniPlayer visible always
+MiniPlayer always visible
 Sleep timer
 Native shares
-playback formats with custom format option
-Artist top songs / all songs toggle
-Update settings pages
+Playback formats with custom option
+Artist top-songs / all-songs toggle
 Improved album & track info
-Artist name clikable
+Clickable artist names
 Gated admin functions
-Art caching, download resume fixes
-Tablet layout fixes
+Music Downloads v2
+Tablet layout + art caching fixes
 Crash & stability fixes
 Translation updates
