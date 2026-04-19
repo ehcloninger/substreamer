@@ -1,5 +1,29 @@
 # Changelog
 
+## [8.0.50] - 2026-04-19
+
+- fix(release): stop clobbering curated store release notes
+- ci: update coverage badge [skip ci]
+- fix(lyrics): rewrite auto-scroll + tab visibility + UI polish
+- chore(deps): patch-level bumps across Expo SDK 55 + ecosystem
+- ci: update coverage badge [skip ci]
+- chore: QA sweep hardening
+- docs(release-notes): trim and refresh for next release
+- fix(migration-log): use generic Share/Clear labels
+- fix(home): render Mix It Up chip unconditionally
+- refactor(image-cache): per-row SQLite replaces whole-tree FS walks
+- refactor(persistence): consolidate into a single SQLite service
+- feat(music-cache): migration 14 removes v1 blob after successful migration
+- feat(music-cache): Music Downloads v2 + critical persistence fixes
+- refactor(scrobbles): move completedScrobbleStore to per-row SQLite
+- feat(sync): canonical album-data sync pipeline
+- ci: update coverage badge [skip ci]
+- fix(segment-control): boost background opacity to 85% for readability
+- ci: update coverage badge [skip ci]
+- fix(language-picker): use bottom sheet so list is scrollable on login
+- ci: update coverage badge [skip ci]
+- fix(tuned-in): respect list length setting for offline and multi-genre playlists
+- ci: update coverage badge [skip ci]
 ## [8.0.49] - 2026-04-16
 
 - docs: release notes
