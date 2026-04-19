@@ -144,15 +144,11 @@ const MixItUpChip = memo(function MixItUpChip({ colors }: { colors: ThemeColors 
   const [loading, setLoading] = useState(false);
   const color = colors.primary;
 
-  // Staggered entrance (index 0)
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(10);
-  useEffect(() => {
-    opacity.value = withTiming(1, { duration: 350 });
-    translateY.value = withTiming(0, { duration: 350 });
-  }, [opacity, translateY]);
-
-  // Press scale
+  // Always-visible primary chip: skip the useEffect-driven entrance animation
+  // used by the genre chips. An earlier version started opacity at 0 and used
+  // `useEffect + withTiming` to fade in, which left the chip invisible
+  // whenever the effect didn't fire as expected (double-mount, strict-mode
+  // quirks, worklet timing).
   const scale = useSharedValue(1);
   const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.96, { damping: 15, stiffness: 150 });
@@ -162,8 +158,7 @@ const MixItUpChip = memo(function MixItUpChip({ colors }: { colors: ThemeColors 
   }, [scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+    transform: [{ scale: scale.value }],
   }));
 
   const handlePress = useCallback(async () => {
