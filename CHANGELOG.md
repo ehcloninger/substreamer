@@ -1,5 +1,18 @@
 # Changelog
 
+## [8.0.54] - 2026-04-21
+
+- fix(palette): 2-stop gradient on phone layouts — secondary → theme bg
+- ci: update coverage badge [skip ci]
+- fix(palette): 3-stop gradient — primary/secondary at top, theme bg at bottom
+- feat(palette): local expo-image-colors module replaces react-native-image-colors
+- fix(android): suppress Fresco drawee-controller release race
+- fix(settings-storage): spinner + min-display for image cache Scan button
+- ci: update coverage badge [skip ci]
+- fix(expo-image-resize): add missing android/build.gradle
+- ci: update coverage badge [skip ci]
+- fix(android): bypass expo-image-manipulator with a local resize module
+- ci: update coverage badge [skip ci]
 ## [8.0.53] - 2026-04-21
 
 - reset changelog
