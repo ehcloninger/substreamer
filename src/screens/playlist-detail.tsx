@@ -36,7 +36,7 @@ import {
   GRADIENT_MIX_CURVE,
   LIGHT_MIX,
 } from '../components/GradientBackground';
-import { SKIP_COLOR_EXTRACTION, useColorExtraction } from '../hooks/useColorExtraction';
+import { SKIP_COLOR_EXTRACTION, useImagePalette } from '../hooks/useImagePalette';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useLayoutMode } from '../hooks/useLayoutMode';
 import { useRefreshControlKey } from '../hooks/useRefreshControlKey';
@@ -151,9 +151,8 @@ export function PlaylistDetailScreen() {
   const [editedTracks, setEditedTracks] = useState<Child[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
+  const { primary, secondary, gradientOpacity } = useImagePalette(
     isWide ? SKIP_COLOR_EXTRACTION : playlist?.coverArt,
-    colors.background,
   );
 
   const themeGradientColors = useMemo(() => {
@@ -470,7 +469,7 @@ export function PlaylistDetailScreen() {
     [colors.textPrimary, colors.textSecondary, t],
   );
 
-  const gradientStart = coverBackgroundColor ?? colors.background;
+  const gradientStart = primary ?? colors.background;
 
   const gradientAnimatedStyle = useAnimatedStyle(() => ({
     opacity: gradientOpacity.value,
@@ -496,7 +495,7 @@ export function PlaylistDetailScreen() {
     );
   }
 
-  const gradientEnd = colors.background;
+  const gradientEnd = secondary ?? colors.background;
 
   const gradientFillStyle = [
     StyleSheet.absoluteFillObject,

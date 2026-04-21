@@ -30,7 +30,7 @@ import {
   GRADIENT_MIX_CURVE,
   LIGHT_MIX,
 } from '../components/GradientBackground';
-import { SKIP_COLOR_EXTRACTION, useColorExtraction } from '../hooks/useColorExtraction';
+import { SKIP_COLOR_EXTRACTION, useImagePalette } from '../hooks/useImagePalette';
 import { useDownloadStatus } from '../hooks/useDownloadStatus';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { useLayoutMode } from '../hooks/useLayoutMode';
@@ -97,9 +97,8 @@ export function AlbumDetailScreen() {
     if (id) toggleStar('album', id);
   }, [id]);
 
-  const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
+  const { primary, secondary, gradientOpacity } = useImagePalette(
     isWide ? SKIP_COLOR_EXTRACTION : album?.coverArt,
-    colors.background,
   );
 
   const themeGradientColors = useMemo(() => {
@@ -336,7 +335,7 @@ export function AlbumDetailScreen() {
     [colors.textPrimary, colors.textSecondary, t],
   );
 
-  const gradientStart = coverBackgroundColor ?? colors.background;
+  const gradientStart = primary ?? colors.background;
 
   const gradientAnimatedStyle = useAnimatedStyle(() => ({
     opacity: gradientOpacity.value,
@@ -362,7 +361,7 @@ export function AlbumDetailScreen() {
     );
   }
 
-  const gradientEnd = colors.background;
+  const gradientEnd = secondary ?? colors.background;
 
   const gradientFillStyle = [
     StyleSheet.absoluteFillObject,

@@ -32,7 +32,7 @@ import {
   GRADIENT_MIX_CURVE,
   LIGHT_MIX,
 } from '../components/GradientBackground';
-import { SKIP_COLOR_EXTRACTION, useColorExtraction } from '../hooks/useColorExtraction';
+import { SKIP_COLOR_EXTRACTION, useImagePalette } from '../hooks/useImagePalette';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { useLayoutMode } from '../hooks/useLayoutMode';
 import { useRefreshControlKey } from '../hooks/useRefreshControlKey';
@@ -105,9 +105,8 @@ export function ArtistDetailScreen() {
   const isWide = useLayoutMode() === 'wide';
   const refreshControlKey = useRefreshControlKey();
 
-  const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
+  const { primary, secondary, gradientOpacity } = useImagePalette(
     isWide ? SKIP_COLOR_EXTRACTION : artist?.coverArt,
-    colors.background,
   );
 
   const themeGradientColors = useMemo(() => {
@@ -200,8 +199,8 @@ export function ArtistDetailScreen() {
   const onRefresh = useCallback(() => fetchData(true), [fetchData]);
 
   /* ---- Derived values ---- */
-  const gradientStart = coverBackgroundColor ?? colors.background;
-  const gradientEnd = colors.background;
+  const gradientStart = primary ?? colors.background;
+  const gradientEnd = secondary ?? colors.background;
 
   const gradientAnimatedStyle = useAnimatedStyle(() => ({
     opacity: gradientOpacity.value,

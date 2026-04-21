@@ -53,7 +53,7 @@ import { QueueItemRow } from '../components/QueueItemRow';
 import { closeOpenRow } from '../components/SwipeableRow';
 import { type ThemeColors } from '../constants/theme';
 import { useCanSkip } from '../hooks/useCanSkip';
-import { useColorExtraction } from '../hooks/useColorExtraction';
+import { useImagePalette } from '../hooks/useImagePalette';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { useTheme } from '../hooks/useTheme';
 import { ThemedAlert } from '../components/ThemedAlert';
@@ -119,13 +119,10 @@ export function PlayerView() {
     }
   }, [currentTrack, wasPopulated, onClose]);
 
-  const { coverBackgroundColor, gradientOpacity } = useColorExtraction(
-    currentTrack?.coverArt,
-    colors.background,
-  );
+  const { primary, secondary, gradientOpacity } = useImagePalette(currentTrack?.coverArt);
 
-  const gradientStart = coverBackgroundColor ?? colors.background;
-  const gradientEnd = colors.background;
+  const gradientStart = primary ?? colors.background;
+  const gradientEnd = secondary ?? colors.background;
 
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 

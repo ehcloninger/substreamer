@@ -51,7 +51,7 @@ import { SleepTimerCapsule } from './SleepTimerCapsule';
 import { ThemedAlert } from './ThemedAlert';
 import { closeOpenRow } from './SwipeableRow';
 import { useCanSkip } from '../hooks/useCanSkip';
-import { useColorExtraction } from '../hooks/useColorExtraction';
+import { useImagePalette } from '../hooks/useImagePalette';
 import { mixHexColors } from '../utils/colors';
 import { useIsStarred } from '../hooks/useIsStarred';
 import { useTheme } from '../hooks/useTheme';
@@ -114,15 +114,14 @@ export function ExpandedPlayerView({
   const isBuffering =
     playbackState === 'buffering' || playbackState === 'loading';
 
-  // Own color extraction for gradient background
-  const { coverBackgroundColor, gradientOpacity: extractedGradientOpacity } =
-    useColorExtraction(currentTrack?.coverArt, colors.background);
+  // Own palette extraction for gradient background. Primary is already
+  // lightness-clamped for the active theme so the previous manual
+  // darkening call is no longer necessary — we just use the hook output.
+  const { primary, secondary, gradientOpacity: extractedGradientOpacity } =
+    useImagePalette(currentTrack?.coverArt);
 
-  // Darken the extracted color for a richer, moodier full-screen background
-  const gradientStart = coverBackgroundColor
-    ? mixHexColors(coverBackgroundColor, '#000000', 0.4)
-    : colors.background;
-  const gradientEnd = mixHexColors(colors.background, '#000000', 0.15);
+  const gradientStart = primary ?? colors.background;
+  const gradientEnd = secondary ?? mixHexColors(colors.background, '#000000', 0.15);
 
   // Right panel mode: queue (default), lyrics placeholder, or album info
   const [rightPanelMode, setRightPanelMode] = useState<'queue' | 'lyrics' | 'info'>('queue');

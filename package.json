@@ -51,6 +51,7 @@
     "expo-font": "~55.0.4",
     "expo-gzip": "file:./modules/expo-gzip",
     "expo-haptics": "~55.0.14",
+    "expo-image-colors": "file:./modules/expo-image-colors",
     "expo-image-resize": "file:./modules/expo-image-resize",
     "expo-intent-launcher": "~55.0.12",
     "expo-linear-gradient": "~55.0.13",
@@ -76,7 +77,6 @@
     "react-native": "0.83.4",
     "react-native-bootsplash": "^7.3.1",
     "react-native-gesture-handler": "^2.31.1",
-    "react-native-image-colors": "^2.6.0",
     "react-native-reanimated": "^4.3.0",
     "react-native-reorderable-list": "^0.18.0",
     "react-native-safe-area-context": "^5.7.0",
@@ -131,6 +131,7 @@
           "expo-gzip",
           "expo-move-to-back",
           "expo-image-resize",
+          "expo-image-colors",
           "subsonic-api"
         ]
       }

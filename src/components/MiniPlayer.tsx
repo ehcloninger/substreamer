@@ -7,27 +7,21 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import { CachedImage } from './CachedImage';
 import { MarqueeText } from './MarqueeText';
 import WaveformLogo from './WaveformLogo';
-import { useCachedCoverArt } from '../hooks/useCachedCoverArt';
+import { useImagePalette } from '../hooks/useImagePalette';
 import { useTheme } from '../hooks/useTheme';
 import { skipToNext, togglePlayPause } from '../services/playerService';
 import { playbackSettingsStore } from '../store/playbackSettingsStore';
 import { playerStore } from '../store/playerStore';
-import { getProminentColor, type ExtractedColors } from '../utils/colors';
 
 const MINI_PLAYER_HEIGHT = 56;
 /** Matches the placeholder cover art background (rgb 150,150,150). */
@@ -65,53 +59,9 @@ export function MiniPlayer() {
     [queueLoading, colors.textSecondary, colors.textPrimary],
   );
 
-  // --- Colour extraction ---
-  const cachedUri = useCachedCoverArt(currentTrack?.coverArt, 50);
-  const [bgColor, setBgColor] = useState<string | null>(null);
-  const gradientOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    if (!currentTrack?.coverArt) {
-      setBgColor(null);
-      return;
-    }
-    if (Constants.appOwnership === 'expo') {
-      setBgColor(null);
-      return;
-    }
-    const uri = cachedUri;
-    if (!uri) {
-      setBgColor(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { getColors } = await import('react-native-image-colors');
-        const result = await getColors(uri, {
-          fallback: colors.background,
-          quality: 'low',
-        });
-        if (cancelled) return;
-        const prominent = getProminentColor(result as ExtractedColors);
-        setBgColor(prominent ?? null);
-      } catch {
-        if (!cancelled) setBgColor(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentTrack?.coverArt, cachedUri, colors.background]);
-
-  useEffect(() => {
-    if (bgColor) {
-      gradientOpacity.value = 0;
-      gradientOpacity.value = withTiming(1, { duration: 400 });
-    } else {
-      gradientOpacity.value = withTiming(0, { duration: 300 });
-    }
-  }, [bgColor, gradientOpacity]);
+  // --- Colour extraction (palette is theme-aware; primary is lightness-clamped
+  // for safe icon contrast, secondary is null for monochromatic covers). ---
+  const { primary, secondary, gradientOpacity } = useImagePalette(currentTrack?.coverArt);
 
   const gradientAnimatedStyle = useAnimatedStyle(() => ({
     opacity: gradientOpacity.value,
@@ -123,8 +73,8 @@ export function MiniPlayer() {
 
   if (!currentTrack) return null;
 
-  const gradientStart = queueLoading ? PLACEHOLDER_BG : (bgColor ?? colors.card);
-  const gradientEnd = colors.background;
+  const gradientStart = queueLoading ? PLACEHOLDER_BG : (primary ?? colors.card);
+  const gradientEnd = secondary ?? colors.background;
 
   /** Append alpha hex to a colour string (supports #RGB, #RRGGBB). */
   const withAlpha = (hex: string, alpha: number) => {
