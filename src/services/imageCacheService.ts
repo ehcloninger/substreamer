@@ -134,8 +134,8 @@ export function initImageCache(): void {
 
     if (!appStateSubscription) {
       appStateSubscription = AppState.addEventListener('change', (next: AppStateStatus) => {
-        if (next === 'active' && !isProcessing) {
-          repairIncompleteImagesAsync();
+        if (next === 'active') {
+          fireAndForget(repairIncompleteImagesAsync(), 'imageCache.appStateActive');
         }
       });
     }
@@ -326,8 +326,11 @@ function ensureCacheDir(): Directory {
  * post-splash and on resume-from-background via AppState.
  */
 export async function repairIncompleteImagesAsync(): Promise<void> {
-  if (isProcessing) return;
-
+  // No `isProcessing` guard: a queue already being drained by CachedImage
+  // mounts would make this a no-op exactly when the user wants it to run
+  // (startup auto-repair, Settings "Repair All"). Pushing to `downloadQueue`
+  // while workers are active is safe — they pick up new items as they drain.
+  // `processQueue()` below has its own re-entry guard.
   const dir = ensureCacheDir();
   let subDirNames: string[];
   try {
