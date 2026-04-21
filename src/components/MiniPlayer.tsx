@@ -73,14 +73,21 @@ export function MiniPlayer() {
 
   if (!currentTrack) return null;
 
-  const gradientStart = queueLoading ? PLACEHOLDER_BG : (primary ?? colors.card);
-  const gradientEnd = secondary ?? colors.background;
-
   /** Append alpha hex to a colour string (supports #RGB, #RRGGBB). */
   const withAlpha = (hex: string, alpha: number) => {
     const a = Math.round(alpha * 255).toString(16).padStart(2, '0');
     return `${hex}${a}`;
   };
+
+  // 3-stop vertical gradient: extracted primary at top → extracted
+  // secondary (if any) in the middle → theme background at the bottom.
+  // Preserves the previous "fade into tab bar" look while adding the
+  // secondary colour as a mid-stop for more visual depth.
+  const topColor = queueLoading ? PLACEHOLDER_BG : (primary ?? colors.card);
+  const gradientColors: readonly [string, string, ...string[]] = secondary
+    ? [withAlpha(topColor, 0.65), withAlpha(secondary, 0.65), withAlpha(colors.background, 0.65)]
+    : [withAlpha(topColor, 0.65), withAlpha(colors.background, 0.65)];
+  const gradientLocations: readonly [number, number, ...number[]] = secondary ? [0, 0.5, 1] : [0, 1];
 
   return (
     <View style={[styles.container, { backgroundColor: withAlpha(colors.card, 0.65) }]}>
@@ -101,7 +108,8 @@ export function MiniPlayer() {
       {/* Gradient overlay */}
       <Animated.View style={[StyleSheet.absoluteFillObject, gradientAnimatedStyle]} pointerEvents="none">
         <LinearGradient
-          colors={[withAlpha(gradientStart, 0.65), withAlpha(gradientEnd, 0.65)]}
+          colors={gradientColors}
+          locations={gradientLocations}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFillObject}

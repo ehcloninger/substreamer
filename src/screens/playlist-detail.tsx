@@ -469,7 +469,13 @@ export function PlaylistDetailScreen() {
     [colors.textPrimary, colors.textSecondary, t],
   );
 
-  const gradientStart = primary ?? colors.background;
+  // 3-stop gradient: extracted primary → extracted secondary (if any) →
+  // theme background at the bottom. Keeps the dark/light theme colour at
+  // the bottom of the hero area while using both extracted colours up top.
+  const gradientColors: readonly [string, string, ...string[]] = secondary
+    ? [primary ?? colors.background, secondary, colors.background]
+    : [primary ?? colors.background, colors.background];
+  const gradientLocations: readonly [number, number, ...number[]] = secondary ? [0, 0.25, 0.5] : [0, 0.5];
 
   const gradientAnimatedStyle = useAnimatedStyle(() => ({
     opacity: gradientOpacity.value,
@@ -494,8 +500,6 @@ export function PlaylistDetailScreen() {
       </View>
     );
   }
-
-  const gradientEnd = secondary ?? colors.background;
 
   const gradientFillStyle = [
     StyleSheet.absoluteFillObject,
@@ -554,8 +558,8 @@ export function PlaylistDetailScreen() {
         pointerEvents="none"
       >
         <LinearGradient
-          colors={[gradientStart, gradientEnd]}
-          locations={[0, 0.5]}
+          colors={gradientColors}
+          locations={gradientLocations}
           style={StyleSheet.absoluteFillObject}
         />
       </Animated.View>

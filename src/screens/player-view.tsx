@@ -121,8 +121,13 @@ export function PlayerView() {
 
   const { primary, secondary, gradientOpacity } = useImagePalette(currentTrack?.coverArt);
 
-  const gradientStart = primary ?? colors.background;
-  const gradientEnd = secondary ?? colors.background;
+  // 3-stop gradient: extracted primary → extracted secondary (if any) →
+  // theme background. Keeps the dark/light theme background at the bottom
+  // while letting the two extracted colours colour the top portion.
+  const gradientColors: readonly [string, string, ...string[]] = secondary
+    ? [primary ?? colors.background, secondary, colors.background]
+    : [primary ?? colors.background, colors.background];
+  const gradientLocations: readonly [number, number, ...number[]] = secondary ? [0, 0.3, 0.6] : [0, 0.6];
 
   const offlineMode = offlineModeStore((s) => s.offlineMode);
 
@@ -380,8 +385,8 @@ export function PlayerView() {
           pointerEvents="none"
         >
           <LinearGradient
-            colors={[gradientStart, gradientEnd]}
-            locations={[0, 0.6]}
+            colors={gradientColors}
+            locations={gradientLocations}
             style={StyleSheet.absoluteFillObject}
           />
         </Animated.View>
